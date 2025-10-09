@@ -281,7 +281,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">{stats.activeBreakdowns}</div>
-              <p className="text-xs text-muted-foreground">+2 from yesterday</p>
             </CardContent>
           </Card>
           <Card>
@@ -291,7 +290,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{stats.availableTechnicians}</div>
-              <p className="text-xs text-muted-foreground">Out of 12 total</p>
             </CardContent>
           </Card>
           <Card>
@@ -301,7 +299,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">{stats.totalVehicles}</div>
-              <p className="text-xs text-muted-foreground">42 active, 3 maintenance</p>
             </CardContent>
           </Card>
           <Card>
@@ -311,7 +308,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">{stats.totalVehicles}</div>
-              <p className="text-xs text-muted-foreground">+12% for the month</p>
             </CardContent>
           </Card>
         </div>

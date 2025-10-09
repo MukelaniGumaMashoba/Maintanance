@@ -1842,6 +1842,137 @@ export type Database = {
           },
         ]
       }
+      quotations_klaver: {
+        Row: {
+          additional_notes: string | null
+          breakdown_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          created_by: string | null
+          createdat: string | null
+          description: string | null
+          drivername: string | null
+          estimate_amount: number | null
+          estimated_cost: number | null
+          estimated_time: string | null
+          id: string
+          issue: string | null
+          job_id: number | null
+          job_type: string | null
+          jobcard_id: number | null
+          laborcost: number | null
+          labourcost: number | null
+          markupPrice: number | null
+          orderno: string | null
+          paid: boolean | null
+          parts_needed: string[] | null
+          partscost: number | null
+          priority: string | null
+          reason: string | null
+          status: string | null
+          tech_id: number | null
+          totalcost: number | null
+          type: string | null
+          typeJob: string | null
+          vehiclereg: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          breakdown_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          createdat?: string | null
+          description?: string | null
+          drivername?: string | null
+          estimate_amount?: number | null
+          estimated_cost?: number | null
+          estimated_time?: string | null
+          id?: string
+          issue?: string | null
+          job_id?: number | null
+          job_type?: string | null
+          jobcard_id?: number | null
+          laborcost?: number | null
+          labourcost?: number | null
+          markupPrice?: number | null
+          orderno?: string | null
+          paid?: boolean | null
+          parts_needed?: string[] | null
+          partscost?: number | null
+          priority?: string | null
+          reason?: string | null
+          status?: string | null
+          tech_id?: number | null
+          totalcost?: number | null
+          type?: string | null
+          typeJob?: string | null
+          vehiclereg?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          breakdown_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          createdat?: string | null
+          description?: string | null
+          drivername?: string | null
+          estimate_amount?: number | null
+          estimated_cost?: number | null
+          estimated_time?: string | null
+          id?: string
+          issue?: string | null
+          job_id?: number | null
+          job_type?: string | null
+          jobcard_id?: number | null
+          laborcost?: number | null
+          labourcost?: number | null
+          markupPrice?: number | null
+          orderno?: string | null
+          paid?: boolean | null
+          parts_needed?: string[] | null
+          partscost?: number | null
+          priority?: string | null
+          reason?: string | null
+          status?: string | null
+          tech_id?: number | null
+          totalcost?: number | null
+          type?: string | null
+          typeJob?: string | null
+          vehiclereg?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_klaver_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_klaver_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_klaver_jobcard_id_fkey"
+            columns: ["jobcard_id"]
+            isOneToOne: false
+            referencedRelation: "job_card"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_klaver_tech_id_fkey"
+            columns: ["tech_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_products: {
         Row: {
           cash_discount: number

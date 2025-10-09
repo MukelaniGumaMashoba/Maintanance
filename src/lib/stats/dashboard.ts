@@ -27,7 +27,7 @@ export async function getPendingApprovals() {
 export async function getAvailableTechnicians() {
     const supabase = createClient();
     const { count, error } = await (await supabase)
-        .from('technicians')
+        .from('technicians_klaver')
         .select('*', { count: 'exact', head: true })
         .eq('status', true); // or .eq('availability', 'available') if that's the correct field
     if (error) throw error;
@@ -56,7 +56,14 @@ export async function getMonthlyRevenue() {
         .gte('completed_at', startOfMonth)
         .lte('completed_at', endOfMonth);
     if (error) throw error;
-    const total = (data || []).reduce((sum, job) => sum + (job.actual_cost || 0), 0);
+    interface JobAssignmentCost {
+        actual_cost: number | null;
+        completed_at: string | null;
+    }
+    const total = ((data as JobAssignmentCost[] | null) || []).reduce<number>(
+        (sum: number, job: JobAssignmentCost) => sum + (job.actual_cost || 0),
+        0
+    );
     return total;
 }
 

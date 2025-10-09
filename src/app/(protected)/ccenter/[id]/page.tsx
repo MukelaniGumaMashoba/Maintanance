@@ -33,7 +33,7 @@ export default function QuotationDetailPage() {
 
     const fetchQuotation = async () => {
         const { data, error } = await supabase
-            .from("quotations")
+            .from("quotations_klaver")
             .select("*")
             .eq("id", String(id))
             .single();
@@ -52,7 +52,7 @@ export default function QuotationDetailPage() {
         setUpdating(true);
 
         const { error } = await supabase
-            .from("quotations")
+            .from("quotations_klaver")
             .update({ status: newStatus })
             .eq("id", quotation.id);
 
