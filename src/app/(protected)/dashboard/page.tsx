@@ -132,7 +132,7 @@ export default function Dashboard() {
         addActivity(payload, 'approvals');
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'technicians' }, fetchStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehiclesc' }, fetchStats)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehiclesc_workshop' }, fetchStats)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'job_assignments' }, (payload) => {
         fetchStats();
         addActivity(payload, 'job_assignments');

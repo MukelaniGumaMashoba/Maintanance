@@ -123,6 +123,7 @@ export default function TechniciansPage() {
     const { data: techniciansData, error: techError } = await supabase
       .from('technicians')
       .select('*')
+      .eq("type", "internal") // Only internal technicians for now
     if (techError) {
       console.error('Error fetching technicians:', techError)
       setTechnicians([])

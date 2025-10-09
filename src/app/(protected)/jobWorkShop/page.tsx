@@ -231,7 +231,7 @@ export default function FleetJobsPage() {
     const getJobs = async () => {
       const { data: jobs, error } = await supabase
         .from('job_assignments')
-        .select(`*, vehiclesc(*)`)
+        .select(`*, vehiclesc_workshop(*)`)
         .neq('status', 'completed')
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
@@ -391,7 +391,7 @@ export default function FleetJobsPage() {
 
     }
     const { data, error } = await supabase
-      .from('vehiclesc')
+      .from('vehiclesc_workshop')
       .select()
       .eq("registration_number", registrationNumber)
       .single();

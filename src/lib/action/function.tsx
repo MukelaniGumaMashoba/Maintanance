@@ -11,7 +11,7 @@
 
 //     }
 //     const { data, error } = await supabase
-//         .from('vehiclesc')
+//         .from('vehiclesc_workshop')
 //         .select()
 //         .eq("registration_number", registrationNumber)
 //         .single();

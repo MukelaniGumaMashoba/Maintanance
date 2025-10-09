@@ -77,7 +77,7 @@ export default function WorkshopJobDetailPage() {
   const [isTechDialogOpen, setIsTechDialogOpen] = useState(false);
   const [selectedTechnician, setSelectedTechnician] =
     useState<Technician | null>(null);
-  const [parts, setParts] = useState<string[]>([]);
+  const [parts, setParts] = useState<any[]>([]);
 
   const fetchParts = async () => {
     const { data, error } = await supabase
@@ -88,7 +88,7 @@ export default function WorkshopJobDetailPage() {
       console.error("Error fetching parts:", error);
       return;
     }
-    setParts(data as unknown as string[]);
+    setParts(data || []);
   };
 
   useEffect(() => {
@@ -305,7 +305,7 @@ export default function WorkshopJobDetailPage() {
               <strong>Parts Required:</strong>
               <ul className="list-disc list-inside">
                 {parts.map((part, index) => (
-                  <li key={index}>{part}</li>
+                  <li key={index}>{part.job_parts || part.given_parts || 'Unknown part'}</li>
                 ))}
               </ul>
             </div>

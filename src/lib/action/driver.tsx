@@ -72,7 +72,7 @@ export async function addDriversToTable(driver: Driver) {
     const { data: user, error: userError } = await supabase.auth.getUser()
     const user_id = user.user?.id;
 
-    const { data, error } = await supabase.from('drivers')
+    const { data, error } = await supabase.from('drivers_klaver')
         .insert([
             {
                 ...driver,

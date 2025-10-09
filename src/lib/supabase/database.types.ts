@@ -983,6 +983,78 @@ export type Database = {
         }
         Relationships: []
       }
+      drivers_klaver: {
+        Row: {
+          cell_number: string | null
+          created_at: string | null
+          created_by: string | null
+          driver_restriction_code: string | null
+          email_address: string | null
+          first_name: string
+          front_of_driver_pic: string | null
+          id: number
+          id_or_passport_document: string | null
+          id_or_passport_number: string
+          license_code: string | null
+          license_expiry_date: string | null
+          license_number: string | null
+          pdp_expiry_date: string | null
+          professional_driving_permit: boolean | null
+          rear_of_driver_pic: string | null
+          sa_issued: boolean | null
+          surname: string
+          user_id: string | null
+          vehicle_restriction_code: string | null
+          work_permit_upload: string | null
+        }
+        Insert: {
+          cell_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          driver_restriction_code?: string | null
+          email_address?: string | null
+          first_name: string
+          front_of_driver_pic?: string | null
+          id?: number
+          id_or_passport_document?: string | null
+          id_or_passport_number: string
+          license_code?: string | null
+          license_expiry_date?: string | null
+          license_number?: string | null
+          pdp_expiry_date?: string | null
+          professional_driving_permit?: boolean | null
+          rear_of_driver_pic?: string | null
+          sa_issued?: boolean | null
+          surname: string
+          user_id?: string | null
+          vehicle_restriction_code?: string | null
+          work_permit_upload?: string | null
+        }
+        Update: {
+          cell_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          driver_restriction_code?: string | null
+          email_address?: string | null
+          first_name?: string
+          front_of_driver_pic?: string | null
+          id?: number
+          id_or_passport_document?: string | null
+          id_or_passport_number?: string
+          license_code?: string | null
+          license_expiry_date?: string | null
+          license_number?: string | null
+          pdp_expiry_date?: string | null
+          professional_driving_permit?: boolean | null
+          rear_of_driver_pic?: string | null
+          sa_issued?: boolean | null
+          surname?: string
+          user_id?: string | null
+          vehicle_restriction_code?: string | null
+          work_permit_upload?: string | null
+        }
+        Relationships: []
+      }
       inspection: {
         Row: {
           created_at: string
@@ -2220,6 +2292,80 @@ export type Database = {
           },
         ]
       }
+      technicians_klaver: {
+        Row: {
+          availability: Database["public"]["Enums"]["availability"] | null
+          certifications: string[]
+          coordinates: Json
+          created_by: string | null
+          email: string
+          equipment_level: string
+          id: number
+          isActive: boolean | null
+          join_date: string
+          location: string
+          name: string
+          phone: string
+          rating: number | null
+          skill_levels: Json
+          specialties: string[]
+          status: boolean | null
+          type: string | null
+          vehicle_type: string
+          workshop_id: string | null
+        }
+        Insert: {
+          availability?: Database["public"]["Enums"]["availability"] | null
+          certifications: string[]
+          coordinates: Json
+          created_by?: string | null
+          email: string
+          equipment_level: string
+          id?: number
+          isActive?: boolean | null
+          join_date: string
+          location: string
+          name: string
+          phone: string
+          rating?: number | null
+          skill_levels: Json
+          specialties: string[]
+          status?: boolean | null
+          type?: string | null
+          vehicle_type: string
+          workshop_id?: string | null
+        }
+        Update: {
+          availability?: Database["public"]["Enums"]["availability"] | null
+          certifications?: string[]
+          coordinates?: Json
+          created_by?: string | null
+          email?: string
+          equipment_level?: string
+          id?: number
+          isActive?: boolean | null
+          join_date?: string
+          location?: string
+          name?: string
+          phone?: string
+          rating?: number | null
+          skill_levels?: Json
+          specialties?: string[]
+          status?: boolean | null
+          type?: string | null
+          vehicle_type?: string
+          workshop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technicians_klaver_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_inspections: {
         Row: {
           created_at: string | null
@@ -2410,7 +2556,9 @@ export type Database = {
       }
       vehiclesc_workshop: {
         Row: {
+          asset_type: string | null
           boarding_km_hours: number | null
+          chasis: string | null
           colour: string
           company_id: number | null
           cost_centres: string | null
@@ -2426,12 +2574,14 @@ export type Database = {
           make: string | null
           manufactured_year: string
           model: string
+          operator_name: string | null
           purchase_price: number | null
           register_number: string | null
           registration_date: string | null
           registration_number: string
           retail_price: number | null
           service_intervals: string
+          site: string | null
           status: string | null
           sub_model: string | null
           take_on_kilometers: number
@@ -2446,7 +2596,9 @@ export type Database = {
           workshop_id: string | null
         }
         Insert: {
+          asset_type?: string | null
           boarding_km_hours?: number | null
+          chasis?: string | null
           colour: string
           company_id?: number | null
           cost_centres?: string | null
@@ -2462,12 +2614,14 @@ export type Database = {
           make?: string | null
           manufactured_year: string
           model: string
+          operator_name?: string | null
           purchase_price?: number | null
           register_number?: string | null
           registration_date?: string | null
           registration_number: string
           retail_price?: number | null
           service_intervals: string
+          site?: string | null
           status?: string | null
           sub_model?: string | null
           take_on_kilometers: number
@@ -2482,7 +2636,9 @@ export type Database = {
           workshop_id?: string | null
         }
         Update: {
+          asset_type?: string | null
           boarding_km_hours?: number | null
+          chasis?: string | null
           colour?: string
           company_id?: number | null
           cost_centres?: string | null
@@ -2498,12 +2654,14 @@ export type Database = {
           make?: string | null
           manufactured_year?: string
           model?: string
+          operator_name?: string | null
           purchase_price?: number | null
           register_number?: string | null
           registration_date?: string | null
           registration_number?: string
           retail_price?: number | null
           service_intervals?: string
+          site?: string | null
           status?: string | null
           sub_model?: string | null
           take_on_kilometers?: number

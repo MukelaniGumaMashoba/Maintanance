@@ -38,7 +38,7 @@ export async function getAvailableTechnicians() {
 export async function getTotalVehicles() {
     const supabase = createClient();
     const { count, error } = await (await supabase)
-        .from('vehiclesc')
+        .from('vehiclesc_workshop')
         .select('*', { count: 'exact', head: true });
     if (error) throw error;
     return count || 0;

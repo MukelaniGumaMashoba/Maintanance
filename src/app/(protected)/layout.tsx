@@ -98,7 +98,7 @@ const roleNavigation: Record<string, NavItem[]> = {
       href: "/callcenter/technician",
       Icon: Wrench,
     },
-    { name: "Workshop Vehicles", href: "/callcenter/breakdowns", Icon: Truck },
+    // { name: "Workshop Vehicles", href: "/callcenter/breakdowns", Icon: Truck },
     { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "Inventory", href: "/inventory", Icon: Package },
     { name: "System Settings", href: "/settings", Icon: Settings },

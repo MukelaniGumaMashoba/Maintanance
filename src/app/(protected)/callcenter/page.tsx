@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -12,206 +18,232 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MapPin, Phone, Clock, AlertTriangle, Search, Car, User, UserCircle2 } from "lucide-react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
-import MapView from "@/components/map/display-map"
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  MapPin,
+  Phone,
+  Clock,
+  AlertTriangle,
+  Search,
+  Car,
+  User,
+  UserCircle2,
+} from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import MapView from "@/components/map/display-map";
 
 interface Breakdown {
-  id: string
-  order_no: string
-  driver_name: string
-  driver_phone: string
-  registration: string
-  location: string
-  coordinates: { lat: number; lng: number }
-  issue: string
-  status: string
-  priority: "low" | "medium" | "high" | "emergency"
-  created_at: string
-  assigned_tech?: string
-  estimated_time?: string
-  emergency_type?: string
-  make: string
-  model: string
-  breakdown_location: string,
+  id: string;
+  order_no: string;
+  driver_name: string;
+  driver_phone: string;
+  registration: string;
+  location: string;
+  coordinates: { lat: number; lng: number };
+  issue: string;
+  status: string;
+  priority: "low" | "medium" | "high" | "emergency";
+  created_at: string;
+  assigned_tech?: string;
+  estimated_time?: string;
+  emergency_type?: string;
+  make: string;
+  model: string;
+  breakdown_location: string;
   technician?: Technician;
 }
 
 interface Technician {
-  id: string
-  name: string
-  phone: string
-  location: string
-  availability: string
-  specialties: string[]
-  type: string
+  id: string;
+  name: string;
+  phone: string;
+  location: string;
+  availability: string;
+  specialties: string[];
+  type: string;
 }
 
 interface TechnicianLocation {
-  address: string
-  lat: number
-  lng: number
-  name?: string
+  address: string;
+  lat: number;
+  lng: number;
+  name?: string;
 }
 
-
 export default function CallCenterPage() {
-  const [breakdowns, setBreakdowns] = useState<Breakdown[]>([])
-  const [technicians, setTechnicians] = useState<Technician[]>([])
-  const [selectedBreakdown, setSelectedBreakdown] = useState<Breakdown | null>(null)
-  const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const supabase = createClient()
+  const [breakdowns, setBreakdowns] = useState<Breakdown[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [selectedBreakdown, setSelectedBreakdown] = useState<Breakdown | null>(
+    null
+  );
+  const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const supabase = createClient();
   useEffect(() => {
     const getBreakdowns = async () => {
-      const { data: breakdowns, error } = await supabase
-        .from('breakdowns')
+      const { data: breakdowns, error } = await supabase.from("breakdowns")
         .select(`
             *,
             technician:tech_id (*)
           `);
 
       if (error) {
-        console.error('Error fetching breakdowns:', error);
+        console.error("Error fetching breakdowns:", error);
       } else {
         setBreakdowns(breakdowns as unknown as Breakdown[]);
       }
     };
 
     const getTechnicians = async () => {
-      const { data: technicians, error } = await supabase.from('technicians').select('*')
+      const { data: technicians, error } = await supabase
+        .from("technicians")
+        .select("*")
+        .eq("type", "internal");
       if (error) {
-        console.error(error)
+        console.error(error);
       } else {
-        setTechnicians(technicians as unknown as Technician[])
+        setTechnicians(technicians as unknown as Technician[]);
       }
-    }
-    getTechnicians()
-    getBreakdowns()
-  }, [])
+    };
+    getTechnicians();
+    getBreakdowns();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "dispatched":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "inprogress":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800";
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "emergency":
-        return "bg-red-500 text-white"
+        return "bg-red-500 text-white";
       case "high":
-        return "bg-orange-500 text-white"
+        return "bg-orange-500 text-white";
       case "medium":
-        return "bg-yellow-500 text-white"
+        return "bg-yellow-500 text-white";
       case "low":
-        return "bg-green-500 text-white"
+        return "bg-green-500 text-white";
       default:
-        return "bg-gray-500 text-white"
+        return "bg-gray-500 text-white";
     }
-  }
+  };
 
   const getTypeTech = (type: string) => {
     switch (type) {
       case "internal":
-        return "bg-green-500 text-white"
+        return "bg-green-500 text-white";
       case "external":
-        return "bg-blue-500 text-white"
+        return "bg-blue-500 text-white";
       case "medium":
-        return "bg-yellow-500 text-white"
+        return "bg-yellow-500 text-white";
       case "low":
-        return "bg-green-500 text-white"
+        return "bg-green-500 text-white";
       default:
-        return "bg-gray-500 text-white"
+        return "bg-gray-500 text-white";
     }
-  }
+  };
 
   const handleDispatchTechnician = (breakdownId: string, techId: string) => {
-    const tech = technicians.find((t) => t.id === techId)
+    const tech = technicians.find((t) => t.id === techId);
     if (tech) {
       setBreakdowns((prev) =>
         prev.map((b) =>
           b.id === breakdownId
-            ? { ...b, status: "dispatched", assignedTech: tech.name, estimatedTime: "30-60 minutes" }
-            : b,
-        ),
-      )
-      setTechnicians((prev) => prev.map((t) => (t.id === techId ? { ...t, available: false } : t)))
-      toast.success(`${tech.name} has been assigned to breakdown ${breakdowns.find((b) => b.id === breakdownId)?.order_no}`)
-      setIsDispatchDialogOpen(false)
+            ? {
+                ...b,
+                status: "dispatched",
+                assignedTech: tech.name,
+                estimatedTime: "30-60 minutes",
+              }
+            : b
+        )
+      );
+      setTechnicians((prev) =>
+        prev.map((t) => (t.id === techId ? { ...t, available: false } : t))
+      );
+      toast.success(
+        `${tech.name} has been assigned to breakdown ${
+          breakdowns.find((b) => b.id === breakdownId)?.order_no
+        }`
+      );
+      setIsDispatchDialogOpen(false);
     }
-  }
+  };
 
   const filteredBreakdowns = breakdowns.filter(
     (breakdown) =>
-      breakdown.order_no ||
-      breakdown.driver_name ||
-      breakdown.registration,
-  )
+      breakdown.order_no || breakdown.driver_name || breakdown.registration
+  );
 
-
-  const [coords, setCoords] = useState([]) // Array of all coordinates
+  const [coords, setCoords] = useState([]); // Array of all coordinates
 
   useEffect(() => {
     const fetchLocations = async () => {
       const { data, error } = await supabase
-        .from('breakdowns')
-        .select('*, technicians:tech_id(location)')
+        .from("breakdowns")
+        .select("*, technicians:tech_id(location)");
 
       if (error) {
-        console.error(error)
-        return
+        console.error(error);
+        return;
       }
 
       if (data && data.length > 0) {
         const coordsArray = await Promise.all(
           data.map(async (item) => {
-            const loc = item.technicians?.location
+            const loc = item.technicians?.location;
             if (!loc) {
-              return null
+              return null;
             }
             const res = await fetch(
               `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
                 loc
               )}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
-            )
-            const geoData = await res.json()
+            );
+            const geoData = await res.json();
             if (geoData.features && geoData.features.length) {
-              return geoData.features[0].center // [lng, lat]
+              return geoData.features[0].center; // [lng, lat]
             }
-            return null
+            return null;
           })
-        )
+        );
 
         // Filter out any nulls in case of failed geocoding
-        // @ts-expect-error
-        setCoords(coordsArray.filter((c): c is [number, number] => c !== null) as [number, number][])
+        // @ts-ignore
+        setCoords(
+          coordsArray.filter((c): c is [number, number] => c !== null) as [
+            number,
+            number
+          ][]
+        );
       }
-    }
+    };
 
-    fetchLocations()
-  }, [])
-
+    fetchLocations();
+  }, []);
 
   return (
     <>
       <div className="flex-1 space-y-4 p-4 pt-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Repair Management</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Repair Management
+          </h2>
           <div className="flex items-center space-x-2">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -225,9 +257,9 @@ export default function CallCenterPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="active" className="space-y-4">
+        <Tabs defaultValue="technicians" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="active">Breakdowns</TabsTrigger>
+            {/* <TabsTrigger value="active">Breakdowns</TabsTrigger> */}
             <TabsTrigger value="technicians">Technicians</TabsTrigger>
             <TabsTrigger value="map">Map View</TabsTrigger>
           </TabsList>
@@ -252,7 +284,9 @@ export default function CallCenterPage() {
                           {breakdown.status}
                         </Badge>
                         {breakdown.emergency_type && (
-                          <Badge variant="secondary">{breakdown.emergency_type}</Badge>
+                          <Badge variant="secondary">
+                            {breakdown.emergency_type}
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
@@ -266,18 +300,32 @@ export default function CallCenterPage() {
 
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                      <h4 className="font-semibold mb-2">Technician Information</h4>
-                      <p className="text-sm"><strong>Name:</strong> {breakdown.technician?.name}</p>
-                      <p className="text-sm"><strong>Phone:</strong> {breakdown.technician?.phone}</p>
-                      <p className="text-sm"><strong>Location:</strong> {breakdown.technician?.location}</p>
+                      <h4 className="font-semibold mb-2">
+                        Technician Information
+                      </h4>
+                      <p className="text-sm">
+                        <strong>Name:</strong> {breakdown.technician?.name}
+                      </p>
+                      <p className="text-sm">
+                        <strong>Phone:</strong> {breakdown.technician?.phone}
+                      </p>
+                      <p className="text-sm">
+                        <strong>Location:</strong>{" "}
+                        {breakdown.technician?.location}
+                      </p>
                       <div className="flex gap-1 mt-2">
-                        {breakdown.technician?.specialties?.map((specialty: string) => (
-                          <Badge key={specialty} variant="secondary" className="text-xs">
-                            {specialty}
-                          </Badge>
-                        ))}
+                        {breakdown.technician?.specialties?.map(
+                          (specialty: string) => (
+                            <Badge
+                              key={specialty}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {specialty}
+                            </Badge>
+                          )
+                        )}
                       </div>
-
 
                       {/* Vehicle Info */}
                       <div>
@@ -286,7 +334,8 @@ export default function CallCenterPage() {
                           Vehicle Details
                         </h4>
                         <p className="text-sm">
-                          <strong>Reg:</strong> {breakdown.registration || "N/A"}
+                          <strong>Reg:</strong>{" "}
+                          {breakdown.registration || "N/A"}
                         </p>
                         <p className="text-sm">
                           <strong>Make:</strong> {breakdown.make || "N/A"}
@@ -303,7 +352,9 @@ export default function CallCenterPage() {
                           Location
                         </h4>
                         <p className="text-sm">
-                          {breakdown?.breakdown_location || breakdown.technician?.location || "N/A"}
+                          {breakdown?.breakdown_location ||
+                            breakdown.technician?.location ||
+                            "N/A"}
                         </p>
                       </div>
 
@@ -412,12 +463,23 @@ export default function CallCenterPage() {
             </div>
           </TabsContent>
 
-
           <TabsContent value="technicians" className="space-y-4">
             <div>
               <div>
-                <p className="mb-3 flex flex-row gap-4">Internal Technicians : <UserCircle2 className="bg-green-500 rounded-4xl" color="white" /></p>
-                <p className="flex flex-row gap-4">External Technicians : <UserCircle2 className="bg-blue-500 rounded-4xl" color="white" /></p>
+                <p className="mb-3 flex flex-row gap-4">
+                  Internal Technicians :{" "}
+                  <UserCircle2
+                    className="bg-green-500 rounded-4xl"
+                    color="white"
+                  />
+                </p>
+                <p className="flex flex-row gap-4">
+                  External Technicians :{" "}
+                  <UserCircle2
+                    className="bg-blue-500 rounded-4xl"
+                    color="white"
+                  />
+                </p>
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -426,9 +488,18 @@ export default function CallCenterPage() {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg">
-                        {tech.name} : <span className="text-sm">{tech.type.toUpperCase()} </span>
+                        {tech.name} :{" "}
+                        <span className="text-sm">
+                          {tech.type.toUpperCase()}{" "}
+                        </span>
                       </CardTitle>
-                      <Badge className={tech.availability === "available" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      <Badge
+                        className={
+                          tech.availability === "available"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }
+                      >
                         {tech.availability}
                       </Badge>
                     </div>
@@ -444,7 +515,11 @@ export default function CallCenterPage() {
                       <h4 className="font-semibold text-sm">Specialties:</h4>
                       <div className="flex flex-wrap gap-1">
                         {tech.specialties.map((specialty) => (
-                          <Badge key={specialty} variant="secondary" className="text-xs">
+                          <Badge
+                            key={specialty}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {specialty}
                           </Badge>
                         ))}
@@ -460,7 +535,10 @@ export default function CallCenterPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Breakdown Locations</CardTitle>
-                <CardDescription>Real-time map view of active breakdowns and technician locations</CardDescription>
+                <CardDescription>
+                  Real-time map view of active breakdowns and technician
+                  locations
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -473,5 +551,5 @@ export default function CallCenterPage() {
         </Tabs>
       </div>
     </>
-  )
+  );
 }

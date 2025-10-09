@@ -32,7 +32,7 @@ export default function Drivers() {
     const handleDeleteDriver = async (driverId: number) => {
         try {
             const { error } = await supabase
-                .from('drivers')
+                .from('drivers_klaver')
                 .delete()
                 .eq('id', driverId)
 
@@ -79,7 +79,7 @@ export default function Drivers() {
         try {
             setIsLoading(true)
             const { data, error } = await supabase
-                .from('drivers')
+                .from('drivers_klaver')
                 .select('*')
                 .order('created_at', { ascending: false })
 

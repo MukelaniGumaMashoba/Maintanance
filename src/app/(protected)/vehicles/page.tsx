@@ -86,7 +86,7 @@ export default function Vehicles() {
   useEffect(() => {
     const getDrivers = async () => {
       const { data, error } = await supabase
-        .from('drivers')
+        .from('drivers_klaver')
         .select('*')
       if (error) {
         console.error('Error fetching drivers:', error)
@@ -207,7 +207,7 @@ export default function Vehicles() {
 
   useEffect(() => {
     const fetchVehicles = async () => {
-      const { data: vehicles, error } = await supabase.from('vehiclesc').select('*').or('type.is.null,type.eq.internal');
+      const { data: vehicles, error } = await supabase.from('vehiclesc_workshop').select('*').or('type.is.null,type.eq.internal');
       if (error) {
         console.error("the error is", error.name, error.message)
       } else {
@@ -218,7 +218,7 @@ export default function Vehicles() {
     const vehiclesc = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'vehiclesc' },
+        { event: '*', schema: 'public', table: 'vehiclesc_workshop' },
         (payload) => {
           console.log('Change received!', payload)
         }
@@ -271,7 +271,7 @@ export default function Vehicles() {
 
   const handleAddVehicle = async (data: VehicleFormValues) => {
     const { data: vehicle, error } = await supabase
-      .from('vehiclesc')
+      .from('vehiclesc_workshop')
       // @ts-expect-error
       .insert(data)
     if (error) {
@@ -300,7 +300,7 @@ export default function Vehicles() {
 
   async function handleAssignDriver(vehicleId: number, driverId: number) {
     const { data, error } = await supabase
-      .from('vehiclesc')
+      .from('vehiclesc_workshop')
       .update({ driver_id: driverId })
       .eq('id', vehicleId)
       .select()
@@ -317,7 +317,7 @@ export default function Vehicles() {
 
   async function handleAssign(vehicleId: number, techId: number) {
     const { data: datav, error: errorv } = await supabase
-      .from('vehiclesc')
+      .from('vehiclesc_workshop')
       .update({ tech_id: techId })
       .eq('id', vehicleId)
       .select();
@@ -860,7 +860,7 @@ export default function Vehicles() {
                             onClick={async () => {
                               // Clear driver assignment
                               const { error } = await supabase
-                                .from('vehiclesc')
+                                .from('vehiclesc_workshop')
                                 .update({ driver_id: null })
                                 .eq('id', vehicle.id);
 
