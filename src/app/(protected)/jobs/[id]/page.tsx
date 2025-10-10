@@ -257,85 +257,162 @@ export default function WorkshopJobDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back to Workshop Jobs
         </Button>
       </Link>
-      <Card className="p-6">
-        <CardHeader className="flex justify-between items-center pb-4 border-b">
-          <CardTitle className="text-2xl font-semibold">
-            {job.jobId_workshop || "Untitled Job"}
-          </CardTitle>
-          <span className="text-sm text-gray-500">
-            {new Date(job.created_at).toLocaleDateString()}
+      <Card className="p-8 bg-white/70 backdrop-blur-sm border border-gray-100 shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl">
+        {/* Header */}
+        <CardHeader className="flex justify-between items-center pb-5 border-b border-gray-200">
+          <div>
+            <CardTitle className="text-3xl font-bold text-gray-800 tracking-tight">
+              {job.jobId_workshop || "Untitled Job"}
+            </CardTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Job created on{" "}
+              <span className="font-medium text-gray-700">
+                {new Date(job.created_at).toLocaleDateString()}
+              </span>
+            </p>
+          </div>
+          <span className="px-3 py-1 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full shadow-sm">
+            {job.status?.toUpperCase() || "PENDING"}
           </span>
         </CardHeader>
-        <CardContent className="space-y-4 text-gray-700">
-          <p>
-            <strong>Description:</strong>{" "}
-            {job.description || "No description provided"}
-          </p>
-          <p>
-            <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
-          </p>
-          <p>
-            <strong>Client Name:</strong> {job.client_name || "N/A"}
-          </p>
-          <p>
-            <strong>Client Phone:</strong> {job.client_phone || "N/A"}
-          </p>
-          <p>
-            <strong>Location:</strong> {job.location || "Unknown"}
-          </p>
-          <p>
-            <strong>Estimated Cost:</strong>{" "}
-            {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
-          </p>
-          <p>
-            <strong>Job Type:</strong> {job?.job_type || "Unknown"}
-          </p>
-          <p>
-            <strong>Actual Cost:</strong>{" "}
-            {job?.actual_cost ? `R ${job?.actual_cost.toFixed(2)}` : "N/A"}
-          </p>
+
+        {/* Content */}
+        <CardContent className="space-y-5 mt-6 text-gray-700 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <p>
+                <span className="font-medium text-gray-900">Description:</span>{" "}
+                {job.description || (
+                  <span className="text-gray-400 italic">
+                    No description provided
+                  </span>
+                )}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Vehicle Reg:</span>{" "}
+                {job.registration_no || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Job Type:</span>{" "}
+                {job?.job_type || "Unknown"}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Location:</span>{" "}
+                {job.location || "Unknown"}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p>
+                <span className="font-medium text-gray-900">Client Name:</span>{" "}
+                {job.client_name || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Client Phone:</span>{" "}
+                {job.client_phone || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">
+                  Estimated Cost:
+                </span>{" "}
+                {job.estimated_cost ? (
+                  <span className="text-green-600 font-semibold">
+                    R {job.estimated_cost.toFixed(2)}
+                  </span>
+                ) : (
+                  "N/A"
+                )}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Actual Cost:</span>{" "}
+                {job.actual_cost ? (
+                  <span className="text-blue-600 font-semibold">
+                    R {job.actual_cost.toFixed(2)}
+                  </span>
+                ) : (
+                  "N/A"
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Notes */}
           {job.notes && (
-            <p>
-              <strong>Notes:</strong> {job.notes}
-            </p>
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-lg">
+              <p className="text-sm text-gray-800">
+                <span className="font-semibold text-gray-900">Notes:</span>{" "}
+                {job.notes}
+              </p>
+            </div>
           )}
 
+          {/* Parts Section */}
           {parts.length > 0 && (
             <div>
-              <strong>Parts Required:</strong>
-              <ul className="list-disc list-inside">
+              <h4 className="font-semibold text-gray-900 mb-2 text-base">
+                Parts Required
+              </h4>
+              <ul className="space-y-2 max-h-48 overflow-auto border border-gray-200 bg-gray-50 p-3 rounded-lg">
                 {parts.map((part, index) => (
-                  <li key={index}>{part.job_parts || part.given_parts || 'Unknown part'}</li>
+                  <li
+                    key={index}
+                    className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
+                  >
+                    <span className="text-sm text-gray-800">
+                      {part.job_parts || part.given_parts || "Unknown part"}
+                    </span>
+                    <span className="text-xs text-gray-500 italic">
+                      {`Part #${index + 1}`}
+                    </span>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Add attachments display if needed */}
-          <div className="flex space-x-2">
-            <User2 className="w-5 h-5 text-gray-500" />
-            <span>
-              <strong>Technician: {selectedTechnician?.name} </strong>{" "}
-              {job.status === "assigned"}
-            </span>
+          {/* Technician Info */}
+          <div className="flex items-center gap-2 mt-6 border-t pt-4 border-gray-100">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100">
+              <User2 className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-gray-800 font-medium">
+                Technician:{" "}
+                <span className="font-semibold text-indigo-700">
+                  {selectedTechnician?.name || "Unassigned"}
+                </span>
+              </p>
+              <p className="text-xs text-gray-500">
+                {job.status === "assigned"
+                  ? "Technician assigned"
+                  : "Awaiting assignment"}
+              </p>
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-4 pt-4 border-t">
+
+        {/* Footer */}
+        <CardFooter className="flex justify-end gap-3 pt-5 border-t border-gray-100">
           {isAssigned ? (
-            <Button variant="ghost" size="sm" disabled>
-              <User2 className="mr-2 h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="flex items-center gap-2 text-gray-500 cursor-not-allowed"
+            >
+              <User2 className="h-4 w-4" />
               Assigned
             </Button>
           ) : (
             <Button
-              variant="default"
               size="sm"
               onClick={() => {
                 setIsTechDialogOpen(true);
                 setSelectedJobForTech(job);
               }}
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition rounded-md shadow-sm"
             >
-              <User2 className="mr-2 h-4 w-4" />
+              <User2 className="h-4 w-4" />
               Assign Technician
             </Button>
           )}

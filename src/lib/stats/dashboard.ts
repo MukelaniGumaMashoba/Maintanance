@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 // Returns the number of active breakdowns (status = 'available')
 export async function getActiveBreakdowns() {
     const supabase = createClient();
-    const { count, error } = await (await supabase).from('breakdowns')
+    const { count, error } = await (await supabase).from('workshop_job')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'available');
     if (error) throw error;

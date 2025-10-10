@@ -3188,6 +3188,126 @@ export type Database = {
         }
         Relationships: []
       }
+      workshop_klaver: {
+        Row: {
+          account_no: number | null
+          after_hours_number: string | null
+          bank_letter: string | null
+          bank_name: string | null
+          bbbee_expire_date: string | null
+          bbbee_level: string | null
+          city: string | null
+          company_id: number | null
+          company_registration_doc: string | null
+          created_at: string | null
+          fleet_manager: string | null
+          fleet_rate: number | null
+          franchise: string | null
+          hdi_perc: string | null
+          id: string
+          insurance_company_name: string | null
+          insurance_policy_number: number | null
+          labour_rate: number | null
+          number_of_working_days: number | null
+          postal_code: number | null
+          province: string | null
+          street: string | null
+          town: string | null
+          trading_name: string | null
+          type: string | null
+          validated: string | null
+          vat_cert_expiry_date: string | null
+          vat_certificate: string | null
+          vat_number: number | null
+          vehicles_type: string[] | null
+          work_name: string
+          workshop_type: string[] | null
+        }
+        Insert: {
+          account_no?: number | null
+          after_hours_number?: string | null
+          bank_letter?: string | null
+          bank_name?: string | null
+          bbbee_expire_date?: string | null
+          bbbee_level?: string | null
+          city?: string | null
+          company_id?: number | null
+          company_registration_doc?: string | null
+          created_at?: string | null
+          fleet_manager?: string | null
+          fleet_rate?: number | null
+          franchise?: string | null
+          hdi_perc?: string | null
+          id?: string
+          insurance_company_name?: string | null
+          insurance_policy_number?: number | null
+          labour_rate?: number | null
+          number_of_working_days?: number | null
+          postal_code?: number | null
+          province?: string | null
+          street?: string | null
+          town?: string | null
+          trading_name?: string | null
+          type?: string | null
+          validated?: string | null
+          vat_cert_expiry_date?: string | null
+          vat_certificate?: string | null
+          vat_number?: number | null
+          vehicles_type?: string[] | null
+          work_name: string
+          workshop_type?: string[] | null
+        }
+        Update: {
+          account_no?: number | null
+          after_hours_number?: string | null
+          bank_letter?: string | null
+          bank_name?: string | null
+          bbbee_expire_date?: string | null
+          bbbee_level?: string | null
+          city?: string | null
+          company_id?: number | null
+          company_registration_doc?: string | null
+          created_at?: string | null
+          fleet_manager?: string | null
+          fleet_rate?: number | null
+          franchise?: string | null
+          hdi_perc?: string | null
+          id?: string
+          insurance_company_name?: string | null
+          insurance_policy_number?: number | null
+          labour_rate?: number | null
+          number_of_working_days?: number | null
+          postal_code?: number | null
+          province?: string | null
+          street?: string | null
+          town?: string | null
+          trading_name?: string | null
+          type?: string | null
+          validated?: string | null
+          vat_cert_expiry_date?: string | null
+          vat_certificate?: string | null
+          vat_number?: number | null
+          vehicles_type?: string[] | null
+          work_name?: string
+          workshop_type?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_klaver_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_klaver_fleet_manager_fkey"
+            columns: ["fleet_manager"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshop_tools: {
         Row: {
           category: string

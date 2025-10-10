@@ -159,7 +159,7 @@ export default function FleetJobsPage() {
 
   // fetch workshops from Supabase
   const fetchWorkshops = async () => {
-    const { data, error } = await supabase.from("workshop").select(`
+    const { data, error } = await supabase.from("workshop_klaver").select(`
       *,
       workshop_assign (
         workshop_id,
@@ -1035,121 +1035,172 @@ export default function FleetJobsPage() {
             value="workshopJobs"
             className="space-y-6 p-6 bg-gray-50 min-h-screen"
           >
-            <div className="flex flex-col space-y-4">
-              {/* Section Header */}
-              <div className="flex items-center justify-between border-b border-gray-300 pb-3">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                  Workshop Jobs
-                </h2>
-                <FileText className="h-5 w-5 text-gray-500" />
+            <div className="flex flex-col space-y-8">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+                <div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage, update, and assign parts for ongoing workshop
+                    repairs.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                </div>
               </div>
 
               {/* Jobs List */}
               {workshopJob.length === 0 ? (
-                <p className="text-center text-gray-500 mt-6">
-                  No workshop jobs found.
-                </p>
+                <div className="py-10 text-center">
+                  <p className="text-gray-500 italic text-lg">
+                    No workshop jobs found 🚗
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Try refreshing or adding a new one.
+                  </p>
+                </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-6">
                   {workshopJob.map((job) => (
                     <Card
                       key={job.id || job.jobId_workshop}
-                      className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
+                      className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/70 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300"
                     >
-                      <CardHeader className="pb-3 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-indigo-700 truncate">
-                          {job.jobId_workshop || "Untitled Job"}
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {new Date(job.created_at).toLocaleDateString()}
+                      {/* Accent bar */}
+                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500 rounded-l-xl" />
+
+                      <CardHeader className="pb-4 flex justify-between items-start">
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-800">
+                            {job.jobId_workshop || "Untitled Job"}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Created on{" "}
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 shadow-sm">
+                          Active
                         </span>
                       </CardHeader>
-                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                        <div>
+
+                      {/* Job details */}
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
+                        <div className="space-y-2">
                           <p>
-                            <strong>Vehicle Reg:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Vehicle Reg:
+                            </span>{" "}
                             {job.registration_no || "N/A"}
                           </p>
                           <p className="truncate">
-                            <strong>Description:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Description:
+                            </span>{" "}
                             {job.description || "No description"}
                           </p>
                           <p>
-                            <strong>Estimated Cost:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Estimated Cost:
+                            </span>{" "}
                             {job.estimated_cost
                               ? `R ${job.estimated_cost.toFixed(2)}`
                               : "N/A"}
                           </p>
                         </div>
-                        <div>
+
+                        <div className="space-y-2">
                           <p>
-                            <strong>Client Name:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Client Name:
+                            </span>{" "}
                             {job.client_name || "N/A"}
                           </p>
                           <p>
-                            <strong>Client Phone:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Client Phone:
+                            </span>{" "}
                             {job.client_phone || "N/A"}
                           </p>
                           <p className="truncate">
-                            <strong>Location:</strong>{" "}
+                            <span className="font-medium text-gray-900">
+                              Location:
+                            </span>{" "}
                             {job.location || "Unknown"}
                           </p>
                           <p className="truncate">
-                            <strong>Notes:</strong> {job.notes || "-"}
+                            <span className="font-medium text-gray-900">
+                              Notes:
+                            </span>{" "}
+                            {job.notes || "-"}
                           </p>
 
-                          {/* Display list of added parts */}
+                          {/* Parts List */}
                           {parts.length > 0 ? (
-                            <ul className="list-disc list-inside space-y-1 max-h-40 overflow-auto border rounded p-2 bg-gray-50">
-                              {parts.map((part, index) => (
-                                <li
-                                  key={index}
-                                  className="flex justify-between items-center text-sm text-gray-700 bg-white px-2 py-1 rounded shadow-sm"
-                                >
-                                  {part}
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="mt-3 border border-gray-200 rounded-lg bg-gray-50 p-2 max-h-40 overflow-auto">
+                              <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                                Added Parts
+                              </h4>
+                              <ul className="space-y-1">
+                                {parts.map((part, index) => (
+                                  <li
+                                    key={index}
+                                    className="flex justify-between items-center text-sm bg-white px-3 py-1.5 rounded-md shadow-sm border border-gray-100 hover:bg-indigo-50 transition"
+                                  >
+                                    {part}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : (
-                            <p className="text-gray-500 text-sm italic">
+                            <p className="text-gray-400 text-sm italic mt-3">
                               No parts added yet.
                             </p>
                           )}
                         </div>
                       </CardContent>
-                      <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+
+                      {/* Footer buttons */}
+                      <CardFooter className="flex justify-end gap-3 pt-5 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-b-2xl">
                         <Link href={`/jobs/${job.id}`}>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-2" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 transition"
+                          >
+                            <Eye className="h-4 w-4" />
                             View Details
                           </Button>
                         </Link>
+
                         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                           <DialogTrigger asChild>
                             <Button
-                              variant="default"
                               size="sm"
-                              className="flex items-center gap-2 px-4 py-1 bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition rounded"
-                              aria-label="Edit job"
+                              className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-medium hover:from-yellow-500 hover:to-yellow-600 transition rounded-lg shadow-sm"
                             >
                               Add Parts
                             </Button>
                           </DialogTrigger>
+
                           <DialogContent className="sm:max-w-lg">
                             <DialogHeader>
-                              <DialogTitle>Add Parts to Job</DialogTitle>
-                              <DialogDescription>
-                                Enter parts used or assigned to this job.
+                              <DialogTitle className="text-lg font-semibold text-gray-800">
+                                Add Parts to Job
+                              </DialogTitle>
+                              <DialogDescription className="text-sm text-gray-500">
+                                Add and save parts used in this repair job.
                               </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-4 py-4">
-                              {/* Add part input with + button */}
+                              {/* Add part input */}
                               <div className="flex gap-2">
                                 <Input
                                   placeholder="Enter part name"
                                   value={partName}
                                   onChange={(e) => setPartName(e.target.value)}
+                                  className="flex-1 border-gray-300 focus:border-indigo-400 focus:ring-indigo-300"
                                 />
                                 <Button
                                   variant="secondary"
@@ -1162,18 +1213,19 @@ export default function FleetJobsPage() {
                                       setPartName("");
                                     }
                                   }}
+                                  className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition"
                                 >
                                   +
                                 </Button>
                               </div>
 
-                              {/* Display list of added parts */}
+                              {/* Parts list inside modal */}
                               {parts.length > 0 ? (
                                 <ul className="list-disc list-inside space-y-1 max-h-40 overflow-auto border rounded p-2 bg-gray-50">
                                   {parts.map((part, index) => (
                                     <li
                                       key={index}
-                                      className="flex justify-between items-center text-sm text-gray-700 bg-white px-2 py-1 rounded shadow-sm"
+                                      className="flex justify-between items-center text-sm text-gray-700 bg-white px-2 py-1 rounded-md border border-gray-100 hover:bg-indigo-50 transition"
                                     >
                                       {part}
                                       <button
@@ -1190,12 +1242,12 @@ export default function FleetJobsPage() {
                                   ))}
                                 </ul>
                               ) : (
-                                <p className="text-gray-500 text-sm italic">
+                                <p className="text-gray-400 text-sm italic">
                                   No parts added yet.
                                 </p>
                               )}
 
-                              {/* Save all parts to Supabase */}
+                              {/* Save Button */}
                               <Button
                                 onClick={async () => {
                                   if (parts.length === 0) {
@@ -1208,7 +1260,7 @@ export default function FleetJobsPage() {
                                   const { error } = await supabase
                                     .from("workshop_jobpart")
                                     .insert({
-                                      job_parts: parts, // ✅ JSONB array
+                                      job_parts: parts,
                                       job_id: job.id,
                                     });
 
@@ -1217,11 +1269,11 @@ export default function FleetJobsPage() {
                                     toast.error("Failed to save parts.");
                                   } else {
                                     toast.success("Parts saved successfully.");
-                                    setParts([]); // clear
+                                    setParts([]);
                                     setIsEditOpen(false);
                                   }
                                 }}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
+                                className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-gray-900 font-semibold shadow-md"
                               >
                                 Add Parts
                               </Button>
@@ -1229,7 +1281,12 @@ export default function FleetJobsPage() {
 
                             <DialogFooter>
                               <DialogClose asChild>
-                                <Button variant="outline">Close</Button>
+                                <Button
+                                  variant="outline"
+                                  className="hover:bg-gray-100"
+                                >
+                                  Close
+                                </Button>
                               </DialogClose>
                             </DialogFooter>
                           </DialogContent>
