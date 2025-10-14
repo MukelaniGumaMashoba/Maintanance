@@ -24,34 +24,32 @@ import {
   Download,
   ClipboardList,
   Filter,
-  Save
+  Save,
+  History,
+  Minus
 } from 'lucide-react';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import DashboardTabs from '@/components/shared/DashboardTabs';
-import AssignPartsModal from '@/components/ui-personal/assign-parts-modal';
-import StockOrderModal from '@/components/accounts/StockOrderModal';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import NewAssignPartsModal from '@/components/ui-personal/new-assign-parts-modal';
 
 export default function InventoryPage() {
   const supabase = createClient();
+  const [parts, setParts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [jobCards, setJobCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState(null);
-  const [showAssignParts, setShowAssignParts] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [selectedQRJob, setSelectedQRJob] = useState(null);
+  const [selectedParts, setSelectedParts] = useState([]);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [selectedPartLogs, setSelectedPartLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('job-cards');
-  const [stockOrders, setStockOrders] = useState([]);
-  const [stockOrdersLoading, setStockOrdersLoading] = useState(false);
-  const [stockOrdersSearchTerm, setStockOrdersSearchTerm] = useState('');
-  const [selectedStockOrder, setSelectedStockOrder] = useState(null);
-  const [showPdfViewer, setShowPdfViewer] = useState(false);
-  const [showOrderItemsModal, setShowOrderItemsModal] = useState(false);
 
   // Stock Take state
-  const [stockItems, setStockItems] = useState([]);
   const [stockTakeMode, setStockTakeMode] = useState(false);
   const [updatedItems, setUpdatedItems] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
@@ -64,48 +62,46 @@ export default function InventoryPage() {
   const [defaultThreshold, setDefaultThreshold] = useState(10);
 
   useEffect(() => {
-    fetchJobCards();
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'stock-orders') {
-      fetchStockOrders();
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([fetchParts(), fetchCategories(), fetchJobCards()]);
+    setLoading(false);
+  };
+
+  const fetchParts = async () => {
+    const { data, error } = await supabase
+      .from('parts')
+      .select(`
+        *,
+        categories(name)
+      `)
+      .order('description');
+
+    if (error) {
+      toast.error('Failed to fetch parts');
+      return;
     }
-    if (activeTab === 'stock-take') {
-      fetchStockItems();
+    setParts(data || []);
+  };
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to fetch categories');
+      return;
     }
-  }, [activeTab]);
-
-  const fetchStockOrders = async () => {
-    try {
-      setStockOrdersLoading(true);
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-
-      const { data, error } = await supabase
-        .from('stock_orders')
-        .select('*')
-        .eq('approved', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching stock orders:', error);
-        toast.error('Failed to fetch stock orders');
-        return;
-      }
-
-      setStockOrders(data || []);
-    } catch (error) {
-      console.error('Error fetching stock orders:', error);
-      toast.error('Failed to fetch stock orders');
-    } finally {
-      setStockOrdersLoading(false);
-    }
+    setCategories(data || []);
   };
 
   const fetchJobCards = async () => {
     try {
-      setLoading(true);
       const { data: jobsData, error: jobsError } = await supabase
         .from('workshop_job')
         .select('*')
@@ -140,7 +136,6 @@ export default function InventoryPage() {
 
       const jobsWithParts = (jobsData || []).map((job) => ({
         ...job,
-        // normalize fields so UI that expects old job_card shape continues to work
         job_number: job.job_number || job.jobId_workshop || job.job_id,
         customer_name: job.customer_name || job.client_name,
         vehicle_registration: job.vehicle_registration || job.registration_no,
@@ -153,10 +148,15 @@ export default function InventoryPage() {
       console.error('Unexpected error fetching job cards:', err);
       toast.error('Failed to load job cards');
       setJobCards([]);
-    } finally {
-      setLoading(false);
     }
   };
+
+  const filteredParts = parts.filter(part => {
+    const matchesSearch = part.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      part.item_code?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || part.category_id?.toString() === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const filteredJobCards = jobCards.filter(job => {
     const matchesSearch =
@@ -165,9 +165,7 @@ export default function InventoryPage() {
       job.vehicle_registration?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.job_description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Only show jobs without assigned parts in the main job cards tab
     const hasNoParts = !job.parts_required || !Array.isArray(job.parts_required) || job.parts_required.length === 0;
-
     return matchesSearch && hasNoParts;
   });
 
@@ -179,222 +177,108 @@ export default function InventoryPage() {
     job.job_status === 'completed' || job.status === 'completed'
   );
 
-  const filteredStockOrders = stockOrders.filter(order => {
-    if (!stockOrdersSearchTerm) return true;
+  const handleViewLogs = async (partId) => {
+    const { data, error } = await supabase
+      .from('inventory_logs')
+      .select(`
+        *,
+        parts(description, item_code)
+      `)
+      .eq('part_id', partId)
+      .order('timestamp', { ascending: false });
 
-    const searchLower = stockOrdersSearchTerm.toLowerCase();
-    return (
-      order.order_number?.toLowerCase().includes(searchLower) ||
-      order.supplier?.toLowerCase().includes(searchLower) ||
-      order.status?.toLowerCase().includes(searchLower) ||
-      (order.order_items && Array.isArray(order.order_items) &&
-        order.order_items.some(item =>
-          item.description?.toLowerCase().includes(searchLower)
-        ))
-    );
-  });
+    if (error) {
+      toast.error('Failed to fetch logs');
+      return;
+    }
+
+    setSelectedPartLogs(data || []);
+    setShowLogsModal(true);
+  };
 
   const handleAssignParts = (jobCard) => {
     setSelectedJobCard(jobCard);
-    setShowAssignParts(true);
+    setShowAssignModal(true);
   };
 
   const handlePartsAssigned = () => {
-    fetchJobCards();
-    setShowAssignParts(false);
+    fetchData();
+    setShowAssignModal(false);
     setSelectedJobCard(null);
   };
 
-  const handleShowQRCode = (jobCard) => {
-    setSelectedQRJob(jobCard);
-    setShowQRCode(true);
+  // Stock Take Functions
+  const handleStartStockTake = () => {
+    setStockTakeMode(true);
+    setUpdatedItems({});
+    setHasChanges(false);
+    toast.success('Stock take mode activated. You can now update quantities.');
   };
 
-  const handlePrintQR = (jobCard) => {
-    if (!jobCard.qr_code) return;
-
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Job QR Code - ${jobCard.job_number}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .qr-container { max-width: 800px; margin: 0 auto; }
-            .job-info { margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
-            .job-info h2 { color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-            .job-info p { margin: 5px 0; }
-            .qr-code { text-align: center; margin: 20px 0; }
-            .qr-code img { border: 2px solid #333; border-radius: 8px; }
-            .job-details { margin-top: 20px; }
-            .section { margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
-            .section h3 { color: #2c3e50; margin-bottom: 10px; border-bottom: 1px solid #bdc3c7; padding-bottom: 5px; }
-            .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-            .section-grid p { margin: 5px 0; }
-            .part-item { padding: 10px; background: #f8f9fa; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #3498db; }
-            .part-header { font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
-            .total-section { margin-top: 20px; padding-top: 15px; border-top: 2px solid #333; background: #e8f4fd; padding: 15px; border-radius: 5px; }
-            .vehicle-info { background: #e8f5e8; padding: 15px; border-radius: 5px; border-left: 4px solid #27ae60; }
-            .customer-info { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #f39c12; }
-            .quotation-info { background: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545; }
-            @media print {
-              body { margin: 10px; }
-              .qr-code img { max-width: 250px; }
-              .section { break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="qr-container">
-            <div class="job-info">
-              <h2>Job QR Code - ${jobCard.job_number}</h2>
-              <div class="section-grid">
-                <div>
-                  <p><strong>Job Number:</strong> ${jobCard.job_number}</p>
-                  <p><strong>Quotation Number:</strong> ${jobCard.quotation_number || 'N/A'}</p>
-                  <p><strong>Job Type:</strong> ${jobCard.job_type || 'Not specified'}</p>
-                  <p><strong>Status:</strong> ${jobCard.status || 'N/A'}</p>
-                  <p><strong>Priority:</strong> ${jobCard.priority || 'N/A'}</p>
-                  <p><strong>IP Address:</strong> ${jobCard.ip_address || 'N/A'}</p>
-                </div>
-                <div>
-                  <p><strong>Created:</strong> ${jobCard.created_at ? new Date(jobCard.created_at).toLocaleDateString() : 'N/A'}</p>
-                  <p><strong>Updated:</strong> ${jobCard.updated_at ? new Date(jobCard.updated_at).toLocaleDateString() : 'N/A'}</p>
-                  <p><strong>Job Location:</strong> ${jobCard.job_location || 'N/A'}</p>
-                  <p><strong>Estimated Duration:</strong> ${jobCard.estimated_duration_hours || 'N/A'} hours</p>
-                  <p><strong>Estimated Cost:</strong> ${jobCard.estimated_cost ? `R${jobCard.estimated_cost}` : 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="qr-code">
-              <img src="${jobCard.qr_code}" alt="Job QR Code" />
-              <p style="margin-top: 10px; color: #666; font-size: 12px;">
-                Scan this QR code to access complete job information
-              </p>
-            </div>
-
-            <div class="customer-info">
-              <h3>Customer Information</h3>
-              <div class="section-grid">
-                <div>
-                  <p><strong>Customer Name:</strong> ${jobCard.customer_name || 'N/A'}</p>
-                  <p><strong>Email:</strong> ${jobCard.customer_email || 'N/A'}</p>
-                  <p><strong>Phone:</strong> ${jobCard.customer_phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p><strong>Address:</strong> ${jobCard.customer_address || 'N/A'}</p>
-                  <p><strong>Site Contact:</strong> ${jobCard.site_contact_person || 'N/A'}</p>
-                  <p><strong>Contact Phone:</strong> ${jobCard.site_contact_phone || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="vehicle-info">
-              <h3>Vehicle Information</h3>
-              <div class="section-grid">
-                <div>
-                  <p><strong>Registration:</strong> ${jobCard.vehicle_registration || 'Not provided'}</p>
-                  <p><strong>Make & Model:</strong> ${jobCard.vehicle_make && jobCard.vehicle_model ? `${jobCard.vehicle_make} ${jobCard.vehicle_model}` : (jobCard.vehicle_make || jobCard.vehicle_model || 'Not provided')}</p>
-                  <p><strong>Year:</strong> ${jobCard.vehicle_year || 'Not provided'}</p>
-                </div>
-                <div>
-                  <p><strong>VIN Number:</strong> ${jobCard.vin_numer || 'Not provided'}</p>
-                  <p><strong>Odometer:</strong> ${jobCard.odormeter || 'Not provided'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="quotation-info">
-              <h3>Quotation Details</h3>
-              <div class="section-grid">
-                <div>
-                  <p><strong>Quote Status:</strong> ${jobCard.quote_status || 'N/A'}</p>
-                  <p><strong>Quote Date:</strong> ${jobCard.quote_date ? new Date(jobCard.quote_date).toLocaleDateString() : 'N/A'}</p>
-                  <p><strong>Quote Expiry:</strong> ${jobCard.quote_expiry_date ? new Date(jobCard.quote_expiry_date).toLocaleDateString() : 'N/A'}</p>
-                </div>
-                <div>
-                  <p><strong>Total Amount:</strong> ${jobCard.quotation_total_amount ? `R${jobCard.quotation_total_amount}` : 'N/A'}</p>
-                  <p><strong>Products:</strong> ${jobCard.quotation_products?.length || 0} items</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h3>Job Description</h3>
-              <p>${jobCard.job_description || 'No description provided'}</p>
-            </div>
-
-            ${jobCard.special_instructions ? `
-            <div class="section">
-              <h3>Special Instructions</h3>
-              <p>${jobCard.special_instructions}</p>
-            </div>
-            ` : ''}
-
-            ${jobCard.access_requirements ? `
-            <div class="section">
-              <h3>Access Requirements</h3>
-              <p>${jobCard.access_requirements}</p>
-            </div>
-            ` : ''}
-
-            <div class="section">
-              <h3>Assigned Parts</h3>
-              <div class="part-list">
-                ${jobCard.parts_required?.map(part => `
-                  <div class="part-item">
-                    <strong>${part.description}</strong> (${part.code})<br>
-                    Quantity: ${part.quantity} | Supplier: ${part.supplier || 'N/A'}<br>
-                    Cost: R${part.cost_per_unit?.toFixed(2) || '0.00'} each | Total: R${part.total_cost || '0.00'}
-                  </div>
-                `).join('') || 'No parts assigned'}
-              </div>
-              ${jobCard.parts_required && jobCard.parts_required.length > 0 ? `
-              <div class="total-section">
-                <p><strong>Total Parts:</strong> ${jobCard.parts_required.length}</p>
-                <p><strong>Total Cost:</strong> R${jobCard.parts_required.reduce((sum, part) => sum + (parseFloat(part.total_cost) || 0), 0).toFixed(2)}</p>
-              </div>
-              ` : ''}
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+  const handleCancelStockTake = () => {
+    setStockTakeMode(false);
+    setUpdatedItems({});
+    setHasChanges(false);
+    toast.info('Stock take cancelled. No changes were saved.');
   };
 
-  // Handle viewing stock order details or PDF
-  const handleViewStockOrder = (order) => {
-    setSelectedStockOrder(order);
-    if (order.invoice_link) {
-      setShowPdfViewer(true);
-    } else {
-      // If no PDF, show order details in a toast
-      toast({
-        title: "Order Details",
-        description: `Order: ${order.order_number}\nSupplier: ${order.supplier || 'Custom'}\nAmount: R ${parseFloat(order.total_amount_ex_vat || 0).toFixed(2)}\nStatus: ${order.status || 'pending'}`,
-      });
+  const handleQuantityChange = (itemId, newQuantity) => {
+    const currentQuantity = parseInt(parts.find(item => item.id === itemId)?.quantity || '0');
+    const parsedQuantity = parseInt(newQuantity) || 0;
+
+    setUpdatedItems(prev => ({
+      ...prev,
+      [itemId]: {
+        id: itemId,
+        current_quantity: currentQuantity,
+        new_quantity: parsedQuantity,
+        difference: parsedQuantity - currentQuantity
+      }
+    }));
+
+    setHasChanges(true);
+  };
+
+  const handlePublishStockTake = async () => {
+    if (!hasChanges) {
+      toast.error('No changes to publish');
+      return;
     }
-  };
 
-  // Handle viewing order items
-  const handleViewOrderItems = (order) => {
-    setSelectedStockOrder(order);
-    setShowOrderItemsModal(true);
-  };
+    try {
+      setPublishing(true);
 
-  // Handle downloading stock order invoice
-  const handleDownloadStockOrderInvoice = (order) => {
-    if (order.invoice_link) {
-      const link = document.createElement('a');
-      link.href = order.invoice_link;
-      link.download = `invoice-${order.order_number}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      for (const update of Object.values(updatedItems)) {
+        // Update part quantity
+        await supabase
+          .from('parts')
+          .update({
+            quantity: update.new_quantity,
+            total: update.new_quantity * (parts.find(p => p.id === update.id)?.price || 0)
+          })
+          .eq('id', update.id);
+
+        // Log the change
+        await supabase
+          .from('inventory_logs')
+          .insert({
+            part_id: update.id,
+            change_type: 'adjust',
+            quantity_change: update.difference
+          });
+      }
+
+      toast.success(`Stock take published successfully! ${Object.keys(updatedItems).length} items updated.`);
+
+      setStockTakeMode(false);
+      setUpdatedItems({});
+      setHasChanges(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error publishing stock take:', error);
+      toast.error('Failed to publish stock take');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -429,218 +313,9 @@ export default function InventoryPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const handleRefresh = () => {
-    fetchJobCards();
-  };
-
-  const createTestJobCard = async () => {
-    try {
-      const response = await fetch('/api/job-cards/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create test job card');
-      }
-
-      const data = await response.json();
-      console.log('Test job card created:', data);
-      toast.success('Test job card created successfully');
-      fetchJobCards(); // Refresh the list
-    } catch (error) {
-      console.error('Error creating test job card:', error);
-      toast.error('Failed to create test job card');
-    }
-  };
-
-  const createTestStockItems = async () => {
-    try {
-      const response = await fetch('/api/stock/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create test stock items');
-      }
-
-      const data = await response.json();
-      console.log('Test stock items created:', data);
-      toast.success('Test stock items created successfully');
-    } catch (error) {
-      console.error('Error creating test stock items:', error);
-      toast.error('Failed to create test stock items');
-    }
-  };
-
-  // Stock Take Functions
-  const fetchStockItems = async () => {
-    try {
-      const { data, error } = await supabase.from("stock").select("*");
-      if (error) {
-        throw new Error('Failed to fetch stock items');
-      }
-      setStockItems(data || []);
-
-      // Extract unique stock types
-      const types = [...new Set(data?.map(item => item.stock_type).filter(Boolean))];
-      setStockTypes(types);
-    } catch (error) {
-      console.error('Error fetching stock items:', error);
-      toast.error('Failed to load stock items' + (error.message ? `: ${error.message}` : ''));
-    }
-  };
-
-  const handleStartStockTake = () => {
-    setStockTakeMode(true);
-    setUpdatedItems({});
-    setHasChanges(false);
-    toast.success('Stock take mode activated. You can now update quantities.');
-  };
-
-  const handleCancelStockTake = () => {
-    setStockTakeMode(false);
-    setUpdatedItems({});
-    setHasChanges(false);
-    toast.info('Stock take cancelled. No changes were saved.');
-  };
-
-  const handleQuantityChange = (itemId, newQuantity) => {
-    const currentQuantity = parseInt(stockItems.find(item => item.id === itemId)?.quantity || '0');
-    const parsedQuantity = parseInt(newQuantity) || 0;
-
-    setUpdatedItems(prev => ({
-      ...prev,
-      [itemId]: {
-        id: itemId,
-        current_quantity: currentQuantity,
-        new_quantity: parsedQuantity,
-        difference: parsedQuantity - currentQuantity
-      }
-    }));
-
-    setHasChanges(true);
-  };
-
-  const handlePublishStockTake = async () => {
-    if (!hasChanges) {
-      toast.error('No changes to publish');
-      return;
-    }
-
-    try {
-      setPublishing(true);
-      const response = await fetch('/api/stock/stock-take', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          stock_updates: Object.values(updatedItems),
-          stock_take_date: new Date().toISOString(),
-          notes: `Stock take completed on ${new Date().toLocaleDateString()}`
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to publish stock take');
-      }
-
-      const result = await response.json();
-      toast.success(`Stock take published successfully! ${result.updated_count} items updated.`);
-
-      // Reset state
-      setStockTakeMode(false);
-      setUpdatedItems({});
-      setHasChanges(false);
-
-      // Refresh stock items
-      fetchStockItems();
-    } catch (error) {
-      console.error('Error publishing stock take:', error);
-      toast.error('Failed to publish stock take');
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const getQuantityDifference = (itemId) => {
-    const update = updatedItems[itemId];
-    if (!update) return null;
-
-    if (update.difference > 0) {
-      return { type: 'increase', value: update.difference };
-    } else if (update.difference < 0) {
-      return { type: 'decrease', value: Math.abs(update.difference) };
-    }
-    return null;
-  };
-
-  const getQuantityDifferenceColor = (difference) => {
-    if (difference > 0) return 'text-green-600';
-    if (difference < 0) return 'text-red-600';
-    return 'text-gray-600';
-  };
-
-  const getStockTypeColor = (stockType) => {
-    const colors = {
-      'Tracking Equipment': 'bg-blue-100 text-blue-800',
-      'Accessories': 'bg-green-100 text-green-800',
-      'Hardware': 'bg-orange-100 text-orange-800',
-      'Electronics': 'bg-purple-100 text-purple-800',
-      'Software': 'bg-indigo-100 text-indigo-800'
-    };
-    return colors[stockType] || 'bg-gray-100 text-gray-800';
-  };
-
-  // Threshold management functions
-  const handleThresholdChange = (itemId, newThreshold) => {
-    setThresholds(prev => ({
-      ...prev,
-      [itemId]: parseInt(newThreshold) || defaultThreshold
-    }));
-  };
-
-  const getItemThreshold = (itemId) => {
-    return thresholds[itemId] || defaultThreshold;
-  };
-
-  const isLowStock = (item) => {
-    const threshold = getItemThreshold(item.id);
-    return parseInt(item.quantity || 0) <= threshold;
-  };
-
-  const getLowStockStyle = (item) => {
-    return isLowStock(item) ? 'bg-red-50 border-red-200' : '';
-  };
-
-  const filteredStockItems = stockItems.filter(item => {
-    const matchesSearch =
-      item.description?.toLowerCase().includes(stockTakeSearchTerm.toLowerCase()) ||
-      item.code?.toLowerCase().includes(stockTakeSearchTerm.toLowerCase()) ||
-      item.supplier?.toLowerCase().includes(stockTakeSearchTerm.toLowerCase());
-
-    const matchesType = selectedStockType === 'all' || item.stock_type === selectedStockType;
-
-    return matchesSearch && matchesType;
-  }).sort((a, b) => {
-    // Sort low stock items to the top
-    const aIsLow = isLowStock(a);
-    const bIsLow = isLowStock(b);
-    if (aIsLow && !bIsLow) return -1;
-    if (!aIsLow && bIsLow) return 1;
-    return 0;
-  });
-
   // Tab content components
   const jobCardsContent = (
     <div className="space-y-6">
-      {/* Search */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="top-1/2 left-3 absolute w-4 h-4 text-gray-400 -translate-y-1/2 transform" />
@@ -651,30 +326,12 @@ export default function InventoryPage() {
             className="pl-10"
           />
         </div>
-        <Button onClick={fetchJobCards} variant="outline" size="sm">
+        <Button onClick={fetchData} variant="outline" size="sm">
           <RefreshCw className="mr-2 w-4 h-4" />
           Refresh
         </Button>
-        <Button onClick={createTestJobCard} variant="outline" size="sm" className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800">
-          <Plus className="mr-2 w-4 h-4" />
-          Create Test Job
-        </Button>
-        <Button onClick={createTestStockItems} variant="outline" size="sm" className="bg-purple-100 hover:bg-purple-200 text-purple-800">
-          <User className="mr-2 w-4 h-4" />
-          Create Test Stock
-        </Button>
-        <Button
-          onClick={() => window.open('/test-vehicle-verification', '_blank')}
-          variant="outline"
-          size="sm"
-          className="bg-blue-100 hover:bg-blue-200 text-blue-800"
-        >
-          <Car className="mr-2 w-4 h-4" />
-          Test Vehicle Verification
-        </Button>
       </div>
 
-      {/* Job Cards */}
       {filteredJobCards.length === 0 ? (
         <div className="py-12 text-center">
           <FileText className="mx-auto mb-4 w-12 h-12 text-gray-400" />
@@ -728,45 +385,14 @@ export default function InventoryPage() {
                 )}
 
                 <div className="flex justify-between items-center pt-2">
-                  <div className="flex gap-2">
-                    {job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleShowQRCode(job)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <QrCode className="mr-1 w-3 h-3" />
-                        View QR
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => handleAssignParts(job)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Plus className="mr-1 w-3 h-3" />
-                        Assign Parts
-                      </Button>
-                    )}
-                    {job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAssignParts(job)}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        <Plus className="mr-1 w-3 h-3" />
-                        Reassign Parts
-                      </Button>
-                    )}
-                  </div>
-                  {job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 text-xs">
-                      <Package className="mr-1 w-3 h-3" />
-                      {job.parts_required.length} parts
-                    </Badge>
-                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => handleAssignParts(job)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="mr-1 w-3 h-3" />
+                    Assign Parts
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -811,19 +437,6 @@ export default function InventoryPage() {
                     <Car className="w-4 h-4 text-gray-400" />
                     <span>{job.vehicle_registration || 'No vehicle'}</span>
                   </div>
-                  {job.ip_address && (
-                    <div className="flex items-center gap-2">
-                      <QrCode className="w-4 h-4 text-gray-400" />
-                      <span>IP: {job.ip_address}</span>
-                    </div>
-                  )}
-                  {job.job_type && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={`text-xs ${getJobTypeColor(job.job_type)}`}>
-                        {job.job_type}
-                      </Badge>
-                    </div>
-                  )}
                 </div>
 
                 <div className="text-sm">
@@ -847,92 +460,16 @@ export default function InventoryPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleShowQRCode(job)}
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <QrCode className="mr-1 w-3 h-3" />
-                    View QR
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handlePrintQR(job)}
+                    onClick={() => handleAssignParts(job)}
                     className="text-green-600 hover:text-green-700"
                   >
-                    <Printer className="mr-1 w-3 h-3" />
-                    Print
+                    <Plus className="mr-1 w-3 h-3" />
+                    Reassign Parts
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const completedJobsContent = (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="font-semibold text-xl">Completed Jobs</h2>
-        <Badge variant="outline">{completedJobs.length} jobs</Badge>
-      </div>
-
-      {completedJobs.length === 0 ? (
-        <div className="py-12 text-center">
-          <CheckCircle className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-          <h3 className="mb-2 font-medium text-gray-900 text-lg">No completed jobs</h3>
-          <p className="text-gray-500">Completed jobs will appear here.</p>
-        </div>
-      ) : (
-        <div className="gap-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {completedJobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{job.job_number}</CardTitle>
-                    <p className="text-gray-600 text-sm">{job.customer_name}</p>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800 text-xs">
-                    Completed
+                  <Badge variant="outline" className="text-xs">
+                    {job.parts_required.length} parts
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-gray-400" />
-                    <span>{job.vehicle_registration || 'No vehicle'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>Completed: {formatDate(job.completion_date)}</span>
-                  </div>
-                </div>
-
-                {job.completion_notes && (
-                  <p className="text-gray-600 text-sm line-clamp-2">
-                    {job.completion_notes}
-                  </p>
-                )}
-
-                {job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (
-                  <div className="flex justify-between items-center pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleShowQRCode(job)}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      <QrCode className="mr-1 w-3 h-3" />
-                      View QR
-                    </Button>
-                    <Badge variant="outline" className="text-xs">
-                      {job.parts_required.length} parts used
-                    </Badge>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
@@ -941,159 +478,77 @@ export default function InventoryPage() {
     </div>
   );
 
-  const stockOrdersContent = (
+  const partsInventoryContent = (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="font-semibold text-xl">Items on Order</h2>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">{filteredStockOrders.length} orders</Badge>
-          <Button onClick={fetchStockOrders} variant="outline" size="sm">
-            <RefreshCw className="mr-2 w-4 h-4" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Search */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
-          <Search className="top-1/2 left-3 absolute w-4 h-4 text-gray-400 -translate-y-1/2 transform" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="Search orders by order number, supplier, status, or item description..."
-            value={stockOrdersSearchTerm}
-            onChange={(e) => setStockOrdersSearchTerm(e.target.value)}
+            placeholder="Search parts by description or code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id.toString()}>{cat.name}</option>
+          ))}
+        </select>
       </div>
 
-      {stockOrdersLoading ? (
-        <div className="py-12 text-center">
-          <div className="mx-auto mb-4 border-b-2 border-blue-600 rounded-full w-8 h-8 animate-spin"></div>
-          <span>Loading orders...</span>
-        </div>
-      ) : filteredStockOrders.length === 0 ? (
-        <div className="py-12 text-center">
-          <Receipt className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-          <h3 className="mb-2 font-medium text-gray-900 text-lg">
-            {stockOrdersSearchTerm ? 'No orders match your search criteria.' : 'No orders found'}
-          </h3>
-          <p className="text-gray-500">
-            {stockOrdersSearchTerm ? 'Try adjusting your search terms.' : 'Orders will appear here once submitted.'}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="border border-gray-200 w-full border-collapse">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                  Order Number
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                  Supplier
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Status
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Order Date
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Total Amount
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Items Count
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {filteredStockOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 border border-gray-200 text-sm">
-                    <div className="font-medium text-gray-900">{order.order_number}</div>
-                    {order.notes && (
-                      <div className="mt-1 text-gray-500 text-xs">{order.notes}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-gray-600 text-sm">
-                    {order.supplier || 'Custom'}
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                    <Badge className={`text-xs ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                      {order.status || 'pending'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-gray-600 text-sm text-center">
-                    {formatDate(order.order_date)}
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                    <div className="font-medium">R {parseFloat(order.total_amount_ex_vat || 0).toFixed(2)}</div>
-                    {order.total_amount_usd && (
-                      <div className="text-gray-500 text-xs">$ {parseFloat(order.total_amount_usd).toFixed(2)}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                    <Badge variant="outline" className="text-xs">
-                      {order.order_items?.length || 0} items
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                    <div className="flex flex-col gap-2">
-                      {order.invoice_link ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewStockOrder(order)}
-                            className="text-blue-600 hover:text-blue-700 text-xs"
-                          >
-                            <FileText className="mr-1 w-3 h-3" />
-                            View PDF
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadStockOrderInvoice(order)}
-                            className="text-green-600 hover:text-green-700 text-xs"
-                          >
-                            <Download className="mr-1 w-3 h-3" />
-                            Download
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="text-gray-400 text-xs">No PDF</span>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewOrderItems(order)}
-                        className="text-purple-600 hover:text-purple-700 text-xs"
-                      >
-                        <Package className="mr-1 w-3 h-3" />
-                        View Items
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredParts.map(part => (
+          <Card key={part.id} className={`${part.quantity <= 5 ? 'border-red-200 bg-red-50' : ''}`}>
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">{part.description}</CardTitle>
+                  <p className="text-sm text-gray-600">{part.item_code}</p>
+                </div>
+                <Badge variant={part.quantity <= 5 ? 'destructive' : 'default'}>
+                  Qty: {part.quantity}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Category:</span>
+                  <span className="text-sm">{part.categories?.name || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Price:</span>
+                  <span className="text-sm">R{part.price?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Total Value:</span>
+                  <span className="text-sm font-medium">R{(part.quantity * (part.price || 0)).toFixed(2)}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewLogs(part.id)}
+                  className="w-full mt-2"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  View History
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 
-  // Stock Take Content
   const stockTakeContent = (
     <div className="space-y-6">
-      {/* Stock Take Header */}
       <div className="flex justify-between items-center">
         <div>
           <h3 className="font-semibold text-gray-900 text-lg">Stock Take</h3>
@@ -1118,267 +573,119 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {/* Stock Take Tabs */}
-      <div className="border-gray-200 border-b">
-        <nav className="flex space-x-8 -mb-px">
-          <button
-            onClick={() => setStockTakeActiveTab('stock-take')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${stockTakeActiveTab === 'stock-take'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-          >
-            Stock Take
-          </button>
-          <button
-            onClick={() => setStockTakeActiveTab('thresholds')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${stockTakeActiveTab === 'thresholds'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-          >
-            Thresholds
-          </button>
-        </nav>
-      </div>
-
-      {/* Conditional Content Based on Active Tab */}
-      {stockTakeActiveTab === 'stock-take' ? (
-        <>
-          {/* Stock Take Controls */}
-          {stockTakeMode && (
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-800">Stock Take Mode Active</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handlePublishStockTake}
-                      disabled={!hasChanges || publishing}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Save className="mr-2 w-4 h-4" />
-                      {publishing ? 'Publishing...' : 'Publish Changes'}
-                    </Button>
-                  </div>
-                </div>
-                {hasChanges && (
-                  <div className="mt-2 text-blue-700 text-sm">
-                    {Object.keys(updatedItems).length} items have been modified
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Search and Filter */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="top-1/2 left-3 absolute w-4 h-4 text-gray-400 -translate-y-1/2 transform" />
-              <Input
-                placeholder="Search stock items by description, code, or supplier..."
-                value={stockTakeSearchTerm}
-                onChange={(e) => setStockTakeSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <select
-                value={selectedStockType}
-                onChange={(e) => setSelectedStockType(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Types</option>
-                {stockTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-            <Button onClick={fetchStockItems} variant="outline" size="sm">
-              <RefreshCw className="mr-2 w-4 h-4" />
-              Refresh
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Thresholds Tab Content */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="font-medium text-gray-700 text-sm">Default Threshold:</label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={defaultThreshold}
-                  onChange={(e) => setDefaultThreshold(parseInt(e.target.value) || 10)}
-                  className="w-20"
-                />
-              </div>
-              <p className="text-gray-600 text-sm">Items at or below this threshold will be highlighted in red</p>
-            </div>
-
-            <div className="bg-yellow-50 p-4 border border-yellow-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-                <span className="font-medium text-yellow-800 text-sm">
-                  Set individual thresholds below or use the default threshold of {defaultThreshold}
-                </span>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Stock Items Table */}
-      {filteredStockItems.length === 0 ? (
-        <div className="py-12 text-center">
-          <Package className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-          <h3 className="mb-2 font-medium text-gray-900 text-lg">No stock items found</h3>
-          <p className="text-gray-500">
-            {stockTakeSearchTerm || selectedStockType !== 'all' ? 'No stock items match your search criteria.' : 'No stock items available.'}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="border border-gray-200 w-full border-collapse">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                  Item Description
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                  Code
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                  Supplier
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Type
-                </th>
-                <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                  Current Qty
-                </th>
-                {stockTakeActiveTab === 'thresholds' && (
-                  <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                    Threshold
-                  </th>
-                )}
-                {stockTakeMode && stockTakeActiveTab === 'stock-take' && (
-                  <>
-                    <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                      New Qty
-                    </th>
-                    <td className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                      Difference
-                    </td>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {filteredStockItems.map((item) => {
-                const update = updatedItems[item.id];
-                const currentQuantity = update?.new_quantity ?? parseInt(item.quantity || '0');
-                const difference = update?.difference ?? 0;
-                const isLow = isLowStock(item);
-
-                return (
-                  <tr key={item.id} className={`hover:bg-gray-50 ${getLowStockStyle(item)}`}>
-                    <td className="px-4 py-3 border border-gray-200 text-sm">
-                      <div>
-                        <div className="font-medium text-gray-900">{String(item.description || '')}</div>
-                        {item.stock_type && (
-                          <Badge className={`text-xs ${getStockTypeColor(item.stock_type)}`}>
-                            {String(item.stock_type)}
-                          </Badge>
-                        )}
-                        {isLow && (
-                          <Badge className="bg-red-100 mt-1 text-red-800 text-xs">
-                            Low Stock
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-gray-600 text-sm">
-                      {item.code || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-gray-600 text-sm">
-                      {item.supplier || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                      <Badge className={`text-xs ${getStockTypeColor(item.stock_type)}`}>
-                        {item.stock_type || 'N/A'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                      <span className={`font-medium ${isLow ? 'text-red-600' : ''}`}>
-                        {parseInt(item.quantity || '0')}
-                      </span>
-                    </td>
-                    {stockTakeActiveTab === 'thresholds' && (
-                      <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={getItemThreshold(item.id)}
-                          onChange={(e) => handleThresholdChange(item.id, e.target.value)}
-                          className="w-20 text-center"
-                        />
-                      </td>
-                    )}
-                    {stockTakeMode && stockTakeActiveTab === 'stock-take' && (
-                      <>
-                        <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={currentQuantity}
-                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                            className="w-20 text-center"
-                          />
-                        </td>
-                        <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                          {update && (
-                            <span className={`font-medium ${getQuantityDifferenceColor(difference)}`}>
-                              {difference > 0 ? '+' : ''}{difference}
-                            </span>
-                          )}
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Summary */}
-      {stockTakeMode && hasChanges && (
-        <Card className="bg-green-50 border-green-200">
+      {stockTakeMode && (
+        <Card className="bg-blue-50 border-blue-200">
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-medium text-green-800">Stock Take Summary</h3>
-                <p className="text-green-700 text-sm">
-                  {Object.keys(updatedItems).length} items modified
-                </p>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-blue-800">Stock Take Mode Active</span>
               </div>
-              <div className="text-right">
-                <div className="text-green-700 text-sm">
-                  Total Changes: {Object.values(updatedItems).reduce((sum, item) => sum + Math.abs(item.difference), 0)}
-                </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handlePublishStockTake}
+                  disabled={!hasChanges || publishing}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Save className="mr-2 w-4 h-4" />
+                  {publishing ? 'Publishing...' : 'Publish Changes'}
+                </Button>
               </div>
             </div>
+            {hasChanges && (
+              <div className="mt-2 text-blue-700 text-sm">
+                {Object.keys(updatedItems).length} items have been modified
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
+
+      <div className="overflow-x-auto">
+        <table className="border border-gray-200 w-full border-collapse">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
+                Item Description
+              </th>
+              <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
+                Code
+              </th>
+              <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
+                Category
+              </th>
+              <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
+                Current Qty
+              </th>
+              {stockTakeMode && (
+                <>
+                  <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
+                    New Qty
+                  </th>
+                  <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
+                    Difference
+                  </th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody className="bg-white">
+            {filteredParts.map((item) => {
+              const update = updatedItems[item.id];
+              const currentQuantity = update?.new_quantity ?? parseInt(item.quantity || '0');
+              const difference = update?.difference ?? 0;
+
+              return (
+                <tr key={item.id} className={`hover:bg-gray-50 ${item.quantity <= 5 ? 'bg-red-50 border-red-200' : ''}`}>
+                  <td className="px-4 py-3 border border-gray-200 text-sm">
+                    <div>
+                      <div className="font-medium text-gray-900">{item.description || ''}</div>
+                      {item.quantity <= 5 && (
+                        <Badge className="bg-red-100 mt-1 text-red-800 text-xs">
+                          Low Stock
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 border border-gray-200 text-gray-600 text-sm">
+                    {item.item_code || 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
+                    <Badge className="bg-blue-100 text-blue-800 text-xs">
+                      {item.categories?.name || 'N/A'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 border border-gray-200 text-sm text-center">
+                    <span className={`font-medium ${item.quantity <= 5 ? 'text-red-600' : ''}`}>
+                      {parseInt(item.quantity || '0')}
+                    </span>
+                  </td>
+                  {stockTakeMode && (
+                    <>
+                      <td className="px-4 py-3 border border-gray-200 text-sm text-center">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={currentQuantity}
+                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                          className="w-20 text-center"
+                        />
+                      </td>
+                      <td className="px-4 py-3 border border-gray-200 text-sm text-center">
+                        {update && (
+                          <span className={`font-medium ${difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {difference > 0 ? '+' : ''}{difference}
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -1396,16 +703,10 @@ export default function InventoryPage() {
       content: assignedPartsContent
     },
     {
-      value: 'completed-jobs',
-      label: 'Completed Jobs',
-      icon: CheckCircle,
-      content: completedJobsContent
-    },
-    {
-      value: 'stock-orders',
-      label: 'Items on Order',
-      icon: Receipt,
-      content: stockOrdersContent
+      value: 'parts-inventory',
+      label: 'Parts Inventory',
+      icon: Package,
+      content: partsInventoryContent
     },
     {
       value: 'stock-take',
@@ -1423,14 +724,9 @@ export default function InventoryPage() {
           subtitle="Manage job cards, assign parts, and track inventory"
           icon={Package}
         />
-
-        {/* Create Order Button */}
-        <div className="flex justify-end">
-          <StockOrderModal onOrderSubmitted={fetchStockOrders} />
-        </div>
         <div className="flex justify-center items-center py-12">
           <div className="border-b-2 border-blue-600 rounded-full w-8 h-8 animate-spin"></div>
-          <span className="ml-2">Loading job cards...</span>
+          <span className="ml-2">Loading inventory...</span>
         </div>
       </div>
     );
@@ -1444,323 +740,71 @@ export default function InventoryPage() {
         icon={Package}
       />
 
-      {/* Create Order Button */}
       <div className="flex justify-end">
-        <StockOrderModal onOrderSubmitted={fetchStockOrders} />
+        <Button
+          onClick={async () => {
+            try {
+              const response = await fetch('/api/seed', { method: 'POST' });
+              if (response.ok) {
+                toast.success('Sample data created successfully');
+                fetchData();
+              } else {
+                toast.error('Failed to create sample data');
+              }
+            } catch (error) {
+              toast.error('Failed to create sample data');
+            }
+          }}
+          variant="outline"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Seed Sample Data
+        </Button>
       </div>
 
-      {/* Assign Parts Modal */}
-      {selectedJobCard && (
-        <AssignPartsModal
-          isOpen={showAssignParts}
-          onClose={() => {
-            setShowAssignParts(false);
-            setSelectedJobCard(null);
-          }}
-          jobCard={selectedJobCard}
-          onPartsAssigned={handlePartsAssigned}
-        />
-      )}
-
-      {/* QR Code Modal */}
-      {selectedQRJob && showQRCode && (
-        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-semibold text-xl">Job QR Code - {selectedQRJob.job_number}</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowQRCode(false);
-                  setSelectedQRJob(null);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {selectedQRJob.qr_code ? (
-                <>
-                  {/* QR Code */}
-                  <div className="mb-6 text-center">
-                    <img
-                      src={selectedQRJob.qr_code}
-                      alt="Job QR Code"
-                      className="mx-auto border rounded-lg"
-                      style={{ maxWidth: '200px' }}
-                    />
-                    <p className="mt-2 text-gray-500 text-xs">
-                      Scan this QR code to access complete job information
-                    </p>
-                  </div>
-
-                  {/* Job Information Grid */}
-                  <div className="gap-4 grid grid-cols-1 md:grid-cols-2">
-                    {/* Basic Job Info */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="mb-3 font-medium text-gray-900">Job Details</h3>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>Job Number:</strong> {selectedQRJob.job_number}</div>
-                        <div><strong>Quotation:</strong> {selectedQRJob.quotation_number || 'N/A'}</div>
-                        <div><strong>Type:</strong> {selectedQRJob.job_type || 'N/A'}</div>
-                        <div><strong>Status:</strong> {selectedQRJob.status || 'N/A'}</div>
-                        <div><strong>Priority:</strong> {selectedQRJob.priority || 'N/A'}</div>
-                        <div><strong>IP Address:</strong> {selectedQRJob.ip_address || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Customer Info */}
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="mb-3 font-medium text-gray-900">Customer Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>Name:</strong> {selectedQRJob.customer_name || 'N/A'}</div>
-                        <div><strong>Email:</strong> {selectedQRJob.customer_email || 'N/A'}</div>
-                        <div><strong>Phone:</strong> {selectedQRJob.customer_phone || 'N/A'}</div>
-                        <div><strong>Address:</strong> {selectedQRJob.customer_address || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Vehicle Info */}
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h3 className="mb-3 font-medium text-gray-900">Vehicle Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>Registration:</strong> {selectedQRJob.vehicle_registration || 'Not provided'}</div>
-                        <div><strong>Make:</strong> {selectedQRJob.vehicle_make || 'Not provided'}</div>
-                        <div><strong>Model:</strong> {selectedQRJob.vehicle_model || 'Not provided'}</div>
-                        <div><strong>Year:</strong> {selectedQRJob.vehicle_year || 'Not provided'}</div>
-                        <div><strong>VIN:</strong> {selectedQRJob.vin_numer || 'Not provided'}</div>
-                        <div><strong>Odometer:</strong> {selectedQRJob.odormeter || 'Not provided'}</div>
-                      </div>
-                    </div>
-
-                    {/* Quotation Info */}
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <h3 className="mb-3 font-medium text-gray-900">Quotation Details</h3>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>Total Amount:</strong> {selectedQRJob.quotation_total_amount ? `R${selectedQRJob.quotation_total_amount}` : 'N/A'}</div>
-                        <div><strong>Products:</strong> {selectedQRJob.quotation_products?.length || 0} items</div>
-                        <div><strong>Quote Status:</strong> {selectedQRJob.quote_status || 'N/A'}</div>
-                        <div><strong>Created:</strong> {selectedQRJob.created_at ? new Date(selectedQRJob.created_at).toLocaleDateString() : 'N/A'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Job Description */}
-                  {selectedQRJob.job_description && (
-                    <div className="bg-white p-4 border rounded-lg">
-                      <h3 className="mb-2 font-medium text-gray-900">Job Description</h3>
-                      <p className="text-gray-600 text-sm">{selectedQRJob.job_description}</p>
-                    </div>
-                  )}
-
-                  {/* Special Instructions */}
-                  {selectedQRJob.special_instructions && (
-                    <div className="bg-yellow-50 p-4 border border-yellow-200 rounded-lg">
-                      <h3 className="mb-2 font-medium text-gray-900">Special Instructions</h3>
-                      <p className="text-gray-600 text-sm">{selectedQRJob.special_instructions}</p>
-                    </div>
-                  )}
-
-                  {/* Assigned Parts */}
-                  {selectedQRJob.parts_required && Array.isArray(selectedQRJob.parts_required) && selectedQRJob.parts_required.length > 0 && (
-                    <div className="bg-white p-4 border rounded-lg">
-                      <h3 className="mb-3 font-medium text-gray-900">Assigned Parts</h3>
-                      <div className="space-y-2">
-                        {selectedQRJob.parts_required.map((part, index) => (
-                          <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                            <div>
-                              <span className="font-medium">{part.description}</span>
-                              <span className="ml-2 text-gray-500 text-sm">({part.code})</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                Qty: {part.quantity}
-                              </Badge>
-                              {part.total_cost && (
-                                <Badge variant="outline" className="text-xs">
-                                  R{part.total_cost}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-center gap-2 pt-4">
-                    <Button
-                      onClick={() => handlePrintQR(selectedQRJob)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Printer className="mr-2 w-4 h-4" />
-                      Print Complete Job Details
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="py-8 text-center">
-                  <QrCode className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-                  <p className="text-gray-500">No QR code available for this job.</p>
-                  <p className="mt-2 text-gray-400 text-sm">QR codes are generated when parts are assigned.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
       <DashboardTabs
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
 
-      {/* PDF Viewer Modal for Stock Orders */}
-      <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden">
+      <NewAssignPartsModal
+        isOpen={showAssignModal}
+        onClose={() => {
+          setShowAssignModal(false);
+          setSelectedJobCard(null);
+          setSelectedParts([]);
+        }}
+        jobCard={selectedJobCard}
+        onPartsAssigned={handlePartsAssigned}
+      />
+
+      <Dialog open={showLogsModal} onOpenChange={setShowLogsModal}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>Invoice PDF: {selectedStockOrder?.order_number}</span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => selectedStockOrder && handleDownloadStockOrderInvoice(selectedStockOrder)}
-                >
-                  <Download className="mr-2 w-4 h-4" />
-                  Download
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPdfViewer(false)}
-                >
-                  Close
-                </Button>
-              </div>
-            </DialogTitle>
+            <DialogTitle>Inventory History</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0">
-            {selectedStockOrder?.invoice_link ? (
-              <iframe
-                src={selectedStockOrder.invoice_link}
-                className="border-0 rounded-lg w-full h-[80vh]"
-                title={`Invoice for Order ${selectedStockOrder.order_number}`}
-                onError={() => {
-                  toast({
-                    title: "Error",
-                    description: "Failed to load PDF. Please try downloading instead.",
-                    variant: "destructive"
-                  });
-                }}
-              />
-            ) : (
-              <div className="flex justify-center items-center h-64">
-                <div className="text-center">
-                  <AlertCircle className="mx-auto w-12 h-12 text-gray-400" />
-                  <h3 className="mt-2 font-medium text-gray-900 text-sm">No PDF Available</h3>
-                  <p className="mt-1 text-gray-500 text-sm">
-                    This order doesn't have an invoice PDF attached.
-                  </p>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {selectedPartLogs.map(log => (
+              <div key={log.id} className="border rounded p-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className={`px-2 py-1 rounded text-xs ${log.change_type === 'add' ? 'bg-green-100 text-green-800' :
+                        log.change_type === 'remove' ? 'bg-red-100 text-red-800' :
+                          'bg-blue-100 text-blue-800'
+                      }`}>
+                      {log.change_type}
+                    </span>
+                    <span className="ml-2 font-medium">
+                      {log.quantity_change > 0 ? '+' : ''}{log.quantity_change}
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Order Items Modal */}
-      <Dialog open={showOrderItemsModal} onOpenChange={setShowOrderItemsModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>Order Items: {selectedStockOrder?.order_number}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowOrderItemsModal(false)}
-              >
-                Close
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {selectedStockOrder && (
-              <div className="space-y-6">
-                {/* Order Summary */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="gap-4 grid grid-cols-2 md:grid-cols-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Supplier:</span>
-                      <p className="text-gray-900">{selectedStockOrder.supplier || 'Custom'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Status:</span>
-                      <p className="text-gray-900">{selectedStockOrder.status || 'pending'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Order Date:</span>
-                      <p className="text-gray-900">{formatDate(selectedStockOrder.order_date)}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Total Amount:</span>
-                      <p className="text-gray-900">R {parseFloat(selectedStockOrder.total_amount_ex_vat || 0).toFixed(2)}</p>
-                    </div>
-                  </div>
-                  {selectedStockOrder.notes && (
-                    <div className="mt-3 pt-3 border-gray-200 border-t">
-                      <span className="font-medium text-gray-700">Notes:</span>
-                      <p className="text-gray-900 text-sm">{selectedStockOrder.notes}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Order Items Table */}
-                {selectedStockOrder.order_items && Array.isArray(selectedStockOrder.order_items) && selectedStockOrder.order_items.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="border border-gray-200 w-full border-collapse">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                            Item Description
-                          </th>
-                          <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                            Quantity
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white">
-                        {selectedStockOrder.order_items.map((item, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 border border-gray-200 text-sm">
-                              <div className="font-medium text-gray-900">{item.description || 'Custom Item'}</div>
-                              {item.supplier && (
-                                <div className="mt-1 text-gray-500 text-xs">Supplier: {item.supplier}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 border border-gray-200 text-sm text-center">
-                              <Badge variant="outline" className="text-xs">
-                                {item.quantity || 0}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="py-8 text-center">
-                    <Package className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-                    <h3 className="mb-2 font-medium text-gray-900 text-lg">No Order Items</h3>
-                    <p className="text-gray-500">This order doesn't have any items listed.</p>
-                  </div>
-                )}
-              </div>
-            )}
+            ))}
           </div>
         </DialogContent>
       </Dialog>

@@ -159,7 +159,7 @@ export default function FleetJobsPage() {
 
   // fetch workshops from Supabase
   const fetchWorkshops = async () => {
-    const { data, error } = await supabase.from("workshop_klaver").select(`
+    const { data, error } = await supabase.from("workshop").select(`
       *,
       workshop_assign (
         workshop_id,
