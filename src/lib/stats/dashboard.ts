@@ -83,15 +83,48 @@ export async function getCompletedJobs() {
     return count || 0;
 }
 
+
+export async function getTechnicianStats() {
+    const supabase = createClient();
+    const { count, error } = await (await supabase)
+        .from('technicians_klaver')
+        .select('*', { count: 'exact', head: true });
+    if (error) throw error;
+    return count || 0;
+}
+
+export async function getDriverStats() {
+    const supabase = createClient();
+    const { count, error } = await (await supabase)
+        .from("drivers_klaver")
+        .select('*', { count: 'exact', head: true });
+    if (error) throw error; 
+    return count || 0;
+}
+
+
+export async function getWorkshopStats() {
+    const supabase = createClient();
+    const {count, error} = await (await supabase)
+    .from('workshop_job')
+    .select('*', {count: 'exact', head: true})
+    // .eq('status', 'available');
+    if (error) throw error;
+    return count || 0;
+}
+
 // Returns all dashboard stats in one call
 export async function getDashboardStats() {
-    const [activeBreakdowns, pendingApprovals, availableTechnicians, totalVehicles, monthlyRevenue, completedJobs] = await Promise.all([
+    const [activeBreakdowns, pendingApprovals, workshopStats, availableTechnicians, totalVehicles, monthlyRevenue, completedJobs, driverStats, technicianStats] = await Promise.all([
         getActiveBreakdowns(),
         getPendingApprovals(),
         getAvailableTechnicians(),
         getTotalVehicles(),
         getMonthlyRevenue(),
         getCompletedJobs(),
+        getDriverStats(),
+        getTechnicianStats(),
+        getWorkshopStats(),
     ]);
     return {
         activeBreakdowns,
@@ -100,6 +133,9 @@ export async function getDashboardStats() {
         totalVehicles,
         monthlyRevenue,
         completedJobs,
+        driverStats,
+        technicianStats,
+        workshopStats
     };
 }
 

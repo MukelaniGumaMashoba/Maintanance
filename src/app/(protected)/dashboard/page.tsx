@@ -42,17 +42,17 @@ import { SlidingNumber } from "@/components/ui/sliding-number";
 import Link from "next/link";
 
 interface DashboardStats {
-  activeBreakdowns: number;
-  pendingApprovals: number;
-  availableTechnicians: number;
   totalVehicles: number;
   monthlyRevenue: number;
   completedJobs: number;
-  drivers: number;
   tows: number;
-  qoutes: number;
+  activeBreakdowns: number;
+  pendingApprovals: number;
+  availableTechnicians: number;
+  driverStats: number;
+  technicianStats: number;
+  workshopStats: number;
 }
-
 interface RecentActivity {
   id: string;
   type: "breakdown" | "approval" | "completion" | "quotation";
@@ -74,15 +74,16 @@ export default function Dashboard() {
   const [userRole, setUserRole] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string>("");
   const [stats, setStats] = useState<DashboardStats>({
-    activeBreakdowns: 0,
-    pendingApprovals: 0,
-    availableTechnicians: 0,
     totalVehicles: 0,
     monthlyRevenue: 0,
     completedJobs: 0,
-    drivers: 0,
     tows: 0,
-    qoutes: 0,
+    activeBreakdowns: 0,
+    pendingApprovals: 0,
+    availableTechnicians: 0,
+    driverStats: 0,
+    technicianStats: 0,
+    workshopStats: 0,
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -486,7 +487,7 @@ export default function Dashboard() {
             <CardContent>
               <SlidingNumber
                 from={0}
-                to={stats.activeBreakdowns}
+                to={stats.workshopStats}
                 duration={1}
                 className="text-3xl font-extrabold tracking-tight"
                 digitHeight={42}
@@ -510,7 +511,7 @@ export default function Dashboard() {
             <CardContent>
               <SlidingNumber
                 from={0}
-                to={stats.availableTechnicians}
+                to={stats.driverStats}
                 duration={1}
                 className="text-3xl font-extrabold tracking-tight"
                 digitHeight={42}
@@ -556,7 +557,7 @@ export default function Dashboard() {
             <CardContent>
               <SlidingNumber
                 from={0}
-                to={stats.tows}
+                to={stats.technicianStats}
                 duration={1}
                 className="text-3xl font-extrabold tracking-tight"
                 digitHeight={42}
@@ -695,7 +696,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">Awaiting Approval</p>
                         <p className="text-sm text-gray-600">
-                          Total jobs: {stats.qoutes}
+                          Total jobs: {stats.workshopStats}
                         </p>
                       </div>
                       <Link href="/qoutation">
