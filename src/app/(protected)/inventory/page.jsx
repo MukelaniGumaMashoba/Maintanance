@@ -105,7 +105,7 @@ export default function InventoryPage() {
       const { data: jobsData, error: jobsError } = await supabase
         .from('workshop_job')
         .select('*')
-        .eq("status", "approved")
+        .neq('status', 'Awaiting Approval')
         .order('created_at', { ascending: false });
 
       if (jobsError) {
@@ -166,16 +166,18 @@ export default function InventoryPage() {
       job.vehicle_registration?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.job_description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const hasNoParts = !job.parts_required || !Array.isArray(job.parts_required) || job.parts_required.length === 0;
+    // const hasNoParts = !job.parts_required || !Array.isArray(job.parts_required) || job.parts_required.length === 0;
+    const hasNoParts = job.job_parts?.length > 0 || !job.given_parts || !Array.isArray(job.given_parts) || job.given_parts.length === 0  || job.status !== 'Part Assigned';
     return matchesSearch && hasNoParts;
   });
 
   const jobCardsWithParts = jobCards.filter(job =>
-    job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0
+    job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (job.status === 'Part Assigned' || job.status === 'completed')
   );
 
   const completedJobs = jobCards.filter(job =>
-    job.job_status === 'completed' || job.status === 'completed'
+    job.given_parts && job.given_parts.length > 0 &&
+    (job.status === 'Part Assigned' || job.status === 'completed')
   );
 
   const handleViewLogs = async (partId) => {
@@ -791,8 +793,8 @@ export default function InventoryPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <span className={`px-2 py-1 rounded text-xs ${log.change_type === 'add' ? 'bg-green-100 text-green-800' :
-                        log.change_type === 'remove' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
+                      log.change_type === 'remove' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
                       }`}>
                       {log.change_type}
                     </span>

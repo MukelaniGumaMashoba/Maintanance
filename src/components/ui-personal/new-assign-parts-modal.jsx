@@ -33,7 +33,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
         categories(name)
       `)
       .order('description');
-    
+
     if (error) {
       toast.error('Failed to fetch parts');
       return;
@@ -46,7 +46,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
       .from('categories')
       .select('*')
       .order('name');
-    
+
     if (error) {
       toast.error('Failed to fetch categories');
       return;
@@ -56,7 +56,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
 
   const filteredParts = parts.filter(part => {
     const matchesSearch = part.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         part.item_code?.toLowerCase().includes(searchTerm.toLowerCase());
+      part.item_code?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || part.category_id?.toString() === selectedCategory;
     return matchesSearch && matchesCategory && part.quantity > 0;
   });
@@ -96,11 +96,11 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
       for (const assignment of selectedParts) {
         const { partId, quantity } = assignment;
         const part = parts.find(p => p.id === partId);
-        
+
         // Update part quantity
         await supabase
           .from('parts')
-          .update({ 
+          .update({
             quantity: part.quantity - quantity,
             total: (part.quantity - quantity) * (part.price || 0)
           })
@@ -130,8 +130,15 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
         .from('workshop_jobpart')
         .upsert({
           job_id: jobCard.id,
-          job_parts: assignedParts
+          given_parts: assignedParts
         });
+
+
+      await supabase
+        .from('workshop_job')
+        .update({ status: 'Part Assigned' })
+        .eq('id', jobCard.id);
+
 
       toast.success('Parts assigned successfully');
       onPartsAssigned();
@@ -159,7 +166,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
             Assign Parts to Job: {jobCard?.job_number || jobCard?.jobId_workshop}
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {/* Search and Filter */}
           <div className="flex items-center gap-4">
@@ -260,8 +267,8 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleAssignParts} 
+            <Button
+              onClick={handleAssignParts}
               disabled={selectedParts.length === 0 || loading}
             >
               <Package className="w-4 h-4 mr-2" />
