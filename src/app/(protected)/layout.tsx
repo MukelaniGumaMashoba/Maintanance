@@ -78,8 +78,8 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
-    { name: "Workshop", href: "/internalWorkshop", Icon: Store },
-    { name: "Repair Management", href: "/ccenter", Icon: Building2 },
+    // { name: "Workshop", href: "/internalWorkshop", Icon: Store },
+    // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
     {

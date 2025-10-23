@@ -653,235 +653,6 @@ export default function FleetJobsPage() {
           </div>
         </div>
 
-
-        <div className="flex justify-end">
-          <Dialog open={isCreateJobDialogOpen} onOpenChange={setIsCreateJobDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>Create Job Card</Button>
-            </DialogTrigger>
-
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Workshop Job</DialogTitle>
-                <DialogDescription>
-                  Create a new job and assign it to a workshop. All fields marked with * are required.
-                </DialogDescription>
-              </DialogHeader>
-
-              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createWorkshopJob(); }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="registration_number">Registration Number *</Label>
-                    <Input
-                      id="registration_number"
-                      placeholder="DD80MKGP"
-                      value={createJobForm.registration_number}
-                      onChange={(e) => setCreateJobForm({
-                        ...createJobForm,
-                        registration_number: e.target.value.toUpperCase()
-                      })}
-                      className={vehicleExists === false ? "border-red-500" : vehicleExists === true ? "border-green-500" : ""}
-                    />
-                    {vehicleExists === false && (
-                      <p className="text-sm text-red-500 mt-1">Vehicle not found in database</p>
-                    )}
-                    {vehicleExists === true && (
-                      <p className="text-sm text-green-500 mt-1">Vehicle found ✓</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="job_type">Type of Work *</Label>
-                    <Select
-                      value={createJobForm.job_type}
-                      onValueChange={(value) => setCreateJobForm({
-                        ...createJobForm,
-                        job_type: value
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type of work" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="towing">Towing</SelectItem>
-                        <SelectItem value="mechanical">Mechanical</SelectItem>
-                        <SelectItem value="electrical">Electrical</SelectItem>
-                        <SelectItem value="breakdown">Breakdown</SelectItem>
-                        <SelectItem value="carwash">Car Wash</SelectItem>
-                        <SelectItem value="check">Check Overall</SelectItem>
-                        <SelectItem value="driveline">Drive Line Repairs</SelectItem>
-                        <SelectItem value="panel-beating">Panel Beating</SelectItem>
-                        <SelectItem value="fitmentcentre">Fitment Centre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Problem Description *</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the problem..."
-                    value={createJobForm.description}
-                    onChange={(e) => setCreateJobForm({
-                      ...createJobForm,
-                      description: e.target.value
-                    })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Problem Notes *</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Job Notes the problem or work needed..."
-                    value={createJobForm.notes}
-                    onChange={(e) => setCreateJobForm({
-                      ...createJobForm,
-                      notes: e.target.value
-                    })}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="client_name">Client Name</Label>
-                    <Input
-                      id="client_name"
-                      placeholder="Client name"
-                      value={createJobForm.client_name}
-                      onChange={(e) => setCreateJobForm({
-                        ...createJobForm,
-                        client_name: e.target.value
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="client_phone">Client Phone</Label>
-                    <Input
-                      id="client_phone"
-                      placeholder="Phone number"
-                      value={createJobForm.client_phone}
-                      onChange={(e) => setCreateJobForm({
-                        ...createJobForm,
-                        client_phone: e.target.value
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Job Location *</Label>
-                    {/*<Input
-                      id="location"
-                      placeholder="21 Zama Road, Johannesburg, 20232"
-                      value={createJobForm.location}
-                      onChange={(e) => {
-                        const newLocation = e.target.value
-                        setCreateJobForm({ ...createJobForm, location: newLocation })
-                        // autoSelectWorkshop(newLocation) // 🔹 auto-select on change
-                      }}
-                    /> */}
-                    <Input
-                      id="location"
-                      placeholder="Enter job location"
-                      value={createJobForm.location}
-                      onChange={(e) => {
-                        const newLocation = e.target.value;
-                        setCreateJobForm({ ...createJobForm, location: newLocation });
-
-                        const keywords = extractLocationKeywords(newLocation);
-
-                        const locationMatch = workshops.find(w => {
-                          const city = w.city?.toLowerCase() || "";
-                          const town = w.town?.toLowerCase() || "";
-                          const province = w.province?.toLowerCase() || "";
-
-                          return keywords.some(k => city.includes(k) || town.includes(k) || province.includes(k));
-                        });
-
-                        if (locationMatch) {
-                          setSearchWorkshop(locationMatch.city || locationMatch.town || locationMatch.province);
-                        } else {
-                          setSearchWorkshop("no-location");
-                        }
-                      }}
-
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-center block mb-1 font-medium">Available Workshops</label>
-                </div>
-                {searchWorkshop && searchWorkshop !== "no-location" && (
-                  <div className="mb-4">
-                    <Label className="text-sm font-medium mb-2 block">
-                      Workshops in {searchWorkshop}:
-                    </Label>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {availableWorkshops.length > 0 ? (
-                        availableWorkshops.map(workshop => (
-                          <div
-                            key={workshop.id}
-                            className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                            onClick={() => setCreateJobForm({
-                              ...createJobForm,
-                              selected_workshop_id: workshop.id
-                            })}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{workshop.work_name}</p>
-                                <p className="text-sm text-gray-600">
-                                  {workshop.trading_name && `${workshop.trading_name} • `}
-                                  {workshop.city || workshop.town || workshop.province}
-                                </p>
-                                {workshop.labour_rate && (
-                                  <p className="text-xs text-gray-500">
-                                    Labour Rate: R{workshop.labour_rate}/hr
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center">
-                                {createJobForm.selected_workshop_id === workshop.id && (
-                                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-500 text-center py-2">
-                          No workshops found in this location
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreateJobDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || !createJobForm.registration_number || !createJobForm.job_type || !createJobForm.description || !createJobForm.selected_workshop_id}
-                  >
-                    {isSubmitting ? "Creating..." : "Create Job"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-
         <Tabs defaultValue="workshopJobs" className="space-y-4">
           <TabsList>
             <TabsTrigger value="workshopJobs">Workshop Jobs</TabsTrigger>
@@ -1192,3 +963,245 @@ export default function FleetJobsPage() {
     </>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // <div className="flex justify-end">
+        //   <Dialog open={isCreateJobDialogOpen} onOpenChange={setIsCreateJobDialogOpen}>
+        //     <DialogTrigger asChild>
+        //       <Button>Create Job Card</Button>
+        //     </DialogTrigger>
+
+        //     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        //       <DialogHeader>
+        //         <DialogTitle>Create New Workshop Job</DialogTitle>
+        //         <DialogDescription>
+        //           Create a new job and assign it to a workshop. All fields marked with * are required.
+        //         </DialogDescription>
+        //       </DialogHeader>
+
+        //       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createWorkshopJob(); }}>
+        //         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        //           <div>
+        //             <Label htmlFor="registration_number">Registration Number *</Label>
+        //             <Input
+        //               id="registration_number"
+        //               placeholder="DD80MKGP"
+        //               value={createJobForm.registration_number}
+        //               onChange={(e) => setCreateJobForm({
+        //                 ...createJobForm,
+        //                 registration_number: e.target.value.toUpperCase()
+        //               })}
+        //               className={vehicleExists === false ? "border-red-500" : vehicleExists === true ? "border-green-500" : ""}
+        //             />
+        //             {vehicleExists === false && (
+        //               <p className="text-sm text-red-500 mt-1">Vehicle not found in database</p>
+        //             )}
+        //             {vehicleExists === true && (
+        //               <p className="text-sm text-green-500 mt-1">Vehicle found ✓</p>
+        //             )}
+        //           </div>
+
+        //           <div>
+        //             <Label htmlFor="job_type">Type of Work *</Label>
+        //             <Select
+        //               value={createJobForm.job_type}
+        //               onValueChange={(value) => setCreateJobForm({
+        //                 ...createJobForm,
+        //                 job_type: value
+        //               })}
+        //             >
+        //               <SelectTrigger>
+        //                 <SelectValue placeholder="Select type of work" />
+        //               </SelectTrigger>
+        //               <SelectContent>
+        //                 <SelectItem value="towing">Towing</SelectItem>
+        //                 <SelectItem value="mechanical">Mechanical</SelectItem>
+        //                 <SelectItem value="electrical">Electrical</SelectItem>
+        //                 <SelectItem value="breakdown">Breakdown</SelectItem>
+        //                 <SelectItem value="carwash">Car Wash</SelectItem>
+        //                 <SelectItem value="check">Check Overall</SelectItem>
+        //                 <SelectItem value="driveline">Drive Line Repairs</SelectItem>
+        //                 <SelectItem value="panel-beating">Panel Beating</SelectItem>
+        //                 <SelectItem value="fitmentcentre">Fitment Centre</SelectItem>
+        //               </SelectContent>
+        //             </Select>
+        //           </div>
+        //         </div>
+
+        //         <div>
+        //           <Label htmlFor="description">Problem Description *</Label>
+        //           <Textarea
+        //             id="description"
+        //             placeholder="Describe the problem..."
+        //             value={createJobForm.description}
+        //             onChange={(e) => setCreateJobForm({
+        //               ...createJobForm,
+        //               description: e.target.value
+        //             })}
+        //           />
+        //         </div>
+        //         <div>
+        //           <Label htmlFor="description">Problem Notes *</Label>
+        //           <Textarea
+        //             id="description"
+        //             placeholder="Job Notes the problem or work needed..."
+        //             value={createJobForm.notes}
+        //             onChange={(e) => setCreateJobForm({
+        //               ...createJobForm,
+        //               notes: e.target.value
+        //             })}
+        //             rows={3}
+        //           />
+        //         </div>
+
+        //         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        //           <div>
+        //             <Label htmlFor="client_name">Client Name</Label>
+        //             <Input
+        //               id="client_name"
+        //               placeholder="Client name"
+        //               value={createJobForm.client_name}
+        //               onChange={(e) => setCreateJobForm({
+        //                 ...createJobForm,
+        //                 client_name: e.target.value
+        //               })}
+        //             />
+        //           </div>
+        //           <div>
+        //             <Label htmlFor="client_phone">Client Phone</Label>
+        //             <Input
+        //               id="client_phone"
+        //               placeholder="Phone number"
+        //               value={createJobForm.client_phone}
+        //               onChange={(e) => setCreateJobForm({
+        //                 ...createJobForm,
+        //                 client_phone: e.target.value
+        //               })}
+        //             />
+        //           </div>
+        //           <div>
+        //             <Label htmlFor="location">Job Location *</Label>
+        //             {/*<Input
+        //               id="location"
+        //               placeholder="21 Zama Road, Johannesburg, 20232"
+        //               value={createJobForm.location}
+        //               onChange={(e) => {
+        //                 const newLocation = e.target.value
+        //                 setCreateJobForm({ ...createJobForm, location: newLocation })
+        //                 // autoSelectWorkshop(newLocation) // 🔹 auto-select on change
+        //               }}
+        //             /> */}
+        //             <Input
+        //               id="location"
+        //               placeholder="Enter job location"
+        //               value={createJobForm.location}
+        //               onChange={(e) => {
+        //                 const newLocation = e.target.value;
+        //                 setCreateJobForm({ ...createJobForm, location: newLocation });
+
+        //                 const keywords = extractLocationKeywords(newLocation);
+
+        //                 const locationMatch = workshops.find(w => {
+        //                   const city = w.city?.toLowerCase() || "";
+        //                   const town = w.town?.toLowerCase() || "";
+        //                   const province = w.province?.toLowerCase() || "";
+
+        //                   return keywords.some(k => city.includes(k) || town.includes(k) || province.includes(k));
+        //                 });
+
+        //                 if (locationMatch) {
+        //                   setSearchWorkshop(locationMatch.city || locationMatch.town || locationMatch.province);
+        //                 } else {
+        //                   setSearchWorkshop("no-location");
+        //                 }
+        //               }}
+
+        //             />
+        //           </div>
+        //         </div>
+
+        //         <div>
+        //           <label className="text-center block mb-1 font-medium">Available Workshops</label>
+        //         </div>
+        //         {searchWorkshop && searchWorkshop !== "no-location" && (
+        //           <div className="mb-4">
+        //             <Label className="text-sm font-medium mb-2 block">
+        //               Workshops in {searchWorkshop}:
+        //             </Label>
+        //             <div className="space-y-2 max-h-40 overflow-y-auto">
+        //               {availableWorkshops.length > 0 ? (
+        //                 availableWorkshops.map(workshop => (
+        //                   <div
+        //                     key={workshop.id}
+        //                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+        //                     onClick={() => setCreateJobForm({
+        //                       ...createJobForm,
+        //                       selected_workshop_id: workshop.id
+        //                     })}
+        //                   >
+        //                     <div className="flex items-center justify-between">
+        //                       <div>
+        //                         <p className="font-medium">{workshop.work_name}</p>
+        //                         <p className="text-sm text-gray-600">
+        //                           {workshop.trading_name && `${workshop.trading_name} • `}
+        //                           {workshop.city || workshop.town || workshop.province}
+        //                         </p>
+        //                         {workshop.labour_rate && (
+        //                           <p className="text-xs text-gray-500">
+        //                             Labour Rate: R{workshop.labour_rate}/hr
+        //                           </p>
+        //                         )}
+        //                       </div>
+        //                       <div className="flex items-center">
+        //                         {createJobForm.selected_workshop_id === workshop.id && (
+        //                           <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+        //                             <div className="w-2 h-2 bg-white rounded-full"></div>
+        //                           </div>
+        //                         )}
+        //                       </div>
+        //                     </div>
+        //                   </div>
+        //                 ))
+        //               ) : (
+        //                 <p className="text-sm text-gray-500 text-center py-2">
+        //                   No workshops found in this location
+        //                 </p>
+        //               )}
+        //             </div>
+        //           </div>
+        //         )}
+
+
+        //         <div className="flex justify-end space-x-2 pt-4">
+        //           <Button
+        //             type="button"
+        //             variant="outline"
+        //             onClick={() => setIsCreateJobDialogOpen(false)}
+        //           >
+        //             Cancel
+        //           </Button>
+        //           <Button
+        //             type="submit"
+        //             disabled={isSubmitting || !createJobForm.registration_number || !createJobForm.job_type || !createJobForm.description || !createJobForm.selected_workshop_id}
+        //           >
+        //             {isSubmitting ? "Creating..." : "Create Job"}
+        //           </Button>
+        //         </div>
+        //       </form>
+        //     </DialogContent>
+        //   </Dialog>
+        // </div>
