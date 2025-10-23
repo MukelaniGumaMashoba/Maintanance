@@ -105,6 +105,7 @@ export default function InventoryPage() {
       const { data: jobsData, error: jobsError } = await supabase
         .from('workshop_job')
         .select('*')
+        .eq("status", "approved")
         .order('created_at', { ascending: false });
 
       if (jobsError) {

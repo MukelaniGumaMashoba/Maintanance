@@ -30,7 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Toast } from "@radix-ui/react-toast";
+import { toast } from "sonner";
 
 interface WorkshopJob {
   id: number;
@@ -65,8 +65,6 @@ export default function WorkshopJobDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
 
-  const toast = Toast;
-
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [assignedTechId, setAssignedTechId] = useState<number | null>(null);
   const [isAssigned, setIsAssigned] = useState(false);
@@ -96,7 +94,9 @@ export default function WorkshopJobDetailPage() {
       fetchParts();
     }
     const fetchTechnician = async () => {
-      const { data, error } = await supabase.from("technicians_klaver").select("*");
+      const { data, error } = await supabase
+        .from("technicians_klaver")
+        .select("*");
 
       if (error) {
         console.error("Error fetching technician:", error);
@@ -118,14 +118,18 @@ export default function WorkshopJobDetailPage() {
       .eq("job_id", selectedJobForTech.id)
       .single();
 
+    console.log(data);
+
     if (error) {
       console.error("Error fetching assigned technician:", error);
       return;
     }
     if (!data) return;
     const techId = data.tech_id;
+    console.log("technicaion: " + techId);
+
     const { data: techData, error: techError } = await supabase
-      .from("technicians")
+      .from("technicians_klaver")
       .select("*")
       .eq("id", techId || 0)
       .single();
@@ -159,6 +163,7 @@ export default function WorkshopJobDetailPage() {
   });
 
   useEffect(() => {
+    if (!params.id) return;
     const fetchJob = async () => {
       const { data, error } = await supabase
         .from("workshop_job")
@@ -172,29 +177,48 @@ export default function WorkshopJobDetailPage() {
         return;
       }
       setJob(data as any);
-      // Fetch existing assignment for this job (if any)
-      try {
-        const { data: assignment } = await supabase
-          .from("workshop_assignments")
-          .select("*")
-          .eq("job_id", data.id)
-          .maybeSingle();
-
-        if (assignment && assignment.tech_id) {
-          setAssignedTechId(assignment.tech_id as number);
-          setIsAssigned(true);
-        } else {
-          setAssignedTechId(null);
-          setIsAssigned(false);
-        }
-      } catch (err) {
-        console.error("Error fetching assignment:", err);
+      setSelectedJobForTech(data as any); // Set selected job here for assigned tech fetching
+      // Fetch assignment
+      const { data: assignment, error: assignmentError } = await supabase
+        .from("workshop_assignments")
+        .select("*")
+        .eq("job_id", data.id)
+        .single();
+      if (assignment && assignment.tech_id) {
+        setAssignedTechId(assignment.tech_id);
+        setIsAssigned(true);
+      } else {
+        setAssignedTechId(null);
+        setIsAssigned(false);
       }
       setIsLoading(false);
     };
-    if (params.id) fetchJob();
-    getAssignedTechnician();
+
+    fetchJob();
   }, [params.id, supabase]);
+
+  // Trigger fetching assigned technician when selectedJobForTech is set
+  useEffect(() => {
+    if (selectedJobForTech) {
+      getAssignedTechnician();
+    }
+  }, [selectedJobForTech]);
+
+  // Also refetch assigned technician when assignedTechId changes, if needed
+  useEffect(() => {
+    if (assignedTechId) {
+      // Fetch technician by ID if not yet loaded
+      const fetchTech = async () => {
+        const { data, error } = await supabase
+          .from("technicians_klaver")
+          .select("*")
+          .eq("id", assignedTechId)
+          .single();
+        if (!error && data) setSelectedTechnician(data as Technician);
+      };
+      fetchTech();
+    }
+  }, [assignedTechId, supabase]);
 
   if (isLoading) return <div>Loading...</div>;
   if (!job) return <div>Workshop job not found</div>;
@@ -233,7 +257,7 @@ export default function WorkshopJobDetailPage() {
       // Update local state to reflect assignment
       setAssignedTechId(technicianId);
       setIsAssigned(true);
-      toast({ title: `Technician ${technicianName} assigned.` });
+      toast("Technician " + technicianName + " assigned.");
       setIsTechDialogOpen(false);
     } catch (err) {
       console.error(
@@ -242,7 +266,7 @@ export default function WorkshopJobDetailPage() {
           ? (err as { message?: string }).message || ""
           : ""
       );
-      toast({ title: "Failed to assign technician." });
+      toast("Failed to assign technician.");
     }
   };
 
@@ -359,11 +383,15 @@ export default function WorkshopJobDetailPage() {
                     className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
                   >
                     <span className="text-sm text-gray-800">
-                      {typeof part.job_parts === 'string' ? part.job_parts : 
-                       typeof part.given_parts === 'string' ? part.given_parts :
-                       Array.isArray(part.job_parts) ? part.job_parts.join(', ') :
-                       Array.isArray(part.given_parts) ? part.given_parts.join(', ') :
-                       part.part_name || part.description || "Unknown part"}
+                      {typeof part.job_parts === "string"
+                        ? part.job_parts
+                        : typeof part.given_parts === "string"
+                        ? part.given_parts
+                        : Array.isArray(part.job_parts)
+                        ? part.job_parts.join(", ")
+                        : Array.isArray(part.given_parts)
+                        ? part.given_parts.join(", ")
+                        : part.part_name || part.description || "Unknown part"}
                     </span>
                     <span className="text-xs text-gray-500 italic">
                       {`Part #${index + 1}`}
@@ -446,17 +474,17 @@ export default function WorkshopJobDetailPage() {
           </div>
 
           <div className="max-h-[300px] overflow-y-auto space-y-2">
-            {filteredTechnicians
-              .filter((tech) => {
-                const techSpecialtyTerms = tech.specialties;
-                const searchTerms = searchTechnicianSpecialty
-                  .toLowerCase()
-                  .split(/[\s,]+/);
-                // Return true if any job type keyword is included in tech specialty terms
-                return searchTerms.some((term) =>
-                  techSpecialtyTerms.includes(term)
-                );
-              })
+            {technicians
+              // .filter((tech) => {
+              //   const techSpecialtyTerms = tech.specialties;
+              //   const searchTerms = searchTechnicianSpecialty
+              //     .toLowerCase()
+              //     .split(/[\s,]+/);
+              //   // Return true if any job type keyword is included in tech specialty terms
+              //   return searchTerms.some((term) =>
+              //     techSpecialtyTerms.includes(term)
+              //   );
+              // })
               .map((tech) => (
                 <div
                   key={tech.id}
