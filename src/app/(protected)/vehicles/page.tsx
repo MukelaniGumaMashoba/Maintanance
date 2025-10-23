@@ -253,8 +253,7 @@ export default function Vehicles() {
       // Filter for Klava company vehicles only
       const { data: vehicles, error } = await supabase
         .from('vehiclesc_workshop')
-        .select('*')
-        .eq('company_id', 1); // Klava company ID
+        .select('*');
         
       if (error) {
         console.error("the error is", error.name, error.message)
@@ -905,8 +904,12 @@ export default function Vehicles() {
                   <TableHead>Fuel</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Assigned Driver</TableHead>
+                  {/* <TableHead>Priority</TableHead> */}
+                  {/* <TableHead>Status</TableHead> */}
+                  <TableHead>Site</TableHead>
+                  <TableHead>Operator</TableHead>
+                  <TableHead>Asset Type</TableHead>
+                  {/* <TableHead>Assigned Driver</TableHead> */}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -922,117 +925,17 @@ export default function Vehicles() {
                     <TableCell>{vehicle.fuel_type}</TableCell>
                     <TableCell>{vehicle.colour}</TableCell>
                     <TableCell className="capitalize">{vehicle.vehicle_type}</TableCell>
-                    <TableCell>{getPriorityBadge(vehicle.vehicle_priority)}</TableCell>
+                    {/* <TableCell>{getPriorityBadge(vehicle.vehicle_priority)}</TableCell> */}
                     {/* <TableCell>
-                      {technicians.find(tech => tech.id === vehicle.tech_id)?.name || " "}
+                      <Badge variant={vehicle.status === 'active' ? 'default' : 'secondary'}>
+                        {vehicle.status || 'N/A'}
+                      </Badge>
                     </TableCell> */}
-                    <TableCell className="flex items-center gap-2">
-                      {drivers.find(driver => driver.id === vehicle.driver_id) ? (
-                        <>
-                          <span>
-                            {drivers.find(driver => driver.id === vehicle.driver_id)?.first_name} {drivers.find(driver => driver.id === vehicle.driver_id)?.surname}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="ml-2"
-                            onClick={async () => {
-                              // Clear driver assignment
-                              const { error } = await supabase
-                                .from('vehiclesc_workshop')
-                                .update({ driver_id: null })
-                                .eq('id', vehicle.id);
-
-                              if (error) {
-                                alert('Failed to unassign driver: ' + error.message);
-                                console.error(error);
-                              } else {
-                                toast.success('Driver unassigned successfully');
-                                router.refresh(); // refresh list to show update
-                              }
-                            }}
-                          >
-                            Unassign
-                          </Button>
-                        </>
-                      ) : (
-                        <span>Not Assigned</span>
-                      )}
-                    </TableCell>
-
-
-
-                    <TableCell>
+                    <TableCell>{vehicle.site || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.operator_name || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.asset_type || 'N/A'}</TableCell>
+                   <TableCell>
                       <div className="flex flex-row gap-3">
-                        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="px-4 py-2"
-                              onClick={() => {
-                                setSelectedVehicleReg(vehicle.registration_number);
-                                setSelectedVehicleId(vehicle.id); // NEW: store actual ID
-                                setDialogOpen(true);
-                              }}
-                            >
-                              Assign
-                            </Button>
-
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-md w-full">
-                            <DialogTitle>Assign Driver</DialogTitle>
-                            <DialogDescription>
-                              Assign driver for vehicle with registration: <strong>{selectedVehicleReg}</strong>
-                            </DialogDescription>
-                            {/* technician search & list */}
-                            <Input
-                              placeholder="Search driver by name"
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="mb-4"
-                            />
-                            <div className="max-h-60 overflow-auto space-y-2">
-                              {/* {filteredTechs.length > 0 ? (
-                                filteredTechs.map((tech, index) => (
-                                  <button
-                                    key={tech.id}
-                                    onClick={() => {
-                                      if (selectedVehicleId) {
-                                        handleAssign(selectedVehicleId, tech.id);
-                                        setDialogOpen(false);
-                                      }
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                                  >
-                                    {tech.name}
-                                  </button>
-                                ))
-                              ) : (
-                                <p className="text-center text-sm text-gray-500 py-4">No technicians found</p>
-                              )} */}
-                              {filteredDrivers.length > 0 ? (
-                                filteredDrivers.map((driver) => (
-                                  <button
-                                    key={driver.id}
-                                    onClick={() => {
-                                      if (selectedVehicleId) {
-                                        handleAssignDriver(selectedVehicleId, driver.id);
-                                        setDialogOpen(false);
-                                      }
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                                  >
-                                    {driver.first_name} {driver.surname}
-                                  </button>
-                                ))
-                              ) : (
-                                <p className="text-center text-sm text-gray-500 py-4">No drivers found</p>
-                              )}
-
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-
                         <Link href={`/vehicles/${vehicle.id}`}>
                           <Button variant="default">View</Button>
                         </Link>
@@ -1077,3 +980,116 @@ export default function Vehicles() {
     </div>
   )
 }
+
+
+
+
+                        // <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                        //   <DialogTrigger asChild>
+                        //     <Button
+                        //       variant="outline"
+                        //       className="px-4 py-2"
+                        //       onClick={() => {
+                        //         setSelectedVehicleReg(vehicle.registration_number);
+                        //         setSelectedVehicleId(vehicle.id); // NEW: store actual ID
+                        //         setDialogOpen(true);
+                        //       }}
+                        //     >
+                        //       Assign
+                        //     </Button>
+
+                        //   </DialogTrigger>
+                        //   <DialogContent className="sm:max-w-md w-full">
+                        //     <DialogTitle>Assign Driver</DialogTitle>
+                        //     <DialogDescription>
+                        //       Assign driver for vehicle with registration: <strong>{selectedVehicleReg}</strong>
+                        //     </DialogDescription>
+                        //     {/* technician search & list */}
+                        //     <Input
+                        //       placeholder="Search driver by name"
+                        //       value={searchTerm}
+                        //       onChange={(e) => setSearchTerm(e.target.value)}
+                        //       className="mb-4"
+                        //     />
+                        //     <div className="max-h-60 overflow-auto space-y-2">
+                        //       {/* {filteredTechs.length > 0 ? (
+                        //         filteredTechs.map((tech, index) => (
+                        //           <button
+                        //             key={tech.id}
+                        //             onClick={() => {
+                        //               if (selectedVehicleId) {
+                        //                 handleAssign(selectedVehicleId, tech.id);
+                        //                 setDialogOpen(false);
+                        //               }
+                        //             }}
+                        //             className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        //           >
+                        //             {tech.name}
+                        //           </button>
+                        //         ))
+                        //       ) : (
+                        //         <p className="text-center text-sm text-gray-500 py-4">No technicians found</p>
+                        //       )} */}
+                        //       {filteredDrivers.length > 0 ? (
+                        //         filteredDrivers.map((driver) => (
+                        //           <button
+                        //             key={driver.id}
+                        //             onClick={() => {
+                        //               if (selectedVehicleId) {
+                        //                 handleAssignDriver(selectedVehicleId, driver.id);
+                        //                 setDialogOpen(false);
+                        //               }
+                        //             }}
+                        //             className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        //           >
+                        //             {driver.first_name} {driver.surname}
+                        //           </button>
+                        //         ))
+                        //       ) : (
+                        //         <p className="text-center text-sm text-gray-500 py-4">No drivers found</p>
+                        //       )}
+
+                        //     </div>
+                        //   </DialogContent>
+                        // </Dialog>
+
+
+
+                    // <TableCell className="flex items-center gap-2">
+                    //   {drivers.find(driver => driver.id === vehicle.driver_id) ? (
+                    //     <>
+                    //       <span>
+                    //         {drivers.find(driver => driver.id === vehicle.driver_id)?.first_name} {drivers.find(driver => driver.id === vehicle.driver_id)?.surname}
+                    //       </span>
+                    //       <Button
+                    //         size="sm"
+                    //         variant="outline"
+                    //         className="ml-2"
+                    //         onClick={async () => {
+                    //           // Clear driver assignment
+                    //           const { error } = await supabase
+                    //             .from('vehiclesc_workshop')
+                    //             .update({ driver_id: null })
+                    //             .eq('id', vehicle.id);
+
+                    //           if (error) {
+                    //             alert('Failed to unassign driver: ' + error.message);
+                    //             console.error(error);
+                    //           } else {
+                    //             toast.success('Driver unassigned successfully');
+                    //             // Refresh vehicles list
+                    //             const { data: updatedVehicles } = await supabase
+                    //               .from('vehiclesc_workshop')
+                    //               .select('*')
+                    //               .eq('company_id', 1);
+                    //             setVehicles(updatedVehicles as []);
+                    //           }
+                    //         }}
+                    //       >
+                    //         Unassign
+                    //       </Button>
+                    //     </>
+                    //   ) : (
+                    //     <span>Not Assigned</span>
+                    //   )}
+                    // </TableCell>

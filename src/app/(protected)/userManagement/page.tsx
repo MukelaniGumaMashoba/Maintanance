@@ -215,14 +215,10 @@ export default function SettingsPage() {
         switch (role) {
             case "admin":
                 return "bg-purple-100 text-purple-800"
-            case "fleet-manager":
+            case "fleet manager":
                 return "bg-blue-100 text-blue-800"
-            case "call-center":
+            case "call centre":
                 return "bg-green-100 text-green-800"
-            case "cost-center":
-                return "bg-orange-100 text-orange-800"
-            case "customer":
-                return "bg-gray-100 text-gray-800"
             default:
                 return "bg-gray-100 text-gray-800"
         }
@@ -344,7 +340,7 @@ export default function SettingsPage() {
                                                     <TableCell className="font-medium">{user.full_name}</TableCell>
                                                     <TableCell>{user.email}</TableCell>
                                                     <TableCell>
-                                                        <Badge variant="outline">{user.role}</Badge>
+                                                        <Badge variant="outline" className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
                                                     </TableCell>
                                                     <TableCell>{user.department || '-'}</TableCell>
                                                     <TableCell>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import RepairHistory from "@/components/RepairHistory";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,11 @@ interface Vehicle {
   inspected: boolean | null;
   type: string | null;
   workshop_id: string | null;
+  status: string | null;
+  operator_name: string | null;
+  site: string | null;
+  chasis: string | null;
+  asset_type: string | null;
 }
 
 export default function VehicleDetailsPage() {
@@ -470,6 +476,43 @@ export default function VehicleDetailsPage() {
                 value={vehicle.expected_boarding_date ?? "N/A"}
                 type="date"
               />
+              <EditableField
+                label="Status"
+                name="status"
+                value={vehicle.status ?? "N/A"}
+              />
+              <EditableField
+                label="Site"
+                name="site"
+                value={vehicle.site ?? "N/A"}
+              />
+              <EditableField
+                label="Operator Name"
+                name="operator_name"
+                value={vehicle.operator_name ?? "N/A"}
+              />
+              <EditableField
+                label="Chassis"
+                name="chasis"
+                value={vehicle.chasis ?? "N/A"}
+              />
+              <EditableField
+                label="Asset Type"
+                name="asset_type"
+                value={vehicle.asset_type ?? "N/A"}
+              />
+            </motion.div>
+
+            <Separator />
+
+            {/* Repair History */}
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              <h3 className="text-lg font-semibold mb-4">Repair History</h3>
+              <RepairHistory vehicleId={vehicle.id} />
             </motion.div>
           </CardContent>
         </Card>
