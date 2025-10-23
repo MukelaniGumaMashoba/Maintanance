@@ -1820,6 +1820,7 @@ export type Database = {
       profiles: {
         Row: {
           company: number | null
+          company_name: string | null
           created_at: string | null
           department: string | null
           email: string | null
@@ -1832,6 +1833,7 @@ export type Database = {
         }
         Insert: {
           company?: number | null
+          company_name?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -1844,6 +1846,7 @@ export type Database = {
         }
         Update: {
           company?: number | null
+          company_name?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -3406,54 +3409,153 @@ export type Database = {
       workshop_job: {
         Row: {
           accepted: boolean | null
+          actual_cost: number | null
+          actual_duration_hours: number | null
+          after_photos: Json | null
+          approval_status: string | null
+          assigned_technician_id: string | null
+          before_photos: Json | null
           client_name: string | null
           client_phone: string | null
+          completion_date: string | null
+          completion_notes: string | null
           created_at: string
+          customer_feedback: string | null
+          customer_satisfaction_rating: number | null
+          customer_signature_obtained: boolean | null
           description: string | null
+          documents: Json | null
+          due_date: string | null
+          end_time: string | null
+          equipment_used: Json | null
+          estimated_cost: number | null
+          estimated_duration_hours: number | null
+          grand_total: number | null
           id: number
+          job_status: string | null
           job_type: string | null
           jobId_workshop: string | null
+          labor_cost: number | null
           location: string | null
           notes: string | null
+          parts_required: Json | null
+          priority: string | null
+          products_required: Json | null
+          quality_check_passed: boolean | null
           registration_no: string | null
+          safety_checklist_completed: boolean | null
+          start_time: string | null
           status: string | null
+          technician_id: string | null
+          technician_name: string | null
+          technician_phone: string | null
+          total_labor_cost: number | null
+          total_parts_cost: number | null
+          total_sublet_cost: number | null
           type_of_work: string | null
           updated_at: string | null
           vehicle_id: number | null
+          work_notes: string | null
         }
         Insert: {
           accepted?: boolean | null
+          actual_cost?: number | null
+          actual_duration_hours?: number | null
+          after_photos?: Json | null
+          approval_status?: string | null
+          assigned_technician_id?: string | null
+          before_photos?: Json | null
           client_name?: string | null
           client_phone?: string | null
+          completion_date?: string | null
+          completion_notes?: string | null
           created_at?: string
+          customer_feedback?: string | null
+          customer_satisfaction_rating?: number | null
+          customer_signature_obtained?: boolean | null
           description?: string | null
+          documents?: Json | null
+          due_date?: string | null
+          end_time?: string | null
+          equipment_used?: Json | null
+          estimated_cost?: number | null
+          estimated_duration_hours?: number | null
+          grand_total?: number | null
           id?: number
+          job_status?: string | null
           job_type?: string | null
           jobId_workshop?: string | null
+          labor_cost?: number | null
           location?: string | null
           notes?: string | null
+          parts_required?: Json | null
+          priority?: string | null
+          products_required?: Json | null
+          quality_check_passed?: boolean | null
           registration_no?: string | null
+          safety_checklist_completed?: boolean | null
+          start_time?: string | null
           status?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+          technician_phone?: string | null
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          total_sublet_cost?: number | null
           type_of_work?: string | null
           updated_at?: string | null
           vehicle_id?: number | null
+          work_notes?: string | null
         }
         Update: {
           accepted?: boolean | null
+          actual_cost?: number | null
+          actual_duration_hours?: number | null
+          after_photos?: Json | null
+          approval_status?: string | null
+          assigned_technician_id?: string | null
+          before_photos?: Json | null
           client_name?: string | null
           client_phone?: string | null
+          completion_date?: string | null
+          completion_notes?: string | null
           created_at?: string
+          customer_feedback?: string | null
+          customer_satisfaction_rating?: number | null
+          customer_signature_obtained?: boolean | null
           description?: string | null
+          documents?: Json | null
+          due_date?: string | null
+          end_time?: string | null
+          equipment_used?: Json | null
+          estimated_cost?: number | null
+          estimated_duration_hours?: number | null
+          grand_total?: number | null
           id?: number
+          job_status?: string | null
           job_type?: string | null
           jobId_workshop?: string | null
+          labor_cost?: number | null
           location?: string | null
           notes?: string | null
+          parts_required?: Json | null
+          priority?: string | null
+          products_required?: Json | null
+          quality_check_passed?: boolean | null
           registration_no?: string | null
+          safety_checklist_completed?: boolean | null
+          start_time?: string | null
           status?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+          technician_phone?: string | null
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          total_sublet_cost?: number | null
           type_of_work?: string | null
           updated_at?: string | null
           vehicle_id?: number | null
+          work_notes?: string | null
         }
         Relationships: [
           {
@@ -3461,6 +3563,56 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehiclesc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshop_job_parts: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          item_code: string | null
+          part_name: string
+          price: number | null
+          quantity: number
+          status: string | null
+          total_cost: number | null
+          updated_at: string | null
+          workshop_job_id: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          item_code?: string | null
+          part_name: string
+          price?: number | null
+          quantity?: number
+          status?: string | null
+          total_cost?: number | null
+          updated_at?: string | null
+          workshop_job_id: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          item_code?: string | null
+          part_name?: string
+          price?: number | null
+          quantity?: number
+          status?: string | null
+          total_cost?: number | null
+          updated_at?: string | null
+          workshop_job_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_job_parts_workshop_job_id_fkey"
+            columns: ["workshop_job_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
             referencedColumns: ["id"]
           },
         ]

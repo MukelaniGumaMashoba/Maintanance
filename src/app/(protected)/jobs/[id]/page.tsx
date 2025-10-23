@@ -96,7 +96,7 @@ export default function WorkshopJobDetailPage() {
       fetchParts();
     }
     const fetchTechnician = async () => {
-      const { data, error } = await supabase.from("technicians").select("*");
+      const { data, error } = await supabase.from("technicians_klaver").select("*");
 
       if (error) {
         console.error("Error fetching technician:", error);
@@ -359,7 +359,11 @@ export default function WorkshopJobDetailPage() {
                     className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
                   >
                     <span className="text-sm text-gray-800">
-                      {part.job_parts || part.given_parts || "Unknown part"}
+                      {typeof part.job_parts === 'string' ? part.job_parts : 
+                       typeof part.given_parts === 'string' ? part.given_parts :
+                       Array.isArray(part.job_parts) ? part.job_parts.join(', ') :
+                       Array.isArray(part.given_parts) ? part.given_parts.join(', ') :
+                       part.part_name || part.description || "Unknown part"}
                     </span>
                     <span className="text-xs text-gray-500 italic">
                       {`Part #${index + 1}`}

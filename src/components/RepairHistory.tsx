@@ -24,7 +24,7 @@ export default function RepairHistory({ vehicleId }: { vehicleId: number }) {
   useEffect(() => {
     const fetchRepairs = async () => {
       const { data, error } = await supabase
-        .from('job_cards')
+        .from('workshop_job')
         .select(`
           id,
           job_card_number,

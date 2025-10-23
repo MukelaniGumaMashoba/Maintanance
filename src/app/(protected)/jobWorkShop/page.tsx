@@ -40,7 +40,7 @@ import { createClient } from "@/lib/supabase/client"
 import { nullable } from "zod"
 import { toast } from "sonner"
 import JobCardWorkflow from '@/components/ui-personal/job-card-workflow'
-// import { getVehicleByRegistrationNumber } from "@/lib/action/function"
+import RequestedParts from '@/components/RequestedParts'
 
 interface Job {
   id: number
@@ -915,32 +915,37 @@ export default function FleetJobsPage() {
                           {new Date(job.created_at).toLocaleDateString()}
                         </span>
                       </CardHeader>
-                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                        <div>
-                          <p>
-                            <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
-                          </p>
-                          <p className="truncate">
-                            <strong>Description:</strong> {job.description || "No description"}
-                          </p>
-                          <p>
-                            <strong>Estimated Cost:</strong> {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
-                          </p>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                          <div>
+                            <p>
+                              <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Description:</strong> {job.description || "No description"}
+                            </p>
+                            <p>
+                              <strong>Estimated Cost:</strong> {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <p>
+                              <strong>Client Name:</strong> {job.client_name || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Client Phone:</strong> {job.client_phone || "N/A"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Location:</strong> {job.location || "Unknown"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Notes:</strong> {job.notes || "-"}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p>
-                            <strong>Client Name:</strong> {job.client_name || "N/A"}
-                          </p>
-                          <p>
-                            <strong>Client Phone:</strong> {job.client_phone || "N/A"}
-                          </p>
-                          <p className="truncate">
-                            <strong>Location:</strong> {job.location || "Unknown"}
-                          </p>
-                          <p className="truncate">
-                            <strong>Notes:</strong> {job.notes || "-"}
-                          </p>
-                        </div>
+                        
+                        {/* Requested Parts Section */}
+                        <RequestedParts jobId={job.id} />
                       </CardContent>
                       <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                         <Button 
@@ -960,54 +965,7 @@ export default function FleetJobsPage() {
                             View Details
                           </Button>
                         </Link>
-                        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex items-center gap-2 px-4 py-1 bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition rounded"
-                              aria-label="Edit job"
-                            >
-                              Edit
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-lg">
-                            <DialogHeader>
-                              <DialogTitle>Add Parts to Job</DialogTitle>
-                              <DialogDescription>
-                                Enter parts used or assigned to this job.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <Input
-                                placeholder="Part name"
-                                value={partName}
-                                onChange={(e) => setPartName(e.target.value)}
-                                autoFocus
-                              />
-                              <Button>
-                                Add Part
-                              </Button>
-                              <div>
-                                <h4 className="font-semibold mb-2">Parts List:</h4>
-                                {parts.length === 0 ? (
-                                  <p className="text-gray-500 text-sm">No parts added yet.</p>
-                                ) : (
-                                  <ul className="list-disc list-inside space-y-1 max-h-40 overflow-auto">
-                                    {parts.map((part, index) => (
-                                      <li key={index}>{part}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button>Close</Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+
                       </CardFooter>
                     </Card>
                   ))}
@@ -1016,32 +974,33 @@ export default function FleetJobsPage() {
             </div>
           </TabsContent>
           <TabsContent value="kanban" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {["pending", "inprogress", "awaiting-approval", "completed"].map((status) => (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {["Awaiting Workshop Acceptance", "In Progress", "Awaiting Approval", "Approved", "Completed"].map((status) => (
                 <Card key={status}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium capitalize">
+                    <CardTitle className="text-sm font-medium">
                       {status}
                       <Badge className="ml-2" variant="secondary">
-                        {filteredJobs.filter((job) => job.status === status).length}
+                        {workshopJob.filter((job) => job.status === status).length}
                       </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {filteredJobs
+                    {workshopJob
                       .filter((job) => job.status === status)
                       .map((job) => (
                         <Card key={job.id} className="p-3 hover:shadow-sm transition-shadow cursor-pointer">
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">{job.job_id}</p>
-                              <Badge className={getPriorityColor(job.priority)}>
-                                {job.priority}
+                              <p className="text-sm font-medium">{job.jobId_workshop}</p>
+                              <Badge className={getStatusColor(job.status)}>
+                                {job.status}
                               </Badge>
                             </div>
+                            <p className="text-xs text-gray-600">{job.registration_no}</p>
                             <p className="text-xs text-gray-600 line-clamp-2">{job.description}</p>
                             <div className="flex items-center justify-between text-xs text-gray-500">
-                              {job.estimatedCost && <span>R {job.estimatedCost}</span>}
+                              {job.estimated_cost && <span>R {job.estimated_cost}</span>}
                             </div>
                           </div>
                         </Card>
@@ -1060,8 +1019,8 @@ export default function FleetJobsPage() {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{jobs.length}</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
+                  <div className="text-2xl font-bold">{workshopJob.length}</div>
+                  <p className="text-xs text-muted-foreground">Workshop jobs created</p>
                 </CardContent>
               </Card>
               <Card>
@@ -1071,7 +1030,7 @@ export default function FleetJobsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {jobs.filter((job) => job.status === "inprogress").length}
+                    {workshopJob.filter((job) => job.status === "In Progress").length}
                   </div>
                   <p className="text-xs text-muted-foreground">Active jobs being worked on</p>
                 </CardContent>
@@ -1082,7 +1041,7 @@ export default function FleetJobsPage() {
                   <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{jobs.filter((job) => job.status === "completed").length}</div>
+                  <div className="text-2xl font-bold">{workshopJob.filter((job) => job.status === "Completed").length}</div>
                   <p className="text-xs text-muted-foreground">Successfully completed jobs</p>
                 </CardContent>
               </Card>
@@ -1094,9 +1053,9 @@ export default function FleetJobsPage() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     R{" "}
-                    {(
-                      jobs.reduce((sum, job) => sum + (job.actualCost || job.estimatedCost || 0), 0) / jobs.length
-                    ).toFixed(0)}
+                    {workshopJob.length > 0 ? (
+                      workshopJob.reduce((sum, job) => sum + (job.estimated_cost || 0), 0) / workshopJob.length
+                    ).toFixed(0) : '0'}
                   </div>
                   <p className="text-xs text-muted-foreground">Average job cost</p>
                 </CardContent>
@@ -1106,21 +1065,20 @@ export default function FleetJobsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Job Status Distribution</CardTitle>
-                <CardDescription>Overview of all job statuses</CardDescription>
+                <CardDescription>Overview of workshop job statuses</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    "pending",
-                    "assigned",
-                    "inprogress",
-                    "awaiting-approval",
-                    "approved",
-                    "completed",
-                    "cancelled",
+                    "Awaiting Workshop Acceptance",
+                    "In Progress", 
+                    "Awaiting Approval",
+                    "Approved",
+                    "Completed",
+                    "Rejected"
                   ].map((status) => {
-                    const count = jobs.filter((job) => job.status === status).length
-                    const percentage = jobs.length > 0 ? (count / jobs.length) * 100 : 0
+                    const count = workshopJob.filter((job) => job.status === status).length
+                    const percentage = workshopJob.length > 0 ? (count / workshopJob.length) * 100 : 0
                     return (
                       <div key={status} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

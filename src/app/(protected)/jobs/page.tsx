@@ -107,7 +107,7 @@ interface CreateWorkshopJobForm {
 }
 interface WorkshopJob {
   id: number;
-  registration_no: string;
+  jobId_workshop: string;
   job_type: string;
   description: string;
   estimated_cost?: number;
@@ -115,9 +115,14 @@ interface WorkshopJob {
   client_phone: string;
   location: string;
   notes: string;
-  selected_workshop_id: string;
-  created_at: Date;
-  jobId_workshop: string;
+  work_notes?: string;
+  workshop_id?: number;
+  created_at: string;
+  status: string;
+  registration_no: string;
+  technician_id?: string;
+  priority?: string;
+  job_status?: string;
 }
 
 export default function FleetJobsPage() {
@@ -427,6 +432,7 @@ export default function FleetJobsPage() {
         .update({
           status: status,
           notes: notes || "",
+          work_notes: notes || "",
           updated_at: new Date().toISOString(),
         })
         .eq("id", jobId);
@@ -515,9 +521,12 @@ export default function FleetJobsPage() {
           description: createJobForm.description,
           jobId_workshop: job_id,
           notes: createJobForm.notes,
+          work_notes: createJobForm.notes,
           location: createJobForm.location,
           client_name: createJobForm.client_name,
           client_phone: createJobForm.client_phone,
+          status: 'Awaiting Workshop Acceptance',
+          estimated_cost: createJobForm.estimated_cost || 0
         })
         .select()
         .single();
@@ -594,7 +603,7 @@ export default function FleetJobsPage() {
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase.from("workshop_job").delete();
+      const { error } = await supabase.from("workshop_job").delete().eq('id', job.id);
       // .eq('id', job?.id); // Make sure your `WorkshopJob` type includes `id`
 
       if (error) {
@@ -1132,7 +1141,7 @@ export default function FleetJobsPage() {
                             <span className="font-medium text-gray-900">
                               Notes:
                             </span>{" "}
-                            {job.notes || "-"}
+                            {job.notes || job.work_notes || "-"}
                           </p>
 
                           {/* Parts List */}

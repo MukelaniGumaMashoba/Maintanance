@@ -210,18 +210,18 @@ export default function VehicleDetailsPage() {
       value === null || value === undefined || value === "" ? "N/A" : value;
 
     return (
-      <div>
-        <p className="text-gray-500 text-sm">{label}</p>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
         {editing ? (
           options ? (
             <select
               name={name}
               value={editData?.[name]?.toString() ?? ""}
               onChange={handleInputChange}
-              className="border rounded px-2 py-1 w-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               disabled={disabled}
             >
-              <option value="">Select</option>
+              <option value="">Select {label}</option>
               {options.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
@@ -233,9 +233,10 @@ export default function VehicleDetailsPage() {
               name={name}
               value={editData?.[name]?.toString() ?? ""}
               onChange={handleInputChange}
-              className="border rounded px-2 py-1 w-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical"
               disabled={disabled}
-              rows={4}
+              rows={3}
+              placeholder={`Enter ${label.toLowerCase()}`}
             />
           ) : (
             <input
@@ -243,12 +244,13 @@ export default function VehicleDetailsPage() {
               type={type}
               value={editData?.[name]?.toString() ?? ""}
               onChange={handleInputChange}
-              className="border rounded px-2 py-1 w-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               disabled={disabled}
+              placeholder={`Enter ${label.toLowerCase()}`}
             />
           )
         ) : (
-          <p className="font-semibold">{displayValue}</p>
+          <p className="px-3 py-2 bg-gray-50 rounded-md font-medium text-gray-900">{displayValue}</p>
         )}
       </div>
     );
@@ -306,22 +308,29 @@ export default function VehicleDetailsPage() {
             </AlertDialog>
           </div>
 
-          <div>
+          <div className="flex gap-2">
             {editing ? (
               <>
-                <Button onClick={handleUpdate} className="ml-2">
-                  Save
+                <Button 
+                  onClick={handleUpdate} 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!editData}
+                >
+                  Save Changes
                 </Button>
                 <Button
                   variant="outline"
                   onClick={cancelEditing}
-                  className="ml-2"
+                  className="border-gray-300 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
               </>
             ) : (
-              <Button onClick={startEditing} className="ml-2">
+              <Button 
+                onClick={startEditing} 
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 Edit Vehicle
               </Button>
             )}
@@ -391,16 +400,19 @@ export default function VehicleDetailsPage() {
                 label="Vehicle Type"
                 name="vehicle_type"
                 value={vehicle.vehicle_type}
+                options={['vehicle', 'trailer', 'commercial', 'tanker', 'truck', 'specialized']}
               />
               <EditableField
                 label="Fuel Type"
                 name="fuel_type"
                 value={vehicle.fuel_type}
+                options={['petrol', 'diesel', 'electric', 'hybrid']}
               />
               <EditableField
                 label="Transmission"
                 name="transmission_type"
                 value={vehicle.transmission_type}
+                options={['manual', 'automatic', 'cvt']}
               />
               <EditableField
                 label="Service Intervals"
@@ -410,7 +422,8 @@ export default function VehicleDetailsPage() {
               <EditableField
                 label="Priority"
                 name="vehicle_priority"
-                value={<Badge>{vehicle.vehicle_priority}</Badge>}
+                value={vehicle.vehicle_priority}
+                options={['low', 'medium', 'high']}
               />
               <EditableField
                 label="Purchase Price"
