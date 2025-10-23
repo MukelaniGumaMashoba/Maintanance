@@ -39,6 +39,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { nullable } from "zod"
 import { toast } from "sonner"
+import JobCardWorkflow from '@/components/ui-personal/job-card-workflow'
 // import { getVehicleByRegistrationNumber } from "@/lib/action/function"
 
 interface Job {
@@ -127,6 +128,8 @@ export default function FleetJobsPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [partName, setPartName] = useState("")
   const [parts, setParts] = useState([]);
+  const [selectedJobForWorkflow, setSelectedJobForWorkflow] = useState<WorkshopJob | null>(null)
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false)
 
   // Form state for creating new workshop jobs
   const [isCreateJobDialogOpen, setIsCreateJobDialogOpen] = useState(false)
@@ -940,6 +943,17 @@ export default function FleetJobsPage() {
                         </div>
                       </CardContent>
                       <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedJobForWorkflow(job)
+                            setIsWorkflowOpen(true)
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          {job.status?.includes('Awaiting') ? 'Approve/Reject' : 'View Workflow'}
+                        </Button>
                         <Link href={`/jobWorkShop/${job.id}`}>
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-2" />
@@ -1195,6 +1209,27 @@ export default function FleetJobsPage() {
             </DialogContent>
           </Dialog>
         </Tabs>
+
+        {/* Job Card Workflow Modal */}
+        <JobCardWorkflow
+          isOpen={isWorkflowOpen}
+          onClose={() => setIsWorkflowOpen(false)}
+          jobCard={selectedJobForWorkflow}
+          onStatusUpdate={() => {
+            // Refresh jobs list
+            const getWorkshopJob = async () => {
+              const { data: WorkJ, error: workError } = await supabase
+                .from("workshop_job")
+                .select("*")
+                .order("created_at", { ascending: false })
+
+              if (!workError && WorkJ) {
+                setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
+              }
+            };
+            getWorkshopJob();
+          }}
+        />
       </div>
     </>
   )

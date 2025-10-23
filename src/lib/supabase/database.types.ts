@@ -470,6 +470,21 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          id: number
+          name: string
+        }
+        Insert: {
+          id?: number
+          name: string
+        }
+        Update: {
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       client: {
         Row: {
           accountmanager: string | null
@@ -1094,6 +1109,38 @@ export type Database = {
           },
         ]
       }
+      inventory_logs: {
+        Row: {
+          change_type: string | null
+          id: number
+          part_id: number | null
+          quantity_change: number | null
+          timestamp: string | null
+        }
+        Insert: {
+          change_type?: string | null
+          id?: number
+          part_id?: number | null
+          quantity_change?: number | null
+          timestamp?: string | null
+        }
+        Update: {
+          change_type?: string | null
+          id?: number
+          part_id?: number | null
+          quantity_change?: number | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_logs_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_assignments: {
         Row: {
           accepted: boolean | null
@@ -1336,6 +1383,44 @@ export type Database = {
           },
         ]
       }
+      job_card_approvals: {
+        Row: {
+          approved_at: string | null
+          approver_type: string | null
+          created_at: string | null
+          id: number
+          job_card_id: string | null
+          notes: string | null
+          status: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approver_type?: string | null
+          created_at?: string | null
+          id?: number
+          job_card_id?: string | null
+          notes?: string | null
+          status?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approver_type?: string | null
+          created_at?: string | null
+          id?: number
+          job_card_id?: string | null
+          notes?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_card_approvals_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_cards: {
         Row: {
           access_requirements: string | null
@@ -1343,6 +1428,7 @@ export type Database = {
           actual_cost: number | null
           actual_duration_hours: number | null
           after_photos: Json | null
+          approval_status: string | null
           assigned_technician_id: string | null
           before_photos: Json | null
           completion_date: string | null
@@ -1362,6 +1448,7 @@ export type Database = {
           equipment_used: Json | null
           estimated_cost: number | null
           estimated_duration_hours: number | null
+          grand_total: number | null
           id: string
           ip_address: string | null
           job_date: string | null
@@ -1370,6 +1457,7 @@ export type Database = {
           job_number: string
           job_status: string | null
           job_type: string
+          labor_cost: number | null
           latitude: number | null
           longitude: number | null
           new_account_number: string | null
@@ -1405,6 +1493,9 @@ export type Database = {
           technician_name: string | null
           technician_phone: string | null
           temporary_registration: string | null
+          total_labor_cost: number | null
+          total_parts_cost: number | null
+          total_sublet_cost: number | null
           updated_at: string | null
           updated_by: string | null
           vehicle_id: string | null
@@ -1421,6 +1512,7 @@ export type Database = {
           actual_cost?: number | null
           actual_duration_hours?: number | null
           after_photos?: Json | null
+          approval_status?: string | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           completion_date?: string | null
@@ -1440,6 +1532,7 @@ export type Database = {
           equipment_used?: Json | null
           estimated_cost?: number | null
           estimated_duration_hours?: number | null
+          grand_total?: number | null
           id?: string
           ip_address?: string | null
           job_date?: string | null
@@ -1448,6 +1541,7 @@ export type Database = {
           job_number: string
           job_status?: string | null
           job_type: string
+          labor_cost?: number | null
           latitude?: number | null
           longitude?: number | null
           new_account_number?: string | null
@@ -1483,6 +1577,9 @@ export type Database = {
           technician_name?: string | null
           technician_phone?: string | null
           temporary_registration?: string | null
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          total_sublet_cost?: number | null
           updated_at?: string | null
           updated_by?: string | null
           vehicle_id?: string | null
@@ -1499,6 +1596,7 @@ export type Database = {
           actual_cost?: number | null
           actual_duration_hours?: number | null
           after_photos?: Json | null
+          approval_status?: string | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           completion_date?: string | null
@@ -1518,6 +1616,7 @@ export type Database = {
           equipment_used?: Json | null
           estimated_cost?: number | null
           estimated_duration_hours?: number | null
+          grand_total?: number | null
           id?: string
           ip_address?: string | null
           job_date?: string | null
@@ -1526,6 +1625,7 @@ export type Database = {
           job_number?: string
           job_status?: string | null
           job_type?: string
+          labor_cost?: number | null
           latitude?: number | null
           longitude?: number | null
           new_account_number?: string | null
@@ -1561,6 +1661,9 @@ export type Database = {
           technician_name?: string | null
           technician_phone?: string | null
           temporary_registration?: string | null
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          total_sublet_cost?: number | null
           updated_at?: string | null
           updated_by?: string | null
           vehicle_id?: string | null
@@ -1618,6 +1721,60 @@ export type Database = {
           },
         ]
       }
+      parts: {
+        Row: {
+          category_id: number | null
+          description: string | null
+          id: number
+          item_code: string | null
+          location: string | null
+          price: number | null
+          quantity: number | null
+          supplier: string | null
+          total: number | null
+          vehicle_brand_id: number | null
+        }
+        Insert: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          item_code?: string | null
+          location?: string | null
+          price?: number | null
+          quantity?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Update: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          item_code?: string | null
+          location?: string | null
+          price?: number | null
+          quantity?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_vehicle_brand_id_fkey"
+            columns: ["vehicle_brand_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_items: {
         Row: {
           category: string
@@ -1668,6 +1825,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          permissions: Json | null
           phone_number: string | null
           role: string | null
           workshop_id: string | null
@@ -1679,6 +1837,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          permissions?: Json | null
           phone_number?: string | null
           role?: string | null
           workshop_id?: string | null
@@ -1690,6 +1849,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          permissions?: Json | null
           phone_number?: string | null
           role?: string | null
           workshop_id?: string | null
@@ -2208,6 +2368,81 @@ export type Database = {
         }
         Relationships: []
       }
+      sublets: {
+        Row: {
+          cost: number | null
+          created_at: string | null
+          description: string
+          id: number
+          job_card_id: string | null
+          status: string | null
+          supplier_id: number | null
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string | null
+          description: string
+          id?: number
+          job_card_id?: string | null
+          status?: string | null
+          supplier_id?: number | null
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string | null
+          description?: string
+          id?: number
+          job_card_id?: string | null
+          status?: string | null
+          supplier_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublets_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublets_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          id: number
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: number
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: number
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
       technician_vassign: {
         Row: {
           created_at: string
@@ -2497,6 +2732,24 @@ export type Database = {
           },
         ]
       }
+      vehicle_brands: {
+        Row: {
+          created_at: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       vehicle_inspections: {
         Row: {
           created_at: string | null
@@ -2541,6 +2794,54 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehiclesc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_maintenance_history: {
+        Row: {
+          completed_date: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          id: number
+          job_card_id: string | null
+          maintenance_type: string | null
+          vehicle_id: number | null
+        }
+        Insert: {
+          completed_date?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          job_card_id?: string | null
+          maintenance_type?: string | null
+          vehicle_id?: number | null
+        }
+        Update: {
+          completed_date?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          job_card_id?: string | null
+          maintenance_type?: string | null
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_maintenance_history_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehiclesc_workshop"
             referencedColumns: ["id"]
           },
         ]

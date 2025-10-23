@@ -256,7 +256,7 @@ export default function Dashboard() {
             a.action.toLowerCase().includes("settings") ||
             a.action.toLowerCase().includes("vehicles") ||
             a.action.toLowerCase().includes("drivers") ||
-            a.action.toLowerCase().includes("qoutation") ||
+            a.action.toLowerCase().includes("ccenter") ||
             a.action.toLowerCase().includes("usermanagement")
         );
 
@@ -493,7 +493,7 @@ export default function Dashboard() {
                 digitHeight={42}
               />
               <p className="mt-1 text-xs text-white/80">
-                Total Number of Card Logged
+                Total Number Of Card Logged
               </p>
             </CardContent>
           </Card>
@@ -563,7 +563,7 @@ export default function Dashboard() {
                 digitHeight={42}
               />
               <p className="mt-1 text-xs text-white/80">
-                Total towing operations
+                Total Towing Operations
               </p>
             </CardContent>
           </Card>
@@ -699,7 +699,7 @@ export default function Dashboard() {
                           Total jobs: {stats.workshopStats}
                         </p>
                       </div>
-                      <Link href="/qoutation">
+                      <Link href="/ccenter">
                         <Button size="sm">Review</Button>
                       </Link>
                     </div>
