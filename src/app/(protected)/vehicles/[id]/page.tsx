@@ -525,7 +525,7 @@ export default function VehicleDetailsPage() {
               transition={{ delay: 0.8 }}
             >
               <h3 className="text-lg font-semibold mb-4">Repair History</h3>
-              <RepairHistory vehicleId={vehicle.id} />
+              <RepairHistory vehicleId={vehicle.registration_number} />
             </motion.div>
           </CardContent>
         </Card>

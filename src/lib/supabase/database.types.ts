@@ -2377,6 +2377,7 @@ export type Database = {
           created_at: string | null
           description: string
           id: number
+          job_card: number | null
           job_card_id: string | null
           status: string | null
           supplier_id: number | null
@@ -2386,6 +2387,7 @@ export type Database = {
           created_at?: string | null
           description: string
           id?: number
+          job_card?: number | null
           job_card_id?: string | null
           status?: string | null
           supplier_id?: number | null
@@ -2395,16 +2397,17 @@ export type Database = {
           created_at?: string | null
           description?: string
           id?: number
+          job_card?: number | null
           job_card_id?: string | null
           status?: string | null
           supplier_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "sublets_job_card_id_fkey"
-            columns: ["job_card_id"]
+            foreignKeyName: "sublets_job_card_fkey"
+            columns: ["job_card"]
             isOneToOne: false
-            referencedRelation: "job_cards"
+            referencedRelation: "workshop_job"
             referencedColumns: ["id"]
           },
           {
@@ -3454,7 +3457,6 @@ export type Database = {
           total_sublet_cost: number | null
           type_of_work: string | null
           updated_at: string | null
-          vehicle_id: number | null
           work_notes: string | null
         }
         Insert: {
@@ -3504,7 +3506,6 @@ export type Database = {
           total_sublet_cost?: number | null
           type_of_work?: string | null
           updated_at?: string | null
-          vehicle_id?: number | null
           work_notes?: string | null
         }
         Update: {
@@ -3554,68 +3555,9 @@ export type Database = {
           total_sublet_cost?: number | null
           type_of_work?: string | null
           updated_at?: string | null
-          vehicle_id?: number | null
           work_notes?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_job_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehiclesc"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workshop_job_parts: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: number
-          item_code: string | null
-          part_name: string
-          price: number | null
-          quantity: number
-          status: string | null
-          total_cost: number | null
-          updated_at: string | null
-          workshop_job_id: number
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: number
-          item_code?: string | null
-          part_name: string
-          price?: number | null
-          quantity?: number
-          status?: string | null
-          total_cost?: number | null
-          updated_at?: string | null
-          workshop_job_id: number
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: number
-          item_code?: string | null
-          part_name?: string
-          price?: number | null
-          quantity?: number
-          status?: string | null
-          total_cost?: number | null
-          updated_at?: string | null
-          workshop_job_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_job_parts_workshop_job_id_fkey"
-            columns: ["workshop_job_id"]
-            isOneToOne: false
-            referencedRelation: "workshop_job"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       workshop_jobpart: {
         Row: {
