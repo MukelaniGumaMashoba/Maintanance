@@ -22,15 +22,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Settings, MapPin, Plus, Edit, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { createClient } from '@/lib/supabase/client'
 
 interface User {
     id: string
-    name: string
+    full_name: string
     email: string
-    role: "call-center" | "fleet-manager" | "cost-center" | "customer" | "admin"
-    status: "active" | "inactive"
-    lastLogin: string
-    permissions: string[]
+    role: string
+    company_name: string
+    phone_number: string
+    department: string
+    created_at: string
+    status?: string
 }
 
 interface Role {
@@ -51,45 +54,40 @@ interface SystemSetting {
 }
 
 export default function SettingsPage() {
+    const supabase = createClient()
     const [users, setUsers] = useState<User[]>([])
     const [roles, setRoles] = useState<Role[]>([])
     const [settings, setSettings] = useState<SystemSetting[]>([])
     const [isAddUserOpen, setIsAddUserOpen] = useState(false)
     const [isEditRoleOpen, setIsEditRoleOpen] = useState(false)
     const [selectedRole, setSelectedRole] = useState<Role | null>(null)
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        // Mock data
-        setUsers([
-            {
-                id: "1",
-                name: "John Admin",
-                email: "admin@company.com",
-                role: "admin",
-                status: "active",
-                lastLogin: "2025-01-15 09:30",
-                permissions: ["all"],
-            },
-            {
-                id: "2",
-                name: "Sarah Manager",
-                email: "sarah@company.com",
-                role: "fleet-manager",
-                status: "active",
-                lastLogin: "2025-01-15 08:45",
-                permissions: ["manage_vehicles", "manage_drivers", "approve_jobs"],
-            },
-            {
-                id: "3",
-                name: "Mike Operator",
-                email: "mike@company.com",
-                role: "call-center",
-                status: "active",
-                lastLogin: "2025-01-15 10:15",
-                permissions: ["view_breakdowns", "dispatch_technicians"],
-            },
-        ])
+        fetchKlavaUsers()
+        initializeRoles()
+        initializeSettings()
+    }, [])
 
+    const fetchKlavaUsers = async () => {
+        setLoading(true)
+        try {
+            const response = await fetch('/api/users')
+            const result = await response.json()
+            
+            if (!response.ok) {
+                throw new Error(result.error)
+            }
+            
+            setUsers(result.users || [])
+        } catch (error) {
+            toast.error('Failed to fetch users')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const initializeRoles = () => {
         setRoles([
             {
                 id: "1",
@@ -109,20 +107,10 @@ export default function SettingsPage() {
                 description: "Handle breakdown requests and dispatch technicians",
                 permissions: ["view_breakdowns", "dispatch_technicians", "manage_technicians"],
             },
-            {
-                id: "4",
-                name: "Cost Center",
-                description: "Create and manage quotations",
-                permissions: ["create_quotations", "view_jobs", "manage_costs"],
-            },
-            {
-                id: "5",
-                name: "Customer",
-                description: "Request breakdown services and view own requests",
-                permissions: ["request_breakdown", "view_own_requests", "approve_quotations"],
-            },
         ])
+    }
 
+    const initializeSettings = () => {
         setSettings([
             {
                 id: "1",
@@ -173,26 +161,41 @@ export default function SettingsPage() {
                 type: "number",
             },
         ])
-    }, [])
+    }
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault()
+        setLoading(true)
+        
         const formData = new FormData(e.target as HTMLFormElement)
-
-        const newUser: User = {
-            id: Date.now().toString(),
-            name: formData.get("name") as string,
-            email: formData.get("email") as string,
-            role: formData.get("role") as any,
-            status: "active",
-            lastLogin: "Never",
-            permissions:
-                roles.find((r) => r.name.toLowerCase().replace(" ", "-") === formData.get("role"))?.permissions || [],
+        
+        try {
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    full_name: formData.get('name') as string,
+                    email: formData.get('email') as string,
+                    role: formData.get('role') as string,
+                    phone_number: formData.get('phone') as string,
+                    department: formData.get('department') as string
+                })
+            })
+            
+            const result = await response.json()
+            
+            if (!response.ok) {
+                throw new Error(result.error)
+            }
+            
+            toast.success('User created successfully')
+            setIsAddUserOpen(false)
+            fetchKlavaUsers()
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to create user')
+        } finally {
+            setLoading(false)
         }
-
-        setUsers((prev) => [...prev, newUser])
-        setIsAddUserOpen(false)
-        toast.success(`User ${newUser.name} has been added to the system.`)
     }
 
     const handleUpdateSetting = (settingId: string, newValue: string) => {
@@ -247,8 +250,6 @@ export default function SettingsPage() {
                     <TabsList>
                         <TabsTrigger value="users">User Management</TabsTrigger>
                         <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>
-                        {/* <TabsTrigger value="system">System Settings</TabsTrigger>
-                        <TabsTrigger value="locations">Locations</TabsTrigger> */}
                     </TabsList>
 
                     <TabsContent value="users" className="space-y-4">
@@ -277,9 +278,14 @@ export default function SettingsPage() {
                                             <Label htmlFor="email">Email Address</Label>
                                             <Input id="email" name="email" type="email" required />
                                         </div>
+
                                         <div>
-                                            <Label htmlFor="call center">Call Center/Cost Center</Label>
-                                            <Input id="cost center" name="cost center" />
+                                            <Label htmlFor="phone">Phone Number</Label>
+                                            <Input id="phone" name="phone" />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="department">Department</Label>
+                                            <Input id="department" name="department" />
                                         </div>
                                         <div>
                                             <Label htmlFor="role">Role</Label>
@@ -288,16 +294,18 @@ export default function SettingsPage() {
                                                     <SelectValue placeholder="Select a role" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="admin">Administrator</SelectItem>
-                                                    <SelectItem value="fleet-manager">Fleet Manager</SelectItem>
-                                                    <SelectItem value="call-center">Call Center</SelectItem>
-                                                    <SelectItem value="cost-center">Cost Center</SelectItem>
-                                                    <SelectItem value="customer">Customer</SelectItem>
+                                                    <SelectItem value="fleet manager">Fleet Manager</SelectItem>
+                                                    <SelectItem value="call centre">Administrator & Parts</SelectItem>
+                                                    <SelectItem value="Technician">Technician</SelectItem>
+                                                    <SelectItem value="Supervisor">Supervisor</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <Button type="submit" className="w-full">
-                                            Create User
+                                        <div className="bg-blue-50 p-3 rounded">
+                                            <p className="text-sm text-blue-800">Company: Klaver (Auto-assigned)</p>
+                                        </div>
+                                        <Button type="submit" className="w-full" disabled={loading}>
+                                            {loading ? 'Creating...' : 'Create User'}
                                         </Button>
                                     </form>
                                 </DialogContent>
@@ -312,45 +320,40 @@ export default function SettingsPage() {
                                             <TableHead>Name</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Role</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Last Login</TableHead>
-                                            <TableHead>Actions</TableHead>
+                                            <TableHead>Department</TableHead>
+                                            <TableHead>Company</TableHead>
+                                            <TableHead>Created</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {users.map((user) => (
-                                            <TableRow key={user.id}>
-                                                <TableCell className="font-medium">{user.name}</TableCell>
-                                                <TableCell>{user.email}</TableCell>
-                                                <TableCell>
-                                                    <Badge className={getRoleBadgeColor(user.role)}>
-                                                        {user.role.replace("-", " ").toUpperCase()}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Switch
-                                                            checked={user.status === "active"}
-                                                            onCheckedChange={() => handleToggleUserStatus(user.id)}
-                                                        />
-                                                        <span className={user.status === "active" ? "text-green-600" : "text-red-600"}>
-                                                            {user.status}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{user.lastLogin}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex gap-2">
-                                                        <Button variant="outline" size="sm">
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="outline" size="sm">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
+                                        {loading ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8">
+                                                    Loading Klaver users...
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                        ) : users.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8">
+                                                    No Klaver users found
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            users.map((user) => (
+                                                <TableRow key={user.id}>
+                                                    <TableCell className="font-medium">{user.full_name}</TableCell>
+                                                    <TableCell>{user.email}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">{user.role}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>{user.department || '-'}</TableCell>
+                                                    <TableCell>
+                                                        <Badge className="bg-blue-100 text-blue-800">{user.company_name}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -396,78 +399,6 @@ export default function SettingsPage() {
                             ))}
                         </div>
                     </TabsContent>
-
-                    {/* <TabsContent value="system" className="space-y-4">
-                        <h3 className="text-lg font-semibold">System Configuration</h3>
-                        <div className="space-y-6">
-                            {groupedSettings && Object.entries(groupedSettings).map(([category, categorySettings]) => (
-                                <Card key={category}>
-                                    <CardHeader>
-                                        <CardTitle className="text-lg">{category} Settings</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {categorySettings.map((setting) => (
-                                            <div key={setting.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold">{setting.name}</h4>
-                                                    <p className="text-sm text-gray-600">{setting.description}</p>
-                                                </div>
-                                                <div className="w-48">
-                                                    {setting.type === "boolean" ? (
-                                                        <Switch
-                                                            checked={setting.value === "true"}
-                                                            onCheckedChange={(checked) => handleUpdateSetting(setting.id, checked.toString())}
-                                                        />
-                                                    ) : setting.type === "select" && setting.options ? (
-                                                        <Select
-                                                            value={setting.value}
-                                                            onValueChange={(value) => handleUpdateSetting(setting.id, value)}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {setting.options.map((option) => (
-                                                                    <SelectItem key={option} value={option}>
-                                                                        {option}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    ) : (
-                                                        <Input
-                                                            type={setting.type === "number" ? "number" : "text"}
-                                                            value={setting.value}
-                                                            onChange={(e) => handleUpdateSetting(setting.id, e.target.value)}
-                                                        />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="locations" className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-semibold">Location Management</h3>
-                            <Button>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Location
-                            </Button>
-                        </div>
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="text-center text-gray-500">
-                                    <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                                    <p>Location management interface will be implemented here</p>
-                                    <p className="text-sm mt-2">Configure service areas, technician locations, and coverage zones</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent> */}
                 </Tabs>
             </div>
         </>

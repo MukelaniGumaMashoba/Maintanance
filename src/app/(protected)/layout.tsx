@@ -75,11 +75,13 @@ interface SubMenuItem {
 const roleNavigation: Record<string, NavItem[]> = {
   "fleet manager": [
     { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
-    { name: "Workshop Jobs", href: "/jobWorkShop", Icon: Briefcase },
+    { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
     { name: "Workshop", href: "/internalWorkshop", Icon: Store },
     { name: "Repair Management", href: "/ccenter", Icon: Building2 },
+    { name: "System Settings", href: "/settings", Icon: Settings },
+    { name: "User Management", href: "/userManagement", Icon: Users },
     {
       name: "Reports",
       href: "/reports",
@@ -87,7 +89,6 @@ const roleNavigation: Record<string, NavItem[]> = {
       hasSubMenu: true,
       subMenu: [], // This is now valid
     },
-    { name: "System Settings", href: "/settings", Icon: Settings },
   ],
   "call centre": [
     { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
@@ -98,33 +99,8 @@ const roleNavigation: Record<string, NavItem[]> = {
       href: "/callcenter/technician",
       Icon: Wrench,
     },
-    // { name: "Workshop Vehicles", href: "/callcenter/breakdowns", Icon: Truck },
     { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "Inventory", href: "/inventory", Icon: Package },
-    { name: "System Settings", href: "/settings", Icon: Settings },
-  ],
-  customer: [
-    { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
-    { name: "Jobs", href: "/jobs", Icon: Briefcase },
-    { name: "Drivers", href: "/drivers", Icon: Users },
-    { name: "Vehicles", href: "/vehicles", Icon: Car },
-    {
-      name: "Technicians Assignment",
-      href: "/callcenter/technician",
-      Icon: Wrench,
-    },
-    { name: "Workshop Vehicles", href: "/callcenter/breakdowns", Icon: Truck },
-    { name: "Repair Management", href: "/ccenter", Icon: Building2 },
-    { name: "System Settings", href: "/settings", Icon: Settings },
-  ],
-  "cost centre": [
-    { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
-    { name: "Cost", href: "/ccenter", Icon: Building2 },
-    {
-      name: "Repair Management",
-      href: "/ccenter/create-qoutation",
-      Icon: DollarSign,
-    },
     { name: "System Settings", href: "/settings", Icon: Settings },
   ],
 };
@@ -319,7 +295,7 @@ export default function ProtectedLayout({
                   ? userRole === "customer"
                     ? "External Workshop"
                     : userRole === "call centre"
-                    ? "Workshop"
+                    ? "Administrator"
                     : userRole
                   : "No User"}
               </div>

@@ -133,6 +133,7 @@ export default function Vehicles() {
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [filteredTechs, setFilteredTechs] = useState<Technician[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const getTechnician = async () => {
@@ -168,10 +169,52 @@ export default function Vehicles() {
     setFilteredTechs(filtered as []);
   }, [searchTerm, technicians]);
 
-  const handleUploadFile = () => {
+  const handleUploadFile = async () => {
     if (!selectedFile) return;
-    // TODO: Implement upload logic here
-    toast.info(`Uploading: ${selectedFile.name}`)
+    
+    setUploading(true);
+    
+    try {
+      const text = await selectedFile.text();
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      
+      const vehicleData = lines.slice(1)
+        .filter(line => line.trim())
+        .map(line => {
+          const values = line.split(',').map(v => v.trim());
+          const vehicle: any = {
+            company_id: 1, // Klava company ID
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          headers.forEach((header, index) => {
+            vehicle[header] = values[index] || '';
+          });
+          
+          return vehicle;
+        });
+      
+      const { error } = await supabase
+        .from('vehiclesc_workshop')
+        .insert(vehicleData);
+        
+      if (error) throw error;
+      
+      toast.success(`Successfully uploaded ${vehicleData.length} vehicles`);
+      setSelectedFile(null);
+      // Refresh vehicles list
+      const { data: vehicles } = await supabase
+        .from('vehiclesc_workshop')
+        .select('*')
+      setVehicles(vehicles as []);
+    } catch (error) {
+      toast.error('Failed to upload vehicles');
+      console.error(error);
+    } finally {
+      setUploading(false);
+    }
   }
 
   // Filter vehicles based on search
@@ -207,7 +250,12 @@ export default function Vehicles() {
 
   useEffect(() => {
     const fetchVehicles = async () => {
-      const { data: vehicles, error } = await supabase.from('vehiclesc_workshop').select('*').or('type.is.null,type.eq.internal');
+      // Filter for Klava company vehicles only
+      const { data: vehicles, error } = await supabase
+        .from('vehiclesc_workshop')
+        .select('*')
+        .eq('company_id', 1); // Klava company ID
+        
       if (error) {
         console.error("the error is", error.name, error.message)
       } else {
@@ -270,18 +318,30 @@ export default function Vehicles() {
 
 
   const handleAddVehicle = async (data: VehicleFormValues) => {
+    const vehicleData = {
+      ...data,
+      company_id: 1, // Klava company ID
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
     const { data: vehicle, error } = await supabase
       .from('vehiclesc_workshop')
       // @ts-expect-error
-      .insert(data)
+      .insert(vehicleData)
     if (error) {
       console.error(error.message)
+      toast.error('Failed to add vehicle')
     } else {
       console.log(vehicle)
       toast.success('Vehicle added successfully')
       form.reset()
       setIsAddingVehicle(false)
-      router.refresh()
+      // Refresh vehicles list
+      const { data: vehicles } = await supabase
+        .from('vehiclesc_workshop')
+        .select('*')
+      setVehicles(vehicles as []);
     }
   }
 
@@ -432,9 +492,18 @@ export default function Vehicles() {
               {selectedFile && (
                 <span className="mt-2 text-sm text-gray-600">Selected: {selectedFile.name}</span>
               )}
-              <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" type="button" disabled={!selectedFile} onClick={handleUploadFile}>
-                Upload File
+              <Button 
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" 
+                type="button" 
+                disabled={!selectedFile || uploading} 
+                onClick={handleUploadFile}
+              >
+                {uploading ? 'Uploading...' : 'Upload File'}
               </Button>
+              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>CSV should include headers: registration_number, make, model, manufactured_year, vehicle_type, colour, fuel_type, transmission_type, take_on_kilometers, service_intervals</p>
+                <p>Example: ABC123GP,Toyota,Hilux,2023,vehicle,White,diesel,manual,50000,15000km</p>
+              </div>
             </div>
           </CardContent>
 
@@ -802,6 +871,16 @@ export default function Vehicles() {
         </Card>
       )}
 
+      {/* Company Info */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-blue-600 text-white">Klava Plant Hire</Badge>
+            <span className="text-sm text-blue-800">Vehicle Fleet Management</span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Vehicle List */}
       {vehicles.length > 0 && (
         <Card>
@@ -957,6 +1036,32 @@ export default function Vehicles() {
                         <Link href={`/vehicles/${vehicle.id}`}>
                           <Button variant="default">View</Button>
                         </Link>
+                        
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to delete this vehicle?')) {
+                              const { error } = await supabase
+                                .from('vehiclesc_workshop')
+                                .delete()
+                                .eq('id', vehicle.id);
+                                
+                              if (error) {
+                                toast.error('Failed to delete vehicle');
+                              } else {
+                                toast.success('Vehicle deleted successfully');
+                                // Refresh list
+                                const { data: vehicles } = await supabase
+                                  .from('vehiclesc_workshop')
+                                  .select('*')
+                                setVehicles(vehicles as []);
+                              }
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
 
                       </div>
                     </TableCell>
