@@ -78,6 +78,8 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
+    { name: "Sublets", href: "/admin/sublets", Icon: ArrowRightLeft },
+    { name: "Stock Levels", href: "/inventory/stock-levels", Icon: ClipboardList },
     // { name: "Workshop", href: "/internalWorkshop", Icon: Store },
     // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
@@ -90,6 +92,8 @@ const roleNavigation: Record<string, NavItem[]> = {
       subMenu: [], // This is now valid
     },
   ],
+
+  // Is the Admin and Part manager
   "call centre": [
     { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
     { name: "Jobs", href: "/jobs", Icon: Briefcase },
@@ -100,7 +104,9 @@ const roleNavigation: Record<string, NavItem[]> = {
       Icon: Wrench,
     },
     { name: "Suppliers", href: "/admin/suppliers", Icon: Building2 },
+    { name: "Sublets", href: "/admin/sublets", Icon: ArrowRightLeft },
     { name: "Inventory", href: "/inventory", Icon: Package },
+    { name: "Stock Levels", href: "/inventory/stock-levels", Icon: ClipboardList },
     { name: "System Settings", href: "/settings", Icon: Settings },
   ],
 };

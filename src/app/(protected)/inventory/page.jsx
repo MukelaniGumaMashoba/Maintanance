@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Package,
   Search,
@@ -26,7 +29,15 @@ import {
   Filter,
   Save,
   History,
-  Minus
+  Minus,
+  ShoppingCart,
+  Mail,
+  Eye,
+  Edit,
+  Truck,
+  AlertTriangle,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import DashboardTabs from '@/components/shared/DashboardTabs';
@@ -38,16 +49,23 @@ export default function InventoryPage() {
   const supabase = createClient();
   const [parts, setParts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [jobCards, setJobCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState(null);
   const [selectedParts, setSelectedParts] = useState([]);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [selectedPartLogs, setSelectedPartLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('job-cards');
+  const [orderForm, setOrderForm] = useState({
+    supplier_id: '',
+    parts: [],
+    notes: ''
+  });
 
   // Stock Take state
   const [stockTakeMode, setStockTakeMode] = useState(false);
@@ -63,12 +81,28 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchData();
+    checkLowStock();
   }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchParts(), fetchCategories(), fetchJobCards()]);
+    await Promise.all([fetchParts(), fetchCategories(), fetchSuppliers(), fetchJobCards()]);
     setLoading(false);
+  };
+
+  const checkLowStock = async () => {
+    const { data: lowStockParts } = await supabase
+      .from('parts')
+      .select('*')
+      .lte('quantity', 5);
+    
+    if (lowStockParts?.length > 0) {
+      await fetch('/api/low-stock-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parts: lowStockParts })
+      });
+    }
   };
 
   const fetchParts = async () => {
@@ -98,6 +132,19 @@ export default function InventoryPage() {
       return;
     }
     setCategories(data || []);
+  };
+
+  const fetchSuppliers = async () => {
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to fetch suppliers');
+      return;
+    }
+    setSuppliers(data || []);
   };
 
   const fetchJobCards = async () => {
@@ -317,13 +364,33 @@ export default function InventoryPage() {
   };
 
   // Tab content components
+  const handleOrderParts = async () => {
+    try {
+      const response = await fetch('/api/parts-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderForm)
+      });
+      
+      if (response.ok) {
+        toast.success('Parts order sent to supplier!');
+        setShowOrderModal(false);
+        setOrderForm({ supplier_id: '', parts: [], notes: '' });
+      } else {
+        toast.error('Failed to send order');
+      }
+    } catch (error) {
+      toast.error('Failed to send order');
+    }
+  };
+
   const jobCardsContent = (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="top-1/2 left-3 absolute w-4 h-4 text-gray-400 -translate-y-1/2 transform" />
           <Input
-            placeholder="Search job cards by job number, customer, vehicle, or description..."
+            placeholder="Search job cards..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -335,73 +402,72 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {filteredJobCards.length === 0 ? (
-        <div className="py-12 text-center">
-          <FileText className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-          <h3 className="mb-2 font-medium text-gray-900 text-lg">No job cards found</h3>
-          <p className="text-gray-500">
-            {searchTerm ? 'No job cards match your search criteria.' : 'No job cards available.'}
-          </p>
-        </div>
-      ) : (
-        <div className="gap-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {filteredJobCards.map((job) => (
-            <Card key={job.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{job.job_number}</CardTitle>
-                    <p className="text-gray-600 text-sm">{job.customer_name}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Badge className={`text-xs ${getStatusColor(job.job_status || job.status)}`}>
+      <div className="bg-white rounded-lg border">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Details</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredJobCards.map((job) => (
+                <tr key={job.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{job.job_number}</div>
+                      <div className="text-sm text-gray-500 truncate max-w-xs">{job.job_description}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{job.customer_name}</div>
+                    <div className="text-sm text-gray-500">{job.customer_address}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Car className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-900">{job.vehicle_registration || 'N/A'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge className={getStatusColor(job.job_status || job.status)}>
                       {job.job_status || job.status || 'Not Started'}
                     </Badge>
-                    {job.job_type && (
-                      <Badge variant="outline" className={`text-xs ${getJobTypeColor(job.job_type)}`}>
-                        {job.job_type}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-gray-400" />
-                    <span>{job.vehicle_registration || 'No vehicle'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{job.customer_address || 'No address'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>Due: {formatDate(job.due_date)}</span>
-                  </div>
-                </div>
-
-                {job.job_description && (
-                  <p className="text-gray-600 text-sm line-clamp-2">
-                    {job.job_description}
-                  </p>
-                )}
-
-                <div className="flex justify-between items-center pt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleAssignParts(job)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="mr-1 w-3 h-3" />
-                    Assign Parts
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(job.due_date)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Button
+                      size="sm"
+                      onClick={() => handleAssignParts(job)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="mr-1 w-3 h-3" />
+                      Assign Parts
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+        
+        {filteredJobCards.length === 0 && (
+          <div className="py-12 text-center">
+            <FileText className="mx-auto mb-4 w-12 h-12 text-gray-400" />
+            <h3 className="mb-2 font-medium text-gray-900 text-lg">No job cards found</h3>
+            <p className="text-gray-500">
+              {searchTerm ? 'No job cards match your search criteria.' : 'No job cards available.'}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -493,59 +559,377 @@ export default function InventoryPage() {
             className="pl-10"
           />
         </div>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id.toString()}>{cat.name}</option>
-          ))}
-        </select>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map(cat => (
+              <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
+          <DialogTrigger asChild>
+            <Button className="bg-green-600 hover:bg-green-700">
+              <ShoppingCart className="mr-2 w-4 h-4" />
+              Order Parts
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Create Parts Order</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Order Number</Label>
+                  <Input value={`PO-${Date.now().toString().slice(-6)}`} disabled className="bg-gray-50" />
+                </div>
+                <div>
+                  <Label>Supplier *</Label>
+                  <Select value={orderForm.supplier_id} onValueChange={(v) => setOrderForm({...orderForm, supplier_id: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map(s => (
+                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Search & Add Parts</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search existing parts or type new item..."
+                    className="pl-10"
+                    onChange={(e) => {
+                      const searchValue = e.target.value;
+                      if (searchValue) {
+                        const matchingParts = parts.filter(p => 
+                          p.description?.toLowerCase().includes(searchValue.toLowerCase()) ||
+                          p.item_code?.toLowerCase().includes(searchValue.toLowerCase())
+                        );
+                        // Show matching parts dropdown here
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <Label>Order Items</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setOrderForm(prev => ({
+                        ...prev,
+                        parts: [...prev.parts, { id: `custom-${Date.now()}`, description: '', quantity: 1, price: 0, isCustom: true }]
+                      }));
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Custom Item
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg">
+                  <div className="bg-gray-50 px-4 py-2 border-b grid grid-cols-12 gap-2 text-sm font-medium text-gray-700">
+                    <div className="col-span-5">Description</div>
+                    <div className="col-span-2">Available</div>
+                    <div className="col-span-2">Quantity</div>
+                    <div className="col-span-2">Unit Price</div>
+                    <div className="col-span-1">Action</div>
+                  </div>
+                  
+                  <div className="max-h-60 overflow-y-auto">
+                    {orderForm.parts.map((orderPart, index) => {
+                      const stockPart = parts.find(p => p.id === orderPart.id);
+                      return (
+                        <div key={orderPart.id || index} className="px-4 py-3 border-b grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-5">
+                            {orderPart.isCustom ? (
+                              <Input
+                                placeholder="Enter item description"
+                                value={orderPart.description}
+                                onChange={(e) => {
+                                  const newParts = [...orderForm.parts];
+                                  newParts[index].description = e.target.value;
+                                  setOrderForm({...orderForm, parts: newParts});
+                                }}
+                              />
+                            ) : (
+                              <div>
+                                <div className="font-medium">{orderPart.description}</div>
+                                <div className="text-sm text-gray-500">{stockPart?.item_code}</div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="col-span-2">
+                            <span className={`text-sm ${
+                              stockPart?.quantity <= 5 ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {stockPart?.quantity || (orderPart.isCustom ? 'N/A' : '0')}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={orderPart.quantity}
+                              onChange={(e) => {
+                                const newParts = [...orderForm.parts];
+                                newParts[index].quantity = parseInt(e.target.value) || 1;
+                                setOrderForm({...orderForm, parts: newParts});
+                              }}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={orderPart.price || ''}
+                              onChange={(e) => {
+                                const newParts = [...orderForm.parts];
+                                newParts[index].price = parseFloat(e.target.value) || 0;
+                                setOrderForm({...orderForm, parts: newParts});
+                              }}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newParts = orderForm.parts.filter((_, i) => i !== index);
+                                setOrderForm({...orderForm, parts: newParts});
+                              }}
+                            >
+                              <Minus className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {orderForm.parts.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">
+                      No items added. Search for parts above or add custom items.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label>Quick Add Low Stock Items</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                  {parts.filter(p => p.quantity <= 5).map(part => (
+                    <Button
+                      key={part.id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-left h-auto p-2"
+                      onClick={() => {
+                        if (!orderForm.parts.find(op => op.id === part.id)) {
+                          setOrderForm(prev => ({
+                            ...prev,
+                            parts: [...prev.parts, {
+                              id: part.id,
+                              description: part.description,
+                              quantity: Math.max(10 - part.quantity, 1),
+                              price: part.price || 0
+                            }]
+                          }));
+                        }
+                      }}
+                    >
+                      <div>
+                        <div className="font-medium text-xs">{part.description}</div>
+                        <div className="text-xs text-gray-500">Stock: {part.quantity}</div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <Label>Order Notes</Label>
+                <Textarea
+                  value={orderForm.notes}
+                  onChange={(e) => setOrderForm({...orderForm, notes: e.target.value})}
+                  placeholder="Additional notes, delivery instructions, or special requirements..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total Items: {orderForm.parts.length}</span>
+                  <span className="font-bold text-lg">
+                    Total: R{orderForm.parts.reduce((sum, part) => sum + ((part.quantity || 0) * (part.price || 0)), 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={handleOrderParts} 
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={!orderForm.supplier_id || orderForm.parts.length === 0}
+              >
+                <Mail className="mr-2 w-4 h-4" />
+                Send Order to Supplier
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredParts.map(part => (
-          <Card key={part.id} className={`${part.quantity <= 5 ? 'border-red-200 bg-red-50' : ''}`}>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{part.description}</CardTitle>
-                  <p className="text-sm text-gray-600">{part.item_code}</p>
-                </div>
-                <Badge variant={part.quantity <= 5 ? 'destructive' : 'default'}>
-                  Qty: {part.quantity}
-                </Badge>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Parts</p>
+                <p className="text-2xl font-bold">{parts.length}</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Category:</span>
-                  <span className="text-sm">{part.categories?.name || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Price:</span>
-                  <span className="text-sm">R{part.price?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Total Value:</span>
-                  <span className="text-sm font-medium">R{(part.quantity * (part.price || 0)).toFixed(2)}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewLogs(part.id)}
-                  className="w-full mt-2"
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  View History
-                </Button>
+              <Package className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Low Stock</p>
+                <p className="text-2xl font-bold text-yellow-600">{parts.filter(p => p.quantity <= 5).length}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <AlertTriangle className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Out of Stock</p>
+                <p className="text-2xl font-bold text-red-600">{parts.filter(p => p.quantity === 0).length}</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Value</p>
+                <p className="text-2xl font-bold text-green-600">R{parts.reduce((sum, p) => sum + (p.quantity * (p.price || 0)), 0).toFixed(2)}</p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="bg-white rounded-lg border">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Details</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredParts.map(part => {
+                const isLowStock = part.quantity <= 5;
+                const isOutOfStock = part.quantity === 0;
+                return (
+                  <tr key={part.id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50' : ''}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{part.description}</div>
+                        <div className="text-sm text-gray-500">{part.item_code}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant="outline" className="text-xs">
+                        {part.categories?.name || 'N/A'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className={`text-sm font-medium ${
+                        isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
+                        {part.quantity}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      R{(part.price || 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                      R{(part.quantity * (part.price || 0)).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <Badge className={
+                        isOutOfStock ? 'bg-red-100 text-red-800' :
+                        isLowStock ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }>
+                        {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewLogs(part.id)}
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        {isLowStock && (
+                          <Button
+                            size="sm"
+                            className="bg-orange-600 hover:bg-orange-700"
+                            onClick={() => {
+                              setOrderForm({
+                                supplier_id: '',
+                                parts: [{id: part.id, quantity: 10, description: part.description}],
+                                notes: `Reorder for ${part.description} - Current stock: ${part.quantity}`
+                              });
+                              setShowOrderModal(true);
+                            }}
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -743,27 +1127,7 @@ export default function InventoryPage() {
         icon={Package}
       />
 
-      <div className="flex justify-end">
-        <Button
-          onClick={async () => {
-            try {
-              const response = await fetch('/api/seed', { method: 'POST' });
-              if (response.ok) {
-                toast.success('Sample data created successfully');
-                fetchData();
-              } else {
-                toast.error('Failed to create sample data');
-              }
-            } catch (error) {
-              toast.error('Failed to create sample data');
-            }
-          }}
-          variant="outline"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Seed Sample Data
-        </Button>
-      </div>
+
 
       <DashboardTabs
         tabs={tabs}
