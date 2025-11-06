@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Maintanance System",
-  description: "Maintanance System",
+  title: "Maintenance System",
+  description: "Maintenance System",
 };
 
 export default function RootLayout({

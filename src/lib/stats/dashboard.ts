@@ -115,7 +115,7 @@ export async function getWorkshopStats() {
 
 // Returns all dashboard stats in one call
 export async function getDashboardStats() {
-    const [activeBreakdowns, pendingApprovals, workshopStats, availableTechnicians, totalVehicles, monthlyRevenue, completedJobs, driverStats, technicianStats] = await Promise.all([
+    const [activeBreakdowns, pendingApprovals, availableTechnicians, totalVehicles, monthlyRevenue, completedJobs, driverStats, technicianStats, workshopStats] = await Promise.all([
         getActiveBreakdowns(),
         getPendingApprovals(),
         getAvailableTechnicians(),
@@ -133,6 +133,7 @@ export async function getDashboardStats() {
         totalVehicles,
         monthlyRevenue,
         completedJobs,
+        tows: activeBreakdowns, // Using activeBreakdowns as tows for now
         driverStats,
         technicianStats,
         workshopStats

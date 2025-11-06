@@ -238,3 +238,40 @@ Update theres internal(call center) and external workshops,
 
 
 For internal workshop can the fleet manager add the internal workshops...? Yes they just need location and simple information about the workshop
+
+
+
+
+
+
+
+
+
+
+
+
+Klaver Requeirements
+
+Stock Take: The client wants to be able to view their available stock levels at any given time.
+Sublets: If Klaver is unable to repair a vehicle, they would like the option to send it to another sublet for repairs. (Wynand has requested that Lwazi load the sublets manually.)
+Suppliers: This functionality will be used for ordering parts.
+
+
+1. Wynand (Fleet Manager) - wynand@lowveldsprings.co.za
+
+Super User Access
+Create new users
+Add / remove vehicles
+ 
+
+2. Lwazi (Administrator & Parts) - stores@klaverplant.co.za
+
+Workshop module access
+Create job cards (JC’s)
+Assign technicians
+Create sublets
+Add suppliers
+View workshop history
+Order parts
+Conduct stock takes
+Check stock quantities

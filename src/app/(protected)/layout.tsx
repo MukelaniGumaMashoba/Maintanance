@@ -78,10 +78,9 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
+    { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "Sublets", href: "/admin/sublets", Icon: ArrowRightLeft },
     { name: "Stock Levels", href: "/inventory/stock-levels", Icon: ClipboardList },
-    // { name: "Workshop", href: "/internalWorkshop", Icon: Store },
-    // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
     {
@@ -215,7 +214,7 @@ export default function ProtectedLayout({
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b bg-black">
               <h1 className="text-xl font-bold text-white text-center">
-                Maintanance
+                Maintenance
               </h1>
               <Button
                 variant="ghost"

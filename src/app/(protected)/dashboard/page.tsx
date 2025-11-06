@@ -699,8 +699,8 @@ export default function Dashboard() {
                           Total jobs: {stats.workshopStats}
                         </p>
                       </div>
-                      <Link href="/ccenter">
-                        <Button size="sm">Review</Button>
+                      <Link href="/jobs?status=Awaiting Approval">
+                        <Button size="sm">Review Awaiting Approval</Button>
                       </Link>
                     </div>
                   )}

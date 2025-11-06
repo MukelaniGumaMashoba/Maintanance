@@ -36,7 +36,7 @@ import { FileText, Clock, CheckCircle, Search, Eye, Plus } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { da } from "date-fns/locale";
+import { useSearchParams } from "next/navigation";
 
 interface Job {
   id: number;
@@ -68,10 +68,11 @@ interface CreateJobForm {
 }
 
 export default function JobsPage() {
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(searchParams?.get('status')?.toLowerCase() || "all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [isCreateJobDialogOpen, setIsCreateJobDialogOpen] = useState(false);
   const [createJobForm, setCreateJobForm] = useState<CreateJobForm>({
@@ -115,29 +116,38 @@ export default function JobsPage() {
   };
 
   const filterJobs = () => {
-    let filtered = jobs;
+    let filtered = [...jobs];
 
-    if (searchTerm) {
+    // Apply search filter
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(
         (job) =>
-          job.jobId_workshop
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          job.registration_no
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          job.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          job.jobId_workshop?.toLowerCase().includes(searchLower) ||
+          job.registration_no?.toLowerCase().includes(searchLower) ||
+          job.client_name?.toLowerCase().includes(searchLower) ||
+          job.description?.toLowerCase().includes(searchLower) ||
+          job.job_type?.toLowerCase().includes(searchLower) ||
+          job.location?.toLowerCase().includes(searchLower)
       );
     }
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((job) => job.status === statusFilter);
+    // Apply status filter
+    if (statusFilter && statusFilter !== "all") {
+      filtered = filtered.filter((job) => 
+        job.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
     }
 
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter((job) => job.priority === priorityFilter);
+    // Apply priority filter
+    if (priorityFilter && priorityFilter !== "all") {
+      filtered = filtered.filter((job) => 
+        job.priority?.toLowerCase() === priorityFilter.toLowerCase()
+      );
     }
+
+    // Sort by created date (newest first)
+    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     setFilteredJobs(filtered);
   };
@@ -282,9 +292,19 @@ export default function JobsPage() {
         return "bg-blue-100 text-blue-800";
       case "completed":
         return "bg-green-100 text-green-800";
+      case "part assigned":
+        return "bg-purple-100 text-purple-800";
+      case "part ordered":
+        return "bg-orange-100 text-orange-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const formatStatusDisplay = (status: string) => {
+    return status?.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ') || 'Unknown';
   };
 
   const getPriorityColor = (priority: string) => {
@@ -322,12 +342,14 @@ export default function JobsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="Awaiting Approval">
+              <SelectItem value="awaiting approval">
                 Awaiting Approval
               </SelectItem>
-              <SelectItem value="Approved">Approved</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="in progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="part assigned">Part Assigned</SelectItem>
+              <SelectItem value="part ordered">Part Ordered</SelectItem>
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -562,7 +584,7 @@ export default function JobsPage() {
                       {job.jobId_workshop}
                     </CardTitle>
                     <Badge className={getStatusColor(job.status)}>
-                      {job.status}
+                      {formatStatusDisplay(job.status)}
                     </Badge>
                     <Badge className={getPriorityColor(job.priority)}>
                       {job.priority}
