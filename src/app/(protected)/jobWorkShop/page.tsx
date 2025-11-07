@@ -647,317 +647,29 @@ export default function FleetJobsPage() {
     }
   }, [availableWorkshops, lastAssigned]);
 
-
-return (
-  <>
-    <div className="flex-1 space-y-6 p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="flex items-center justify-between border-b pb-4">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          All Jobs
-        </h2>
-        <div className="flex items-center space-x-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search jobs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 w-64 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 transition"
-            />
-          </div>
-
-          {/* Filters */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 border border-gray-300 rounded-md">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="assigned">Assigned</SelectItem>
-              <SelectItem value="inprogress">In Progress</SelectItem>
-              <SelectItem value="awaiting-approval">Awaiting Approval</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-40 border border-gray-300 rounded-md">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
-              <SelectItem value="emergency">Emergency</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="workshopJobs" className="space-y-6">
-        <TabsList className="bg-white shadow rounded-lg border flex">
-          {["workshopJobs", "kanban", "analytics"].map((tab) => (
-            <TabsTrigger
-              key={tab}
-              value={tab}
-              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
-            >
-              {tab === "workshopJobs"
-                ? "Workshop Jobs"
-                : tab === "kanban"
-                ? "Kanban Board"
-                : "Analytics"}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {/* Workshop Jobs */}
-        <TabsContent
-          value="workshopJobs"
-          className="space-y-6 bg-white rounded-xl p-6 shadow border"
-        >
-          <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-            <h2 className="text-2xl font-semibold text-gray-900">Workshop Jobs</h2>
-            <FileText className="h-5 w-5 text-gray-500" />
-          </div>
-
-          {workshopJob.length === 0 ? (
-            <p className="text-center text-gray-500 mt-8">No workshop jobs found.</p>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-              {workshopJob.map((job) => (
-                <Card
-                  key={job.id || job.jobId_workshop}
-                  className="border border-gray-200 rounded-xl bg-white hover:shadow-lg transition-shadow duration-300"
-                >
-                  <CardHeader className="flex justify-between items-center pb-3">
-                    <h3 className="text-lg font-semibold text-orange-500 truncate">
-                      {job.jobId_workshop || "Untitled Job"} — {job.status}
-                    </h3>
-                    <span className="text-sm text-gray-500">
-                      {new Date(job.created_at).toLocaleDateString()}
-                    </span>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4 text-gray-700 text-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p>
-                          <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
-                        </p>
-                        <p className="truncate">
-                          <strong>Description:</strong> {job.description || "No description"}
-                        </p>
-                        <p>
-                          <strong>Estimated Cost:</strong>{" "}
-                          {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p>
-                          <strong>Client Name:</strong> {job.client_name || "N/A"}
-                        </p>
-                        <p>
-                          <strong>Client Phone:</strong> {job.client_phone || "N/A"}
-                        </p>
-                        <p>
-                          <strong>Location:</strong> {job.location || "Unknown"}
-                        </p>
-                        <p>
-                          <strong>Notes:</strong> {job.notes || "-"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <RequestedParts jobId={job.id} />
-                  </CardContent>
-
-                  <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition"
-                      onClick={() => {
-                        setSelectedJobForWorkflow(job);
-                        setIsWorkflowOpen(true);
-                      }}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {job.status?.includes("Awaiting") ? "Approve/Reject" : "View Workflow"}
-                    </Button>
-
-                    <Link href={`/jobWorkShop/${job.id}`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300 hover:bg-gray-100 transition"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Kanban */}
-        <TabsContent
-          value="kanban"
-          className="p-6 bg-white rounded-xl shadow border"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {[
-              "Awaiting Workshop Acceptance",
-              "In Progress",
-              "Awaiting Approval",
-              "Approved",
-              "Completed",
-            ].map((status) => (
-              <Card
-                key={status}
-                className="border border-gray-200 rounded-xl shadow-sm"
-              >
-                <CardHeader className="pb-3 border-b">
-                  <CardTitle className="flex items-center justify-between text-sm font-semibold text-gray-900">
-                    {status}
-                    <Badge
-                      className="bg-orange-100 text-orange-600 border border-orange-200"
-                      variant="secondary"
-                    >
-                      {workshopJob.filter((job) => job.status === status).length}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 p-3">
-                  {workshopJob
-                    .filter((job) => job.status === status)
-                    .map((job) => (
-                      <Card
-                        key={job.id}
-                        className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition"
-                      >
-                        <p className="text-sm font-medium text-gray-900">
-                          {job.jobId_workshop}
-                        </p>
-                        <p className="text-xs text-gray-500">{job.registration_no}</p>
-                        <p className="text-xs text-gray-700 line-clamp-2">
-                          {job.description}
-                        </p>
-                      </Card>
-                    ))}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Analytics */}
-        <TabsContent
-          value="analytics"
-          className="p-6 bg-white rounded-xl shadow border"
-        >
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex justify-between items-center pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">
-                  Total Jobs
-                </CardTitle>
-                <FileText className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-500">
-                  {workshopJob.length}
-                </div>
-                <p className="text-xs text-gray-500">Workshop jobs created</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex justify-between items-center pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">
-                  In Progress
-                </CardTitle>
-                <Clock className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-500">
-                  {workshopJob.filter((job) => job.status === "In Progress").length}
-                </div>
-                <p className="text-xs text-gray-500">Active jobs being worked on</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex justify-between items-center pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">
-                  Completed
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-500">
-                  {workshopJob.filter((job) => job.status === "Completed").length}
-                </div>
-                <p className="text-xs text-gray-500">Successfully completed jobs</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex justify-between items-center pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">
-                  Avg. Cost
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-500">
-                  R{" "}
-                  {workshopJob.length > 0
-                    ? (
-                        workshopJob.reduce(
-                          (sum, job) => sum + (job.estimated_cost || 0),
-                          0
-                        ) / workshopJob.length
-                      ).toFixed(0)
-                    : "0"}
-                </div>
-                <p className="text-xs text-gray-500">Average job cost</p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  </>
-);
-
   // return (
   //   <>
-  //     <div className="flex-1 space-y-4 p-4 pt-6">
-  //       <div className="flex items-center justify-between">
-  //         <h2 className="text-3xl font-bold tracking-tight">All Jobs</h2>
-  //         <div className="flex items-center space-x-2">
+  //     <div className="flex-1 space-y-6 p-6 bg-gray-50 min-h-screen">
+  //       {/* Header Section */}
+  //       <div className="flex items-center justify-between border-b pb-4">
+  //         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+  //           All Jobs
+  //         </h2>
+  //         <div className="flex items-center space-x-3">
+  //           {/* Search */}
   //           <div className="relative">
-  //             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+  //             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
   //             <Input
   //               placeholder="Search jobs..."
   //               value={searchTerm}
   //               onChange={(e) => setSearchTerm(e.target.value)}
-  //               className="pl-8 w-64"
+  //               className="pl-8 w-64 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 transition"
   //             />
   //           </div>
+
+  //           {/* Filters */}
   //           <Select value={statusFilter} onValueChange={setStatusFilter}>
-  //             <SelectTrigger className="w-40">
+  //             <SelectTrigger className="w-40 border border-gray-300 rounded-md">
   //               <SelectValue placeholder="Status" />
   //             </SelectTrigger>
   //             <SelectContent>
@@ -971,8 +683,9 @@ return (
   //               <SelectItem value="cancelled">Cancelled</SelectItem>
   //             </SelectContent>
   //           </Select>
+
   //           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-  //             <SelectTrigger className="w-40">
+  //             <SelectTrigger className="w-40 border border-gray-300 rounded-md">
   //               <SelectValue placeholder="Priority" />
   //             </SelectTrigger>
   //             <SelectContent>
@@ -986,127 +699,159 @@ return (
   //         </div>
   //       </div>
 
-  //       <Tabs defaultValue="workshopJobs" className="space-y-4">
-  //         <TabsList>
-  //           <TabsTrigger value="workshopJobs">Workshop Jobs</TabsTrigger>
-  //           <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-  //           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-
+  //       {/* Tabs */}
+  //       <Tabs defaultValue="workshopJobs" className="space-y-6">
+  //         <TabsList className="bg-white shadow rounded-lg border flex">
+  //           {["workshopJobs", "kanban", "analytics"].map((tab) => (
+  //             <TabsTrigger
+  //               key={tab}
+  //               value={tab}
+  //               className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
+  //             >
+  //               {tab === "workshopJobs"
+  //                 ? "Workshop Jobs"
+  //                 : tab === "kanban"
+  //                 ? "Kanban Board"
+  //                 : "Analytics"}
+  //             </TabsTrigger>
+  //           ))}
   //         </TabsList>
-  //         <TabsContent value="workshopJobs" className="space-y-6 p-6 bg-gray-50 min-h-screen">
-  //           <div className="flex flex-col space-y-4">
-  //             {/* Section Header */}
-  //             <div className="flex items-center justify-between border-b border-gray-300 pb-3">
-  //               <h2 className="text-2xl font-semibold text-gray-800">Workshop Jobs</h2>
-  //               <FileText className="h-5 w-5 text-gray-500" />
-  //             </div>
 
-  //             {/* Jobs List */}
-  //             {workshopJob.length === 0 ? (
-  //               <p className="text-center text-gray-500 mt-6">No workshop jobs found.</p>
-  //             ) : (
-  //               <div className="grid gap-4">
-  //                 {workshopJob.map((job) => (
-  //                   <Card
-  //                     key={job.id || job.jobId_workshop}
-  //                     className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
-  //                   >
-  //                     <CardHeader className="pb-3 flex justify-between items-center">
-  //                       <h3 className="text-lg font-semibold text-indigo-700 truncate">
-  //                         {job.jobId_workshop || "Untitled Job"} : {job.status}
-  //                       </h3>
-  //                       <span className="text-sm text-gray-500">
-  //                         {new Date(job.created_at).toLocaleDateString()}
-  //                       </span>
-  //                     </CardHeader>
-  //                     <CardContent className="space-y-4">
-  //                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-  //                         <div>
-  //                           <p>
-  //                             <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
-  //                           </p>
-  //                           <p className="truncate">
-  //                             <strong>Description:</strong> {job.description || "No description"}
-  //                           </p>
-  //                           <p>
-  //                             <strong>Estimated Cost:</strong> {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
-  //                           </p>
-  //                         </div>
-  //                         <div>
-  //                           <p>
-  //                             <strong>Client Name:</strong> {job.client_name || "N/A"}
-  //                           </p>
-  //                           <p>
-  //                             <strong>Client Phone:</strong> {job.client_phone || "N/A"}
-  //                           </p>
-  //                           <p className="truncate">
-  //                             <strong>Location:</strong> {job.location || "Unknown"}
-  //                           </p>
-  //                           <p className="truncate">
-  //                             <strong>Notes:</strong> {job.notes || "-"}
-  //                           </p>
-  //                         </div>
+  //         {/* Workshop Jobs */}
+  //         <TabsContent
+  //           value="workshopJobs"
+  //           className="space-y-6 bg-white rounded-xl p-6 shadow border"
+  //         >
+  //           <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+  //             <h2 className="text-2xl font-semibold text-gray-900">Workshop Jobs</h2>
+  //             <FileText className="h-5 w-5 text-gray-500" />
+  //           </div>
+
+  //           {workshopJob.length === 0 ? (
+  //             <p className="text-center text-gray-500 mt-8">No workshop jobs found.</p>
+  //           ) : (
+  //             <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+  //               {workshopJob.map((job) => (
+  //                 <Card
+  //                   key={job.id || job.jobId_workshop}
+  //                   className="border border-gray-200 rounded-xl bg-white hover:shadow-lg transition-shadow duration-300"
+  //                 >
+  //                   <CardHeader className="flex justify-between items-center pb-3">
+  //                     <h3 className="text-lg font-semibold text-orange-500 truncate">
+  //                       {job.jobId_workshop || "Untitled Job"} — {job.status}
+  //                     </h3>
+  //                     <span className="text-sm text-gray-500">
+  //                       {new Date(job.created_at).toLocaleDateString()}
+  //                     </span>
+  //                   </CardHeader>
+
+  //                   <CardContent className="space-y-4 text-gray-700 text-sm">
+  //                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  //                       <div>
+  //                         <p>
+  //                           <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
+  //                         </p>
+  //                         <p className="truncate">
+  //                           <strong>Description:</strong> {job.description || "No description"}
+  //                         </p>
+  //                         <p>
+  //                           <strong>Estimated Cost:</strong>{" "}
+  //                           {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
+  //                         </p>
   //                       </div>
+  //                       <div>
+  //                         <p>
+  //                           <strong>Client Name:</strong> {job.client_name || "N/A"}
+  //                         </p>
+  //                         <p>
+  //                           <strong>Client Phone:</strong> {job.client_phone || "N/A"}
+  //                         </p>
+  //                         <p>
+  //                           <strong>Location:</strong> {job.location || "Unknown"}
+  //                         </p>
+  //                         <p>
+  //                           <strong>Notes:</strong> {job.notes || "-"}
+  //                         </p>
+  //                       </div>
+  //                     </div>
 
-  //                       {/* Requested Parts Section */}
-  //                       <RequestedParts jobId={job.id} />
-  //                     </CardContent>
-  //                     <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+  //                     <RequestedParts jobId={job.id} />
+  //                   </CardContent>
+
+  //                   <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+  //                     <Button
+  //                       variant="outline"
+  //                       size="sm"
+  //                       className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition"
+  //                       onClick={() => {
+  //                         setSelectedJobForWorkflow(job);
+  //                         setIsWorkflowOpen(true);
+  //                       }}
+  //                     >
+  //                       <CheckCircle className="h-4 w-4 mr-2" />
+  //                       {job.status?.includes("Awaiting") ? "Approve/Reject" : "View Workflow"}
+  //                     </Button>
+
+  //                     <Link href={`/jobWorkShop/${job.id}`}>
   //                       <Button
   //                         variant="outline"
   //                         size="sm"
-  //                         onClick={() => {
-  //                           setSelectedJobForWorkflow(job)
-  //                           setIsWorkflowOpen(true)
-  //                         }}
+  //                         className="border-gray-300 hover:bg-gray-100 transition"
   //                       >
-  //                         <CheckCircle className="h-4 w-4 mr-2" />
-  //                         {job.status?.includes('Awaiting') ? 'Approve/Reject' : 'View Workflow'}
+  //                         <Eye className="h-4 w-4 mr-2" />
+  //                         View Details
   //                       </Button>
-  //                       <Link href={`/jobWorkShop/${job.id}`}>
-  //                         <Button variant="outline" size="sm">
-  //                           <Eye className="h-4 w-4 mr-2" />
-  //                           View Details
-  //                         </Button>
-  //                       </Link>
-
-  //                     </CardFooter>
-  //                   </Card>
-  //                 ))}
-  //               </div>
-  //             )}
-  //           </div>
+  //                     </Link>
+  //                   </CardFooter>
+  //                 </Card>
+  //               ))}
+  //             </div>
+  //           )}
   //         </TabsContent>
-  //         <TabsContent value="kanban" className="space-y-4">
+
+  //         {/* Kanban */}
+  //         <TabsContent
+  //           value="kanban"
+  //           className="p-6 bg-white rounded-xl shadow border"
+  //         >
   //           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-  //             {["Awaiting Workshop Acceptance", "In Progress", "Awaiting Approval", "Approved", "Completed"].map((status) => (
-  //               <Card key={status}>
-  //                 <CardHeader className="pb-3">
-  //                   <CardTitle className="text-sm font-medium">
+  //             {[
+  //               "Awaiting Workshop Acceptance",
+  //               "In Progress",
+  //               "Awaiting Approval",
+  //               "Approved",
+  //               "Completed",
+  //             ].map((status) => (
+  //               <Card
+  //                 key={status}
+  //                 className="border border-gray-200 rounded-xl shadow-sm"
+  //               >
+  //                 <CardHeader className="pb-3 border-b">
+  //                   <CardTitle className="flex items-center justify-between text-sm font-semibold text-gray-900">
   //                     {status}
-  //                     <Badge className="ml-2" variant="secondary">
+  //                     <Badge
+  //                       className="bg-orange-100 text-orange-600 border border-orange-200"
+  //                       variant="secondary"
+  //                     >
   //                       {workshopJob.filter((job) => job.status === status).length}
   //                     </Badge>
   //                   </CardTitle>
   //                 </CardHeader>
-  //                 <CardContent className="space-y-2">
+  //                 <CardContent className="space-y-3 p-3">
   //                   {workshopJob
   //                     .filter((job) => job.status === status)
   //                     .map((job) => (
-  //                       <Card key={job.id} className="p-3 hover:shadow-sm transition-shadow cursor-pointer">
-  //                         <div className="space-y-2">
-  //                           <div className="flex items-center justify-between">
-  //                             <p className="text-sm font-medium">{job.jobId_workshop}</p>
-  //                             <Badge className={getStatusColor(job.status)}>
-  //                               {job.status}
-  //                             </Badge>
-  //                           </div>
-  //                           <p className="text-xs text-gray-600">{job.registration_no}</p>
-  //                           <p className="text-xs text-gray-600 line-clamp-2">{job.description}</p>
-  //                           <div className="flex items-center justify-between text-xs text-gray-500">
-  //                             {job.estimated_cost && <span>R {job.estimated_cost}</span>}
-  //                           </div>
-  //                         </div>
+  //                       <Card
+  //                         key={job.id}
+  //                         className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition"
+  //                       >
+  //                         <p className="text-sm font-medium text-gray-900">
+  //                           {job.jobId_workshop}
+  //                         </p>
+  //                         <p className="text-xs text-gray-500">{job.registration_no}</p>
+  //                         <p className="text-xs text-gray-700 line-clamp-2">
+  //                           {job.description}
+  //                         </p>
   //                       </Card>
   //                     ))}
   //                 </CardContent>
@@ -1115,186 +860,550 @@ return (
   //           </div>
   //         </TabsContent>
 
-  //         <TabsContent value="analytics" className="space-y-4">
+  //         {/* Analytics */}
+  //         <TabsContent
+  //           value="analytics"
+  //           className="p-6 bg-white rounded-xl shadow border"
+  //         >
   //           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
   //             <Card>
-  //               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  //                 <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-  //                 <FileText className="h-4 w-4 text-muted-foreground" />
+  //               <CardHeader className="flex justify-between items-center pb-2">
+  //                 <CardTitle className="text-sm font-medium text-gray-900">
+  //                   Total Jobs
+  //                 </CardTitle>
+  //                 <FileText className="h-4 w-4 text-gray-500" />
   //               </CardHeader>
   //               <CardContent>
-  //                 <div className="text-2xl font-bold">{workshopJob.length}</div>
-  //                 <p className="text-xs text-muted-foreground">Workshop jobs created</p>
+  //                 <div className="text-2xl font-bold text-orange-500">
+  //                   {workshopJob.length}
+  //                 </div>
+  //                 <p className="text-xs text-gray-500">Workshop jobs created</p>
   //               </CardContent>
   //             </Card>
+
   //             <Card>
-  //               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  //                 <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-  //                 <Clock className="h-4 w-4 text-muted-foreground" />
+  //               <CardHeader className="flex justify-between items-center pb-2">
+  //                 <CardTitle className="text-sm font-medium text-gray-900">
+  //                   In Progress
+  //                 </CardTitle>
+  //                 <Clock className="h-4 w-4 text-gray-500" />
   //               </CardHeader>
   //               <CardContent>
-  //                 <div className="text-2xl font-bold">
+  //                 <div className="text-2xl font-bold text-orange-500">
   //                   {workshopJob.filter((job) => job.status === "In Progress").length}
   //                 </div>
-  //                 <p className="text-xs text-muted-foreground">Active jobs being worked on</p>
+  //                 <p className="text-xs text-gray-500">Active jobs being worked on</p>
   //               </CardContent>
   //             </Card>
+
   //             <Card>
-  //               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  //                 <CardTitle className="text-sm font-medium">Completed</CardTitle>
-  //                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
+  //               <CardHeader className="flex justify-between items-center pb-2">
+  //                 <CardTitle className="text-sm font-medium text-gray-900">
+  //                   Completed
+  //                 </CardTitle>
+  //                 <CheckCircle className="h-4 w-4 text-gray-500" />
   //               </CardHeader>
   //               <CardContent>
-  //                 <div className="text-2xl font-bold">{workshopJob.filter((job) => job.status === "Completed").length}</div>
-  //                 <p className="text-xs text-muted-foreground">Successfully completed jobs</p>
-  //               </CardContent>
-  //             </Card>
-  //             <Card>
-  //               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  //                 <CardTitle className="text-sm font-medium">Avg. Cost</CardTitle>
-  //                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-  //               </CardHeader>
-  //               <CardContent>
-  //                 <div className="text-2xl font-bold">
-  //                   R{" "}
-  //                   {workshopJob.length > 0 ? (
-  //                     workshopJob.reduce((sum, job) => sum + (job.estimated_cost || 0), 0) / workshopJob.length
-  //                   ).toFixed(0) : '0'}
+  //                 <div className="text-2xl font-bold text-orange-500">
+  //                   {workshopJob.filter((job) => job.status === "Completed").length}
   //                 </div>
-  //                 <p className="text-xs text-muted-foreground">Average job cost</p>
+  //                 <p className="text-xs text-gray-500">Successfully completed jobs</p>
+  //               </CardContent>
+  //             </Card>
+
+  //             <Card>
+  //               <CardHeader className="flex justify-between items-center pb-2">
+  //                 <CardTitle className="text-sm font-medium text-gray-900">
+  //                   Avg. Cost
+  //                 </CardTitle>
+  //                 <DollarSign className="h-4 w-4 text-gray-500" />
+  //               </CardHeader>
+  //               <CardContent>
+  //                 <div className="text-2xl font-bold text-orange-500">
+  //                   R{" "}
+  //                   {workshopJob.length > 0
+  //                     ? (
+  //                         workshopJob.reduce(
+  //                           (sum, job) => sum + (job.estimated_cost || 0),
+  //                           0
+  //                         ) / workshopJob.length
+  //                       ).toFixed(0)
+  //                     : "0"}
+  //                 </div>
+  //                 <p className="text-xs text-gray-500">Average job cost</p>
   //               </CardContent>
   //             </Card>
   //           </div>
-
-  //           <Card>
-  //             <CardHeader>
-  //               <CardTitle>Job Status Distribution</CardTitle>
-  //               <CardDescription>Overview of workshop job statuses</CardDescription>
-  //             </CardHeader>
-  //             <CardContent>
-  //               <div className="space-y-4">
-  //                 {[
-  //                   "Awaiting Workshop Acceptance",
-  //                   "In Progress",
-  //                   "Awaiting Approval",
-  //                   "Approved",
-  //                   "Completed",
-  //                   "Rejected"
-  //                 ].map((status) => {
-  //                   const count = workshopJob.filter((job) => job.status === status).length
-  //                   const percentage = workshopJob.length > 0 ? (count / workshopJob.length) * 100 : 0
-  //                   return (
-  //                     <div key={status} className="flex items-center justify-between">
-  //                       <div className="flex items-center gap-2">
-  //                         <Badge className={getStatusColor(status)}>
-  //                           {status}
-  //                         </Badge>
-  //                         <span className="text-sm">{count} jobs</span>
-  //                       </div>
-  //                       <div className="flex items-center gap-2">
-  //                         <div className="w-24 bg-gray-200 rounded-full h-2">
-  //                           <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
-  //                         </div>
-  //                         <span className="text-sm text-gray-500">{percentage.toFixed(1)}%</span>
-  //                       </div>
-  //                     </div>
-  //                   )
-  //                 })}
-  //               </div>
-  //             </CardContent>
-  //           </Card>
   //         </TabsContent>
-
-  //         <Dialog open={isWorkshopDialogOpen} onOpenChange={setIsWorkshopDialogOpen}>
-  //           <DialogContent className="max-w-2xl">
-  //             <DialogHeader>
-  //               <DialogTitle>Assign Workshop to Job: {selectedJobForWorkshop?.job_id}</DialogTitle>
-  //               <DialogDescription>Search and select a workshop based on location, type, or capability.</DialogDescription>
-  //             </DialogHeader>
-
-  //             <div className="mb-3">
-  //               <Input
-  //                 placeholder="Search by name, location, type, capability..."
-  //                 value={searchWorkshop}
-  //                 onChange={(e) => setSearchWorkshop(e.target.value)}
-  //               />
-  //             </div>
-
-  //             <div className="max-h-[300px] overflow-y-auto space-y-2">
-  //               {workshops
-  //                 .filter(w =>
-  //                   w.name?.toLowerCase().includes(searchWorkshop.toLowerCase()) ||
-  //                   w.type?.toLowerCase().includes(searchWorkshop.toLowerCase()) ||
-  //                   w.location?.toLowerCase().includes(searchWorkshop.toLowerCase()) ||
-  //                   w.capabilities?.toLowerCase().includes(searchWorkshop.toLowerCase())
-  //                 )
-  //                 .map((workshop) => (
-  //                   <div
-  //                     key={workshop.id}
-  //                     className="p-3 border rounded hover:bg-gray-100 flex justify-between items-start"
-  //                   >
-  //                     <div>
-  //                       <p className="font-bold">{workshop.name}</p>
-  //                       <p className="text-sm text-muted-foreground">
-  //                         <strong>Type:</strong> {workshop.type}<br />
-  //                         <strong>Location:</strong> {workshop.location}<br />
-  //                         <strong>Capabilities:</strong> {workshop.capabilities}
-  //                       </p>
-  //                     </div>
-  //                     <Button
-  //                       size="sm"
-  //                       onClick={async () => {
-  //                         if (!selectedJobForWorkshop) return
-
-  //                         const { error } = await supabase
-  //                           .from('job_assignments')
-  //                           .update({
-  //                             workshop_id: workshop.id,
-  //                             updated_at: new Date().toISOString()
-  //                           })
-  //                           .eq('id', selectedJobForWorkshop.id)
-
-  //                         if (error) {
-  //                           toast.error("Failed to assign workshop.")
-  //                           console.error(error)
-  //                         } else {
-  //                           toast.success(`Assigned ${workshop.name} to job.`)
-  //                           setIsWorkshopDialogOpen(false)
-  //                         }
-  //                       }}
-  //                     >
-  //                       Assign
-  //                     </Button>
-  //                   </div>
-  //                 ))}
-  //             </div>
-  //           </DialogContent>
-  //         </Dialog>
   //       </Tabs>
-
-  //       {/* Job Card Workflow Modal */}
-  //       <JobCardWorkflow
-  //         isOpen={isWorkflowOpen}
-  //         onClose={() => setIsWorkflowOpen(false)}
-  //         jobCard={selectedJobForWorkflow}
-  //         onStatusUpdate={() => {
-  //           // Refresh jobs list
-  //           const getWorkshopJob = async () => {
-  //             const { data: WorkJ, error: workError } = await supabase
-  //               .from("workshop_job")
-  //               .select("*")
-  //               .order("created_at", { ascending: false })
-
-  //             if (!workError && WorkJ) {
-  //               setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
-  //             }
-  //           };
-  //           getWorkshopJob();
-  //         }}
-  //       />
   //     </div>
   //   </>
-  // )
+  // );
+
+  return (
+    <>
+      <div className="flex-1 space-y-4 p-4 pt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">All Jobs</h2>
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search jobs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-64"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="assigned">Assigned</SelectItem>
+                <SelectItem value="inprogress">In Progress</SelectItem>
+                <SelectItem value="awaiting-approval">
+                  Awaiting Approval
+                </SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="emergency">Emergency</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Tabs defaultValue="workshopJobs" className="space-y-6">
+          <TabsList className="bg-white shadow rounded-lg border flex">
+            {["workshopJobs", "kanban", "analytics"].map((tab) => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
+              >
+                {tab === "workshopJobs"
+                  ? "Workshop Jobs"
+                  : tab === "kanban"
+                  ? "Kanban Board"
+                  : "Analytics"}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <TabsContent
+            value="workshopJobs"
+            className="space-y-6 p-6 bg-gray-50 min-h-screen"
+          >
+            <div className="flex flex-col space-y-4">
+              {/* Section Header */}
+              <div className="flex items-center justify-between border-b border-gray-300 pb-3">
+                <h2 className="text-2xl font-semibold text-gray-800">
+                  Workshop Jobs
+                </h2>
+                <FileText className="h-5 w-5 text-gray-500" />
+              </div>
+
+              {/* Jobs List */}
+              {workshopJob.length === 0 ? (
+                <p className="text-center text-gray-500 mt-6">
+                  No workshop jobs found.
+                </p>
+              ) : (
+                <div className="grid gap-4">
+                  {workshopJob.map((job) => (
+                    <Card
+                      key={job.id || job.jobId_workshop}
+                      className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
+                    >
+                      <CardHeader className="pb-3 flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-indigo-700 truncate">
+                          {job.jobId_workshop || "Untitled Job"} : {job.status}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </span>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                          <div>
+                            <p>
+                              <strong>Vehicle Reg:</strong>{" "}
+                              {job.registration_no || "N/A"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Description:</strong>{" "}
+                              {job.description || "No description"}
+                            </p>
+                            <p>
+                              <strong>Estimated Cost:</strong>{" "}
+                              {job.estimated_cost
+                                ? `R ${job.estimated_cost.toFixed(2)}`
+                                : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <p>
+                              <strong>Client Name:</strong>{" "}
+                              {job.client_name || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Client Phone:</strong>{" "}
+                              {job.client_phone || "N/A"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Location:</strong>{" "}
+                              {job.location || "Unknown"}
+                            </p>
+                            <p className="truncate">
+                              <strong>Notes:</strong> {job.notes || "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Requested Parts Section */}
+                        <RequestedParts jobId={job.id} />
+                      </CardContent>
+                      <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedJobForWorkflow(job);
+                            setIsWorkflowOpen(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          {job.status?.includes("Awaiting")
+                            ? "Approve/Reject"
+                            : "View Workflow"}
+                        </Button>
+                        <Link href={`/jobWorkShop/${job.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </Link>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="kanban" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {[
+                "Awaiting Workshop Acceptance",
+                "In Progress",
+                "Awaiting Approval",
+                "Approved",
+                "Completed",
+              ].map((status) => (
+                <Card key={status}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">
+                      {status}
+                      <Badge className="ml-2" variant="secondary">
+                        {
+                          workshopJob.filter((job) => job.status === status)
+                            .length
+                        }
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {workshopJob
+                      .filter((job) => job.status === status)
+                      .map((job) => (
+                        <Card
+                          key={job.id}
+                          className="p-3 hover:shadow-sm transition-shadow cursor-pointer"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">
+                                {job.jobId_workshop}
+                              </p>
+                              <Badge className={getStatusColor(job.status)}>
+                                {job.status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              {job.registration_no}
+                            </p>
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {job.description}
+                            </p>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              {job.estimated_cost && (
+                                <span>R {job.estimated_cost}</span>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Jobs
+                  </CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{workshopJob.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Workshop jobs created
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    In Progress
+                  </CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {
+                      workshopJob.filter((job) => job.status === "In Progress")
+                        .length
+                    }
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Active jobs being worked on
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Completed
+                  </CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {
+                      workshopJob.filter((job) => job.status === "Completed")
+                        .length
+                    }
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Successfully completed jobs
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Avg. Cost
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    R{" "}
+                    {workshopJob.length > 0
+                      ? (
+                          workshopJob.reduce(
+                            (sum, job) => sum + (job.estimated_cost || 0),
+                            0
+                          ) / workshopJob.length
+                        ).toFixed(0)
+                      : "0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Average job cost
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Job Status Distribution</CardTitle>
+                <CardDescription>
+                  Overview of workshop job statuses
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    "Awaiting Workshop Acceptance",
+                    "In Progress",
+                    "Awaiting Approval",
+                    "Approved",
+                    "Completed",
+                    "Rejected",
+                  ].map((status) => {
+                    const count = workshopJob.filter(
+                      (job) => job.status === status
+                    ).length;
+                    const percentage =
+                      workshopJob.length > 0
+                        ? (count / workshopJob.length) * 100
+                        : 0;
+                    return (
+                      <div
+                        key={status}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(status)}>
+                            {status}
+                          </Badge>
+                          <span className="text-sm">{count} jobs</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <Dialog
+            open={isWorkshopDialogOpen}
+            onOpenChange={setIsWorkshopDialogOpen}
+          >
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  Assign Workshop to Job: {selectedJobForWorkshop?.job_id}
+                </DialogTitle>
+                <DialogDescription>
+                  Search and select a workshop based on location, type, or
+                  capability.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mb-3">
+                <Input
+                  placeholder="Search by name, location, type, capability..."
+                  value={searchWorkshop}
+                  onChange={(e) => setSearchWorkshop(e.target.value)}
+                />
+              </div>
+
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {workshops
+                  .filter(
+                    (w) =>
+                      w.name
+                        ?.toLowerCase()
+                        .includes(searchWorkshop.toLowerCase()) ||
+                      w.type
+                        ?.toLowerCase()
+                        .includes(searchWorkshop.toLowerCase()) ||
+                      w.location
+                        ?.toLowerCase()
+                        .includes(searchWorkshop.toLowerCase()) ||
+                      w.capabilities
+                        ?.toLowerCase()
+                        .includes(searchWorkshop.toLowerCase())
+                  )
+                  .map((workshop) => (
+                    <div
+                      key={workshop.id}
+                      className="p-3 border rounded hover:bg-gray-100 flex justify-between items-start"
+                    >
+                      <div>
+                        <p className="font-bold">{workshop.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Type:</strong> {workshop.type}
+                          <br />
+                          <strong>Location:</strong> {workshop.location}
+                          <br />
+                          <strong>Capabilities:</strong> {workshop.capabilities}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!selectedJobForWorkshop) return;
+
+                          const { error } = await supabase
+                            .from("job_assignments")
+                            .update({
+                              workshop_id: workshop.id,
+                              updated_at: new Date().toISOString(),
+                            })
+                            .eq("id", selectedJobForWorkshop.id);
+
+                          if (error) {
+                            toast.error("Failed to assign workshop.");
+                            console.error(error);
+                          } else {
+                            toast.success(`Assigned ${workshop.name} to job.`);
+                            setIsWorkshopDialogOpen(false);
+                          }
+                        }}
+                      >
+                        Assign
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </Tabs>
+
+        {/* Job Card Workflow Modal */}
+        <JobCardWorkflow
+          isOpen={isWorkflowOpen}
+          onClose={() => setIsWorkflowOpen(false)}
+          jobCard={selectedJobForWorkflow}
+          onStatusUpdate={() => {
+            // Refresh jobs list
+            const getWorkshopJob = async () => {
+              const { data: WorkJ, error: workError } = await supabase
+                .from("workshop_job")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+              if (!workError && WorkJ) {
+                setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
+              }
+            };
+            getWorkshopJob();
+          }}
+        />
+      </div>
+    </>
+  );
 }
 
 // <div className="flex justify-end">
