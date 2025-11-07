@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (allocationError) {
+      console.error('Allocation error:', allocationError);  
       return NextResponse.json({ error: allocationError.message }, { status: 500 });
     }
 

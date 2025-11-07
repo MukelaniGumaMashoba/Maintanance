@@ -79,8 +79,6 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
     { name: "Repair Management", href: "/ccenter", Icon: Building2 },
-    { name: "Sublets", href: "/admin/sublets", Icon: ArrowRightLeft },
-    { name: "Stock Levels", href: "/inventory/stock-levels", Icon: ClipboardList },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
     {

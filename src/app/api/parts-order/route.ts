@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// const resend = new Resend(process.env.RESEND_API_KEY);
+
+const resend = new Resend('re_ZsKAK1px_92CQsX1Qew2yuWhzbEfPgqmB');
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -21,6 +23,8 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('id', supplier_id)
       .single();
+
+    console.log('Sending email to:', supplier.email);
 
     if (supplierError || !supplier) {
       return NextResponse.json({ error: 'Supplier not found' }, { status: 404 });
@@ -40,11 +44,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError) {
+      console.log(orderError.message)
       return NextResponse.json({ error: orderError.message }, { status: 500 });
     }
 
     // Send email to supplier
-    const partsTable = parts.map((part: any) => 
+    const partsTable = parts.map((part: any) =>
       `<tr>
         <td style="padding: 8px; border: 1px solid #ddd;">${part.description}</td>
         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${part.quantity}</td>
@@ -86,17 +91,18 @@ export async function POST(request: NextRequest) {
     `;
 
     if (supplier.email) {
+      console.log('Sending email to:', supplier.email);
       await resend.emails.send({
-        from: 'Maintenance Workshop <orders@maintenance.com>',
+        from: 'Maintenance Workshop <onboarding@resend.dev>',
         to: [supplier.email],
         subject: `Parts Order Request - Order #${order.id}`,
         html: emailHtml,
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Order sent successfully',
-      order_id: order.id 
+      order_id: order.id
     });
   } catch (error) {
     console.error('Parts order error:', error);
