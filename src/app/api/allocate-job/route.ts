@@ -8,18 +8,24 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { sublet_id, job_card_id, notes } = await request.json();
 
-    // Get sublet workshop details
+    // Get sublet workshop details with supplier info
     const { data: sublet, error: subletError } = await supabase
       .from('sublets')
       .select('*')
       .eq('id', sublet_id)
+      .single();
+
+    const { data: jobCard, error: jobError } = await supabase
+      .from('workshop_job')
+      .select('*')
+      .eq('id', job_card_id)
       .single();
 
     if (subletError || !sublet) {
@@ -27,11 +33,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get job card details
-    const { data: jobCard, error: jobError } = await supabase
-      .from('workshop_job')
-      .select('*')
-      .eq('id', job_card_id)
-      .single();
 
     if (jobError || !jobCard) {
       return NextResponse.json({ error: 'Job card not found' }, { status: 404 });
@@ -52,21 +53,21 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (allocationError) {
-      console.error('Allocation error:', allocationError);  
+      console.error('Allocation error:', allocationError);
       return NextResponse.json({ error: allocationError.message }, { status: 500 });
     }
 
     // Update job card status
     await supabase
       .from('workshop_job')
-      .update({ status: 'Allocated to Sublet' })
+      .update({ sublet: 1 })
       .eq('id', job_card_id);
 
     // Send email to sublet workshop
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="margin: 0; font-size: 24px;">🔧 New Job Allocation</h1>
+          <h1 style="margin: 0; font-size: 24px;">🔧 Klaver New Job Allocation</h1>
         </div>
         
         <div style="background-color: #fff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
@@ -81,19 +82,19 @@ export async function POST(request: NextRequest) {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: #374151;">Job Number:</td>
-                <td style="padding: 8px 0; color: #6b7280;">${jobCard.job_number}</td>
+                <td style="padding: 8px 0; color: #6b7280;">${jobCard.jobId_workshop}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: #374151;">Customer:</td>
-                <td style="padding: 8px 0; color: #6b7280;">${jobCard.customer_name}</td>
+                <td style="padding: 8px 0; color: #6b7280;">${jobCard.client_name}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: #374151;">Vehicle:</td>
-                <td style="padding: 8px 0; color: #6b7280;">${jobCard.vehicle_registration || 'N/A'}</td>
+                <td style="padding: 8px 0; color: #6b7280;">${jobCard.registration_no || 'N/A'}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: #374151;">Description:</td>
-                <td style="padding: 8px 0; color: #6b7280;">${jobCard.job_description || 'N/A'}</td>
+                <td style="padding: 8px 0; color: #6b7280;">${jobCard.description || 'N/A'}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: #374151;">Due Date:</td>
@@ -123,7 +124,8 @@ export async function POST(request: NextRequest) {
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
               <strong>Contact Information:</strong><br>
               Maintenance Workshop<br>
-              Email: jobs@maintenance.com<br>
+              Name: Lwazi
+              Email: stores@klaverplant.co.za<br>
               Phone: +27 11 123 4567
             </p>
           </div>
@@ -136,16 +138,16 @@ export async function POST(request: NextRequest) {
 
     if (sublet.email) {
       await resend.emails.send({
-        from: 'Maintenance Workshop <jobs@maintenance.com>',
+        from: 'Maintenance Workshop <onboarding@resend.dev>',
         to: [sublet.email],
         subject: `New Job Allocation - ${jobCard.job_number}`,
         html: emailHtml,
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Job allocated successfully and email sent',
-      allocation_id: allocation.id 
+      allocation_id: allocation.id
     });
   } catch (error) {
     console.error('Job allocation error:', error);

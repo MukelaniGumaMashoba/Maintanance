@@ -61,7 +61,7 @@ export async function assignJob(Jobassignment: JobAssignment, technician_id: num
 
     // 2️⃣ Update technician: attach job + set availability
     const { data: techUpdate, error: techError } = await supabase
-        .from("technicians")
+        .from("technicians_klaver")
         .update({
             job_allocation: Jobassignment.id,
             availability: "busy",
@@ -103,7 +103,7 @@ export async function assignTechnicianToJob({
 
     // Step 2: Update technician status
     const { data: technicianUpdateData, error: techError } = await supabase
-        .from('technicians')
+        .from('technicians_klaver')
         .update({ availability: 'busy' })
         .eq('id', Number(technicianId))
         .select('id, availability')
@@ -126,7 +126,7 @@ export async function addTechnician(technician: Technician) {
     const supabase = await createClient()
 
     const { data, error } = await supabase
-        .from('technicians')
+        .from('technicians_klaver')
         .insert({
             name: technician.name,
             phone: technician.phone,

@@ -98,7 +98,7 @@ export default function CallCenterPage() {
 
     const getTechnicians = async () => {
       const { data: technicians, error } = await supabase
-        .from("technicians")
+        .from("technicians_klaver")
         .select("*")
         .eq("type", "internal");
       if (error) {
@@ -190,7 +190,7 @@ export default function CallCenterPage() {
       breakdown.order_no || breakdown.driver_name || breakdown.registration
   );
 
-  const [coords, setCoords] = useState([]); // Array of all coordinates
+  const [coords, setCoords] = useState<[number, number][]>([]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -224,7 +224,7 @@ export default function CallCenterPage() {
         );
 
         // Filter out any nulls in case of failed geocoding
-        // @ts-ignore
+        // @ts-nocheck
         setCoords(
           coordsArray.filter((c): c is [number, number] => c !== null) as [
             number,

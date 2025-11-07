@@ -14,29 +14,16 @@ import {
   Search,
   RefreshCw,
   Plus,
-  CheckCircle,
   AlertCircle,
   FileText,
   Car,
-  QrCode,
-  Printer,
-  MapPin,
-  User,
-  Calendar,
-  Receipt,
-  Download,
   ClipboardList,
-  Filter,
   Save,
   History,
   Minus,
   ShoppingCart,
   Mail,
-  Eye,
-  Edit,
-  Truck,
   AlertTriangle,
-  TrendingUp,
   BarChart3
 } from 'lucide-react';
 import DashboardHeader from '@/components/shared/DashboardHeader';
@@ -94,8 +81,8 @@ export default function InventoryPage() {
     const { data: lowStockParts } = await supabase
       .from('parts')
       .select('*')
-      .lte('quantity', 5);
-    
+      .lte('quantity', 10);
+
     if (lowStockParts?.length > 0) {
       await fetch('/api/low-stock-alert', {
         method: 'POST',
@@ -214,7 +201,7 @@ export default function InventoryPage() {
       job.job_description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // const hasNoParts = !job.parts_required || !Array.isArray(job.parts_required) || job.parts_required.length === 0;
-    const hasNoParts = job.job_parts?.length > 0 || !job.given_parts || !Array.isArray(job.given_parts) || job.given_parts.length === 0  || job.status !== 'Part Assigned';
+    const hasNoParts = job.job_parts?.length > 0 || !job.given_parts || !Array.isArray(job.given_parts) || job.given_parts.length === 0 && job.status !== 'Part Assigned';
     return matchesSearch && hasNoParts;
   });
 
@@ -249,9 +236,18 @@ export default function InventoryPage() {
   const handleAssignParts = (jobCard) => {
     setSelectedJobCard(jobCard);
     setShowAssignModal(true);
+
   };
 
   const handlePartsAssigned = () => {
+    const updateJobStatus = async () => {
+      const { error } = await supabase
+        .from('workshop_job')
+        .update({ job_status: 'Started' })
+        .eq('id', selectedJobCard.id);
+    }
+
+    updateJobStatus();
     fetchData();
     setShowAssignModal(false);
     setSelectedJobCard(null);
@@ -371,7 +367,7 @@ export default function InventoryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderForm)
       });
-      
+
       if (response.ok) {
         toast.success('Parts order sent to supplier!');
         setShowOrderModal(false);
@@ -457,7 +453,7 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
-        
+
         {filteredJobCards.length === 0 && (
           <div className="py-12 text-center">
             <FileText className="mx-auto mb-4 w-12 h-12 text-gray-400" />
@@ -589,7 +585,7 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <Label>Supplier *</Label>
-                  <Select value={orderForm.supplier_id} onValueChange={(v) => setOrderForm({...orderForm, supplier_id: v})}>
+                  <Select value={orderForm.supplier_id} onValueChange={(v) => setOrderForm({ ...orderForm, supplier_id: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
@@ -601,7 +597,7 @@ export default function InventoryPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label>Search & Add Parts</Label>
                 <div className="relative">
@@ -612,7 +608,7 @@ export default function InventoryPage() {
                     onChange={(e) => {
                       const searchValue = e.target.value;
                       if (searchValue) {
-                        const matchingParts = parts.filter(p => 
+                        const matchingParts = parts.filter(p =>
                           p.description?.toLowerCase().includes(searchValue.toLowerCase()) ||
                           p.item_code?.toLowerCase().includes(searchValue.toLowerCase())
                         );
@@ -641,7 +637,7 @@ export default function InventoryPage() {
                     Add Custom Item
                   </Button>
                 </div>
-                
+
                 <div className="border rounded-lg">
                   <div className="bg-gray-50 px-4 py-2 border-b grid grid-cols-12 gap-2 text-sm font-medium text-gray-700">
                     <div className="col-span-5">Description</div>
@@ -650,7 +646,7 @@ export default function InventoryPage() {
                     <div className="col-span-2">Unit Price</div>
                     <div className="col-span-1">Action</div>
                   </div>
-                  
+
                   <div className="max-h-60 overflow-y-auto">
                     {orderForm.parts.map((orderPart, index) => {
                       const stockPart = parts.find(p => p.id === orderPart.id);
@@ -664,7 +660,7 @@ export default function InventoryPage() {
                                 onChange={(e) => {
                                   const newParts = [...orderForm.parts];
                                   newParts[index].description = e.target.value;
-                                  setOrderForm({...orderForm, parts: newParts});
+                                  setOrderForm({ ...orderForm, parts: newParts });
                                 }}
                               />
                             ) : (
@@ -675,9 +671,8 @@ export default function InventoryPage() {
                             )}
                           </div>
                           <div className="col-span-2">
-                            <span className={`text-sm ${
-                              stockPart?.quantity <= 5 ? 'text-red-600' : 'text-green-600'
-                            }`}>
+                            <span className={`text-sm ${stockPart?.quantity <= 5 ? 'text-red-600' : 'text-green-600'
+                              }`}>
                               {stockPart?.quantity || (orderPart.isCustom ? 'N/A' : '0')}
                             </span>
                           </div>
@@ -689,7 +684,7 @@ export default function InventoryPage() {
                               onChange={(e) => {
                                 const newParts = [...orderForm.parts];
                                 newParts[index].quantity = parseInt(e.target.value) || 1;
-                                setOrderForm({...orderForm, parts: newParts});
+                                setOrderForm({ ...orderForm, parts: newParts });
                               }}
                             />
                           </div>
@@ -702,7 +697,7 @@ export default function InventoryPage() {
                               onChange={(e) => {
                                 const newParts = [...orderForm.parts];
                                 newParts[index].price = parseFloat(e.target.value) || 0;
-                                setOrderForm({...orderForm, parts: newParts});
+                                setOrderForm({ ...orderForm, parts: newParts });
                               }}
                             />
                           </div>
@@ -713,7 +708,7 @@ export default function InventoryPage() {
                               size="sm"
                               onClick={() => {
                                 const newParts = orderForm.parts.filter((_, i) => i !== index);
-                                setOrderForm({...orderForm, parts: newParts});
+                                setOrderForm({ ...orderForm, parts: newParts });
                               }}
                             >
                               <Minus className="w-4 h-4 text-red-500" />
@@ -723,7 +718,7 @@ export default function InventoryPage() {
                       );
                     })}
                   </div>
-                  
+
                   {orderForm.parts.length === 0 && (
                     <div className="p-8 text-center text-gray-500">
                       No items added. Search for parts above or add custom items.
@@ -764,17 +759,17 @@ export default function InventoryPage() {
                   ))}
                 </div>
               </div>
-              
+
               <div>
                 <Label>Order Notes</Label>
                 <Textarea
                   value={orderForm.notes}
-                  onChange={(e) => setOrderForm({...orderForm, notes: e.target.value})}
+                  onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })}
                   placeholder="Additional notes, delivery instructions, or special requirements..."
                   rows={3}
                 />
               </div>
-              
+
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total Items: {orderForm.parts.length}</span>
@@ -783,9 +778,9 @@ export default function InventoryPage() {
                   </span>
                 </div>
               </div>
-              
-              <Button 
-                onClick={handleOrderParts} 
+
+              <Button
+                onClick={handleOrderParts}
                 className="w-full bg-green-600 hover:bg-green-700"
                 disabled={!orderForm.supplier_id || orderForm.parts.length === 0}
               >
@@ -876,9 +871,8 @@ export default function InventoryPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`text-sm font-medium ${
-                        isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'
-                      }`}>
+                      <span className={`text-sm font-medium ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'
+                        }`}>
                         {part.quantity}
                       </span>
                     </td>
@@ -891,8 +885,8 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <Badge className={
                         isOutOfStock ? 'bg-red-100 text-red-800' :
-                        isLowStock ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
+                          isLowStock ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
                       }>
                         {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
                       </Badge>
@@ -913,7 +907,7 @@ export default function InventoryPage() {
                             onClick={() => {
                               setOrderForm({
                                 supplier_id: '',
-                                parts: [{id: part.id, quantity: 10, description: part.description}],
+                                parts: [{ id: part.id, quantity: 10, description: part.description }],
                                 notes: `Reorder for ${part.description} - Current stock: ${part.quantity}`
                               });
                               setShowOrderModal(true);

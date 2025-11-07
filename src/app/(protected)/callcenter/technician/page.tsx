@@ -121,9 +121,9 @@ export default function TechniciansPage() {
   const refreshData = async () => {
     // Fetch technicians
     const { data: techniciansData, error: techError } = await supabase
-      .from('technicians')
+      .from('technicians_klaver')
       .select('*')
-      .eq("type", "internal") // Only internal technicians for now
+      // .eq("type", "internal") // Only internal technicians for now
     if (techError) {
       console.error('Error fetching technicians:', techError)
       setTechnicians([])

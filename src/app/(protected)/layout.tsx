@@ -78,16 +78,16 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
-    { name: "Repair Management", href: "/ccenter", Icon: Building2 },
+    // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
-    {
-      name: "Reports",
-      href: "/reports",
-      Icon: DockIcon,
-      hasSubMenu: true,
-      subMenu: [], // This is now valid
-    },
+    // {
+    //   name: "Reports",
+    //   href: "/reports",
+    //   Icon: DockIcon,
+    //   hasSubMenu: true,
+    //   subMenu: [], // This is now valid
+    // },
   ],
 
   // Is the Admin and Part manager
@@ -103,7 +103,11 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Suppliers", href: "/admin/suppliers", Icon: Building2 },
     { name: "Sublets", href: "/admin/sublets", Icon: ArrowRightLeft },
     { name: "Inventory", href: "/inventory", Icon: Package },
-    { name: "Stock Levels", href: "/inventory/stock-levels", Icon: ClipboardList },
+    {
+      name: "Stock Levels",
+      href: "/inventory/stock-levels",
+      Icon: ClipboardList,
+    },
     { name: "System Settings", href: "/settings", Icon: Settings },
   ],
 };
@@ -188,7 +192,7 @@ export default function ProtectedLayout({
 
   return (
     <SidebarProvider>
-      <div className="bg-gray-50 w-full">
+      <div className="bg-[#F4F4F4] w-full">
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
@@ -197,144 +201,136 @@ export default function ProtectedLayout({
           />
         )}
 
-        {/* Sidebar: this is sticky/fixed and does NOT move */}
+        {/* Sidebar */}
         <div
           className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg
-        transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0
-        h-screen
-      `}
+          fixed inset-y-0 left-0 z-50 w-64 bg-[#1E1E1E] text-white shadow-xl
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+          h-screen flex flex-col
+        `}
         >
-          {/* Header, nav, footer go here */}
-          <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-black">
-              <h1 className="text-xl font-bold text-white text-center">
-                Maintenance
-              </h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden"
-              >
-                ✕
-              </Button>
-            </div>
+          {/* Header */}
+          <div className="flex items-center justify-center p-4 bg-[#F57C00]">
+            <img
+              src="/klaver.png"
+              alt="Klaver Plant Logo"
+              className="h-10 w-auto"
+            />
+            <h1 className="text-xl font-bold m-4">Klaver</h1>
+          </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 p-4 space-y-2">
-              {navigation.map((item) => {
-                // const isActive = pathname.startsWith(item.href)
-                const isActive = pathname === item.href;
-                if (item.hasSubMenu) {
-                  return (
-                    <Collapsible
-                      key={item.name}
-                      defaultOpen={item.subMenu.some(
-                        (subItem: { href: string }) =>
-                          pathname.startsWith(subItem.href)
-                      )}
-                      className="list-none"
-                    >
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton isActive={isActive}>
-                            <span>{item.name}</span>
-                            <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                      </SidebarMenuItem>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {item.subMenu.map((subItem: SubMenuItem) => (
-                            <SidebarMenuSubItem key={subItem.name}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={pathname.startsWith(subItem.href)}
-                              >
-                                <Link href={subItem.href}>
-                                  {subItem.icon && (
-                                    <subItem.icon className="text-sidebar-foreground/60" />
-                                  )}
-                                  <span>{subItem.name}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                }
+          {/* Navigation */}
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              if (item.hasSubMenu) {
                 return (
-                  <Link
+                  <Collapsible
                     key={item.name}
-                    href={item.href}
-                    className={`
-                              flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                              ${
-                                isActive
-                                  ? "bg-blue-100 text-blue-700 border-r-2 border-blue-700"
-                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                              }
-                    `}
-                    onClick={() => setSidebarOpen(false)}
+                    defaultOpen={item.subMenu.some((subItem: any) =>
+                      pathname.startsWith(subItem.href)
+                    )}
+                    className="list-none"
                   >
-                    <item.Icon className="mr-3" />
-                    {item.name}
-                  </Link>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          className="flex items-center justify-between w-full text-sm font-medium text-gray-200 hover:text-white hover:bg-[#F57C00]/30 px-3 py-2 rounded-lg transition"
+                        >
+                          <span>{item.name}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="ml-4 mt-1 space-y-1">
+                        {item.subMenu.map((subItem: SubMenuItem) => (
+                          <SidebarMenuSubItem key={subItem.name}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={pathname.startsWith(subItem.href)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
+                                pathname.startsWith(subItem.href)
+                                  ? "bg-[#F57C00]/20 text-[#F57C00]"
+                                  : "text-gray-400 hover:text-white hover:bg-[#F57C00]/20"
+                              }`}
+                            >
+                              <Link href={subItem.href}>
+                                {subItem.icon && (
+                                  <subItem.icon className="h-4 w-4" />
+                                )}
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </Collapsible>
                 );
-              })}
-            </nav>
+              }
 
-            {/* Footer */}
-            <div className="p-4 border-t">
-              <div className="mb-2 text-xs text-gray-500 text-center">
-                Role:{" "}
-                {userRole
-                  ? userRole === "customer"
-                    ? "External Workshop"
-                    : userRole === "call centre"
-                    ? "Administrator"
-                    : userRole
-                  : "No User"}
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="w-full"
-              >
-                🚪 Logout
-              </Button>
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                    isActive
+                      ? "bg-[#F57C00]/20 text-[#F57C00] border-l-4 border-[#F57C00]"
+                      : "text-gray-300 hover:bg-[#F57C00]/20 hover:text-white"
+                  }`}
+                >
+                  <item.Icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-700 bg-[#121212]">
+            <div className="mb-3 text-xs text-gray-400 text-center">
+              Role:{" "}
+              {userRole
+                ? userRole === "customer"
+                  ? "External Workshop"
+                  : userRole === "call centre"
+                  ? "Administrator"
+                  : userRole
+                : "No User"}
             </div>
+            <Button
+              onClick={handleLogout}
+              className="w-full bg-[#F57C00] hover:bg-[#e06f00] text-white font-semibold"
+            >
+              🚪 Logout
+            </Button>
           </div>
         </div>
 
-        {/* Main content: this scrolls */}
-        <div className="ml-64 h-screen overflow-y-auto">
-          {/* Top bar */}
-          <div className="sticky top-0 z-30 bg-white border-b text-white shadow-sm p-2">
-            <div className="flex items-center justify-between px-4 py-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden"
-              >
-                ☰
-              </Button>
-
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-black">Welcome</span>
-              </div>
-            </div>
+        {/* Main content area */}
+        <div className="lg:ml-64 h-screen overflow-y-auto flex flex-col">
+          {/* Top Bar */}
+          <div className="sticky top-0 z-30 bg-white border-b shadow-sm px-4 py-3 flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-[#F57C00]"
+            >
+              ☰
+            </Button>
+            <span className="text-sm font-medium text-gray-700">
+              Welcome back
+            </span>
           </div>
 
           {/* Page content */}
-          <main className="p-6 w-full">
+          <main className="p-6 flex-1 w-full">
             <Card className="p-6">{children}</Card>
             <Toaster />
           </main>

@@ -1,60 +1,95 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface Part {
-  id: number
-  part_name?: string
-  quantity?: number
-  status?: string
-  created_at?: string
-  item_code?: string
-  description?: string
-  price?: number
-  total_cost?: number
+  id?: number;
+  part_name?: string;
+  quantity?: number;
+  description?: string;
+  item_code?: string;
+  price?: number;
+  total_cost?: number;
 }
 
 export default function RequestedParts({ jobId }: { jobId: number }) {
-  const [parts, setParts] = useState<Part[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const [parts, setParts] = useState<Part[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
   useEffect(() => {
     const fetchParts = async () => {
       if (!jobId) {
-        setLoading(false)
-        return
+        setLoading(false);
+        return;
       }
-
       try {
-        const { data, error } = await supabase
-          .from('workshop_job_parts')
-          .select('*')
-          .eq('workshop_job_id', jobId)
-          .order('created_at', { ascending: false })
+        // Fetch only job_parts field from table filtered by jobId
 
-        if (!error && data) {
-          // Ensure data is properly structured
-          const validParts = data.filter(part => part && typeof part === 'object')
-          setParts(validParts)
-        } else {
-          // Table might not exist yet, just set empty array
-          setParts([])
+        const { data: jc, error: jcError } = await supabase
+          .from("workshop_job")
+          .select("id")
+          .eq("id", jobId)
+          .single();
+
+        if (jcError || !jc) {
+          console.error("Error fetching job:", jcError);
+          setParts([]);
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        // Handle case where table doesn't exist
-        console.log('Parts table not found, skipping parts fetch')
-        setParts([])
+
+        // jc is validated above, so use the definite id (not undefined)
+        const workshopJobId = jc.id;
+
+        const { data, error } = await supabase
+          .from("workshop_jobpart")
+          .select("job_parts")
+          .eq("job_id", workshopJobId)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching parts:", error);
+          setParts([]);
+          setLoading(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Flatten job_parts arrays or objects from each row into a single parts array
+          const allParts: Part[] = data.flatMap((row) => {
+            const jp = (row as any).job_parts;
+            if (!jp) return [];
+            if (Array.isArray(jp)) return jp;
+            if (typeof jp === "object") return [jp];
+            return [];
+          });
+
+          // Filter out invalid/null parts
+          const validParts = allParts.filter(
+            (p) =>
+              p &&
+              (typeof p === "object") &&
+              (Object.keys(p).length > 0)
+          );
+
+          setParts(validParts);
+        } else {
+          setParts([]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch parts table:", e);
+        setParts([]);
       }
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchParts()
-  }, [jobId, supabase])
+    fetchParts();
+  }, [jobId, supabase]);
 
-  if (loading) return <div className="text-sm text-gray-500">Loading parts...</div>
+  if (loading) return <div className="text-sm text-gray-500">Loading parts...</div>;
 
   if (parts.length === 0) {
     return (
@@ -62,31 +97,26 @@ export default function RequestedParts({ jobId }: { jobId: number }) {
         <p className="text-sm font-medium text-gray-600 mb-2">Requested Parts:</p>
         <p className="text-sm text-gray-500">No parts requested yet</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="border-t pt-3">
       <p className="text-sm font-medium text-gray-600 mb-2">Requested Parts ({parts.length}):</p>
       <div className="flex flex-wrap gap-2">
-        {parts.map((part) => {
-          // Safely extract part information
-          const partName = part.part_name || part.description || part.item_code || 'Unknown Part'
-          const quantity = part.quantity || 1
-          const price = part.price || part.total_cost
-          
+        {parts.map((part, index) => {
+          const partName = part.part_name || part.description || part.item_code || "Unknown Part";
+          const quantity = part.quantity || 1;
+          const price = part.price || part.total_cost;
+
           return (
-            <Badge 
-              key={part.id} 
-              variant="outline" 
-              className="text-xs"
-            >
+            <Badge key={index} variant="outline" className="text-xs">
               {partName} (x{quantity})
               {price && ` - R${price}`}
             </Badge>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

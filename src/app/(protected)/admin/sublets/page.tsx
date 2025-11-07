@@ -84,11 +84,11 @@ export default function SubletsPage() {
   const handleAddSublet = async () => {
     const { error } = await supabase.from("sublets").insert([subletForm]);
     if (error) {
-      toast.error("Error adding sublet");
+      toast.error("Error adding sublet", { description: error.message });
       return;
     }
 
-    toast.success("Sublet workshop added successfully");
+    toast.success("Sublet added successfully");
     setSubletForm({
       name: "",
       email: "",
@@ -122,14 +122,14 @@ export default function SubletsPage() {
     }
   };
 
-  const resend = new Resend("re_ZsKAK1px_92CQsX1Qew2yuWhzbEfPgqmB");
+  // const resend = new Resend("re_ZsKAK1px_92CQsX1Qew2yuWhzbEfPgqmB");
 
-  resend.emails.send({
-    from: "onboarding@resend.dev",
-    to: "mukelanilastborn@gmail.com",
-    subject: "Hello World",
-    html: "<p>Congrats on sending your <strong>first email</strong>!</p>",
-  });
+  // resend.emails.send({
+  //   from: "onboarding@resend.dev",
+  //   to: "mukelanilastborn@gmail.com",
+  //   subject: "Hello World",
+  //   html: "<p>Congrats on sending your <strong>first email</strong>!</p>",
+  // });
 
   const updateSubletStatus = async (subletId: number, newStatus: string) => {
     const { error } = await supabase
@@ -292,7 +292,7 @@ export default function SubletsPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Sublet Workshop</DialogTitle>
+                <DialogTitle>Add New Sublet</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div>

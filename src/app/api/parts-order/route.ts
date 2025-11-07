@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         <div style="margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 5px;">
           <p><strong>Contact Information:</strong></p>
           <p>Maintenance Workshop<br>
-          Email: workshop@maintenance.com<br>
+          Email: stores@klaverplant.co.za<br>
           Phone: +27 11 123 4567</p>
         </div>
         

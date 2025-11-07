@@ -214,7 +214,8 @@ export default function WorkshopJobDetailPage() {
           .select("*")
           .eq("id", assignedTechId)
           .single();
-        if (!error && data) setSelectedTechnician(data as Technician);
+        if (!error && data)
+          setSelectedTechnician(data as unknown as Technician as any);
       };
       fetchTech();
     }
@@ -236,6 +237,7 @@ export default function WorkshopJobDetailPage() {
           // tech_id: technicianId,
           updated_at: new Date().toISOString(),
           status: "assigned",
+          technician: true,
         })
         .eq("id", selectedJobForTech.id);
 
@@ -371,7 +373,7 @@ export default function WorkshopJobDetailPage() {
           )}
 
           {/* Parts Section */}
-          {parts.length > 0 && (
+          {/* {parts.length > 0 && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2 text-base">
                 Parts Required
@@ -400,6 +402,67 @@ export default function WorkshopJobDetailPage() {
                 ))}
               </ul>
             </div>
+          )} */}
+          {/* Parts Section */}
+          {parts && parts.length > 0 ? (
+            (() => {
+              // Filter out any parts entries where job_parts is null, undefined, or empty object/array/string
+              const validParts = parts.filter((part) => {
+                const jp = part.job_parts;
+                if (jp == null) return false; // null or undefined
+                if (typeof jp === "string") return jp.trim() !== "";
+                if (Array.isArray(jp)) return jp.length > 0;
+                if (typeof jp === "object") return Object.keys(jp).length > 0;
+                return false;
+              });
+
+              if (validParts.length === 0) {
+                return (
+                  <p className="text-sm text-gray-500 italic">
+                    No part requested
+                  </p>
+                );
+              }
+
+              return (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 text-base">
+                    Parts Required
+                  </h4>
+                  <ul className="space-y-2 max-h-48 overflow-auto border border-gray-200 bg-gray-50 p-3 rounded-lg">
+                    {validParts.map((part, index) => {
+                      let displayText = "";
+                      const jobParts = part.job_parts;
+                      if (typeof jobParts === "string") {
+                        displayText = jobParts;
+                      } else if (Array.isArray(jobParts)) {
+                        displayText = jobParts.join(", ");
+                      } else if (typeof jobParts === "object") {
+                        displayText =
+                          jobParts.description ||
+                          jobParts.part_name ||
+                          JSON.stringify(jobParts);
+                      }
+                      return (
+                        <li
+                          key={index}
+                          className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
+                        >
+                          <span className="text-sm text-gray-800">
+                            {displayText}
+                          </span>
+                          <span className="text-xs text-gray-500 italic">{`Part #${
+                            index + 1
+                          }`}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })()
+          ) : (
+            <p className="text-sm text-gray-500 italic">No part requested</p>
           )}
 
           {/* Technician Info */}
@@ -415,7 +478,7 @@ export default function WorkshopJobDetailPage() {
                 </span>
               </p>
               <p className="text-xs text-gray-500">
-                {job.status === "assigned"
+                {selectedTechnician?.name != null
                   ? "Technician assigned"
                   : "Awaiting assignment"}
               </p>
