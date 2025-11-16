@@ -1154,7 +1154,10 @@ export default function InventoryPage() {
                       log.change_type === 'remove' ? 'bg-red-100 text-red-800' :
                         'bg-blue-100 text-blue-800'
                       }`}>
-                      {log.change_type}
+                      {log.change_type
+                        ? log.change_type.charAt(0).toUpperCase() + log.change_type.slice(1)
+                        : 'Update'
+                      }
                     </span>
                     <span className="ml-2 font-medium">
                       {log.quantity_change > 0 ? '+' : ''}{log.quantity_change}

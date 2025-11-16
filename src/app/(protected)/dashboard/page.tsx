@@ -696,7 +696,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">Awaiting Approval</p>
                         <p className="text-sm text-gray-600">
-                          Total jobs: {stats.workshopStats}
+                          Total jobs: {stats.pendingApprovals}
                         </p>
                       </div>
                       <Link href="/jobs?status=Awaiting Approval">

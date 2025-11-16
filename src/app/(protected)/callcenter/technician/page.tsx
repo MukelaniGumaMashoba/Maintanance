@@ -790,7 +790,7 @@ export default function TechniciansPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="diagnostic">Diagnostic</Label>
+                        <Label htmlFor="diagnostic">Diagnosis</Label>
                         <Input
                           id="diagnostic"
                           type="number"

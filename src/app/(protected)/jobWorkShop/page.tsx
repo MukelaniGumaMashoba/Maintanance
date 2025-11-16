@@ -124,7 +124,7 @@ interface WorkshopJob {
 
 export default function FleetJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<WorkshopJob[]>([]);
   const [userRole, setUserRole] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -267,63 +267,46 @@ export default function FleetJobsPage() {
   }, []);
 
   useEffect(() => {
-    let filtered = jobs;
+    // Use workshopJob (fetched from workshop_job table) as the source
+    let filtered = workshopJob || [];
 
-    // Search filter
     if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter((job) => {
-        const searchLower = searchTerm.toLowerCase();
-
-        // Basic job fields
+        // check commonly available fields on workshop_job rows
         if (
-          job.job_id?.toLowerCase().includes(searchLower) ||
-          job.description?.toLowerCase().includes(searchLower)
-        ) {
+          (job.jobId_workshop || "")
+            .toString()
+            .toLowerCase()
+            .includes(searchLower)
+        )
           return true;
-        }
-
-        // Driver information
-        if (job.drivers) {
-          const driverName = job.drivers?.[0]?.first_name?.toLowerCase() || "";
-          const driverSurname = job.drivers?.[0]?.surname?.toLowerCase() || "";
-          if (
-            driverName.includes(searchLower) ||
-            driverSurname.includes(searchLower)
-          ) {
-            return true;
-          }
-        }
-
-        // Vehicle information
-        if (job.vehiclesc) {
-          const regNumber = job.vehiclesc[0].registration_number || "";
-          const make = job.vehiclesc[0].make || "";
-          const model = job.vehiclesc[0].model || "";
-          if (
-            regNumber.toLowerCase().includes(searchLower) ||
-            make.toLowerCase().includes(searchLower) ||
-            model.toLowerCase().includes(searchLower)
-          ) {
-            return true;
-          }
-        }
-
+        if ((job.description || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.registration_no || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.client_name || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.client_phone || "").toLowerCase().includes(searchLower))
+          return true;
         return false;
       });
     }
 
-    // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((job) => job.status === statusFilter);
     }
 
-    // Priority filter
+    // workshop_job may or may not have a priority field; check defensively
     if (priorityFilter !== "all") {
-      filtered = filtered.filter((job) => job.priority === priorityFilter);
+      filtered = filtered.filter(
+        (job) => ((job as any).priority || "").toString() === priorityFilter
+      );
     }
 
-    setFilteredJobs(filtered);
-  }, [jobs, searchTerm, statusFilter, priorityFilter]);
+    // cast to the component's expected filteredJobs shape
+    setFilteredJobs(filtered as unknown as WorkshopJob[]);
+  }, [workshopJob, searchTerm, statusFilter, priorityFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -961,9 +944,9 @@ export default function FleetJobsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="assigned">Assigned</SelectItem>
-                <SelectItem value="inprogress">In Progress</SelectItem>
+                <SelectItem value="Awaiting Approval">Pending</SelectItem>
+                <SelectItem value="Part Assigned">Part Assigned</SelectItem>
+                <SelectItem value="Part Ordered">In Progress</SelectItem>
                 <SelectItem value="awaiting-approval">
                   Awaiting Approval
                 </SelectItem>
@@ -972,7 +955,7 @@ export default function FleetJobsPage() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
@@ -983,7 +966,7 @@ export default function FleetJobsPage() {
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
           </div>
         </div>
 
@@ -1017,13 +1000,13 @@ export default function FleetJobsPage() {
               </div>
 
               {/* Jobs List */}
-              {workshopJob.length === 0 ? (
+              {filteredJobs.length === 0 ? (
                 <p className="text-center text-gray-500 mt-6">
                   No workshop jobs found.
                 </p>
               ) : (
                 <div className="grid gap-4">
-                  {workshopJob.map((job) => (
+                  {filteredJobs.map((job) => (
                     <Card
                       key={job.id || job.jobId_workshop}
                       className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
@@ -1106,11 +1089,12 @@ export default function FleetJobsPage() {
           <TabsContent value="kanban" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {[
-                "Awaiting Workshop Acceptance",
-                "In Progress",
                 "Awaiting Approval",
+                "Part Ordered",
+                "Part Assigned",
                 "Approved",
                 "Completed",
+                "Rejected",
               ].map((status) => (
                 <Card key={status}>
                   <CardHeader className="pb-3">
