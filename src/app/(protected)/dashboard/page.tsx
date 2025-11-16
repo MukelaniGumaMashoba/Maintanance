@@ -199,13 +199,13 @@ export default function Dashboard() {
         action: "/vehicles",
         color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
       },
-      {
-        title: "Repair Management",
-        description: "Manage repairs and approvals",
-        icon: DollarSign,
-        action: "/qoutation",
-        color: "bg-blue-50 text-yellow-600 hover:bg-yellow-100",
-      },
+      // {
+      //   title: "Repair Management",
+      //   description: "Manage repairs and approvals",
+      //   icon: DollarSign,
+      //   action: "/qoutation",
+      //   color: "bg-blue-50 text-yellow-600 hover:bg-yellow-100",
+      // },
       {
         title: "Drivers",
         description: "Manage drivers",
@@ -712,7 +712,7 @@ export default function Dashboard() {
                             Job Card Reported Breakdowns
                           </p>
                           <p className="text-sm text-gray-600">
-                            Waiting for technician dispatch
+                            Waiting for technician assignment
                           </p>
                         </div>
                         <Link
@@ -724,7 +724,7 @@ export default function Dashboard() {
                           <Button size="sm">Assign</Button>
                         </Link>
                       </div>
-                      <div className="flex mt-5 items-center justify-between p-4 border rounded-xl bg-muted/20 hover:bg-muted/30 transition">
+                      {/* <div className="flex mt-5 items-center justify-between p-4 border rounded-xl bg-muted/20 hover:bg-muted/30 transition">
                         <div>
                           <p className="font-medium">
                             Job Completed Awaiting Repair
@@ -741,7 +741,7 @@ export default function Dashboard() {
                         >
                           <Button size="sm">Qoute</Button>
                         </Link>
-                      </div>
+                      </div> */}
                     </div>
                   )}
                   {/* {normalizedRole === "costcentre" && (

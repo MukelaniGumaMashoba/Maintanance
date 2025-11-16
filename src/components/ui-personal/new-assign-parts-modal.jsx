@@ -160,20 +160,26 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>
-            Assign Parts to Job: {jobCard?.job_number || jobCard?.jobId_workshop}
+      <DialogContent className="w-full max-w-sm sm:max-w-2xl md:max-w-4xl lg:max-w-5xl mx-4 max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader className="space-y-3 pb-4 border-b flex-shrink-0">
+          <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900">
+            Assign Parts to Job
           </DialogTitle>
+          <div className="text-sm text-gray-600">
+            Job: <span className="font-medium">{jobCard?.job_number || jobCard?.jobId_workshop}</span>
+            {jobCard?.customer_name && (
+              <span className="ml-2">• Customer: <span className="font-medium">{jobCard.customer_name}</span></span>
+            )}
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 py-4 flex-1 overflow-y-auto">
           {/* Search and Filter */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search parts..."
+                placeholder="Search parts by name or code..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -182,7 +188,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm w-full sm:w-48"
             >
               <option value="all">All Categories</option>
               {categories.map(cat => (
@@ -193,86 +199,127 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
 
           {/* Selected Parts Summary */}
           {selectedParts.length > 0 && (
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium mb-2">Selected Parts ({selectedParts.length})</h4>
-              <div className="space-y-1">
+            <div className="bg-blue-50 border border-blue-200 p-3 sm:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-blue-900">Selected Parts</h4>
+                <Badge className="bg-blue-100 text-blue-800">{selectedParts.length} items</Badge>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
                 {selectedParts.map(sp => (
-                  <div key={sp.partId} className="flex justify-between text-sm">
-                    <span>{sp.part.description} x{sp.quantity}</span>
-                    <span>R{((sp.part.price || 0) * sp.quantity).toFixed(2)}</span>
+                  <div key={sp.partId} className="flex justify-between items-center text-sm bg-white px-3 py-2 rounded border">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{sp.part.description}</div>
+                      <div className="text-xs text-gray-500">Qty: {sp.quantity} • Unit: R{(sp.part.price || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="text-right ml-2">
+                      <div className="font-medium text-green-600">R{((sp.part.price || 0) * sp.quantity).toFixed(2)}</div>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="border-t mt-2 pt-2 font-medium">
-                Total: R{totalCost.toFixed(2)}
+              <div className="border-t border-blue-200 mt-3 pt-3 flex justify-between items-center">
+                <span className="font-medium text-blue-900">Total Cost:</span>
+                <span className="text-lg font-bold text-blue-900">R{totalCost.toFixed(2)}</span>
               </div>
             </div>
           )}
 
           {/* Parts List */}
-          <div className="max-h-96 overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredParts.map(part => (
-                <div key={part.id} className="border rounded-lg p-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{part.description}</h4>
-                      <p className="text-xs text-gray-600">{part.item_code}</p>
-                      <p className="text-xs text-gray-600">
-                        Category: {part.categories?.name || 'N/A'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={part.quantity <= 5 ? 'destructive' : 'default'} className="text-xs">
-                          Stock: {part.quantity}
-                        </Badge>
-                        <span className="text-xs text-gray-600">
-                          R{(part.price || 0).toFixed(2)}
-                        </span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-gray-900">Available Parts</h4>
+              <Badge variant="outline">{filteredParts.length} parts</Badge>
+            </div>
+            
+            {filteredParts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed">
+                <Package className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <div className="text-sm">No parts found</div>
+                <div className="text-xs mt-1">Try adjusting your search or category filter</div>
+              </div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto border rounded-lg">
+                <div className="grid grid-cols-1 divide-y">
+                  {filteredParts.map(part => (
+                    <div key={part.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        {/* Part Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm text-gray-900 truncate">{part.description}</h4>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-500">{part.item_code}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {part.categories?.name || 'N/A'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm">
+                              <div className="text-right">
+                                <div className={`font-medium ${part.quantity <= 5 ? 'text-red-600' : 'text-green-600'}`}>
+                                  Stock: {part.quantity}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  R{(part.price || 0).toFixed(2)} each
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-2 justify-center sm:justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuantityChange(part.id, getSelectedQuantity(part.id) - 1)}
+                            disabled={getSelectedQuantity(part.id) <= 0}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={part.quantity}
+                            value={getSelectedQuantity(part.id)}
+                            onChange={(e) => handleQuantityChange(part.id, parseInt(e.target.value) || 0)}
+                            className="w-16 h-8 text-center text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuantityChange(part.id, getSelectedQuantity(part.id) + 1)}
+                            disabled={getSelectedQuantity(part.id) >= part.quantity}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleQuantityChange(part.id, getSelectedQuantity(part.id) - 1)}
-                        disabled={getSelectedQuantity(part.id) <= 0}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min="0"
-                        max={part.quantity}
-                        value={getSelectedQuantity(part.id)}
-                        onChange={(e) => handleQuantityChange(part.id, parseInt(e.target.value) || 0)}
-                        className="w-16 text-center text-sm"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleQuantityChange(part.id, getSelectedQuantity(part.id) + 1)}
-                        disabled={getSelectedQuantity(part.id) >= part.quantity}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+        </div>
+        
+        {/* Sticky Actions Footer */}
+        <div className="flex-shrink-0 bg-white border-t p-4 -mx-6 -mb-6">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={handleAssignParts}
               disabled={selectedParts.length === 0 || loading}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Package className="w-4 h-4 mr-2" />
-              {loading ? 'Assigning...' : `Assign ${selectedParts.length} Parts`}
+              {loading ? 'Assigning Parts...' : selectedParts.length > 0 ? `Assign ${selectedParts.length} Part${selectedParts.length !== 1 ? 's' : ''}` : 'Select Parts to Assign'}
             </Button>
           </div>
         </div>

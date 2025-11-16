@@ -1,12 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,10 +21,23 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Users,
   Phone,
@@ -32,61 +52,72 @@ import {
   Battery,
   Zap,
   Settings,
-} from "lucide-react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
-import { assignJob } from "@/lib/action/assign"
-import { addTechnician } from "@/lib/action/assign"
+} from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { assignJob } from "@/lib/action/assign";
+import { addTechnician } from "@/lib/action/assign";
 
 interface Technician {
-  id: number
-  name: string
-  phone: string
-  email: string
-  location: string
-  coordinates: { lat: number; lng: number }
-  availability: "available" | "busy" | "off-duty" | "emergency"
-  specialties: string[]
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  location: string;
+  coordinates: { lat: number; lng: number };
+  availability: "available" | "busy" | "off-duty" | "emergency";
+  specialties: string[];
   skillLevels: {
-    electrical: number
-    mechanical: number
-    hydraulic: number
-    diagnostic: number
-  }
-  rating: number
+    electrical: number;
+    mechanical: number;
+    hydraulic: number;
+    diagnostic: number;
+  };
+  rating: number;
   // completedJobs: number
   // responseTime: string
-  job_allocation?: JobAssignment
-  joinDate: string
-  certifications: string[]
-  vehicleType: string
-  equipmentLevel: "basic" | "advanced" | "specialist"
-  assignedJobs?: JobAssignment[]
-  type: 'internal' | 'external'
+  job_allocation?: JobAssignment;
+  joinDate: string;
+  certifications: string[];
+  vehicleType: string;
+  equipmentLevel: "basic" | "advanced" | "specialist";
+  assignedJobs?: JobAssignment[];
+  type: "internal" | "external";
 }
 
 interface JobAssignment {
-  id: number
-  job_id: string
-  description: string
-  location: string
-  priority: "low" | "medium" | "high" | "emergency"
-  status: string
-  assigned_technician?: string
-  created_at: string
-  updated_at?: string
-  technician_id: number
+  // DB fields from `public.workshop_assignments`
+  id: number;
+  created_at: string;
+  updated_at?: string | null;
+  assigned_at?: string | null;
+
+  // Note: table uses bigint for job_id and tech_id; keep as number and optional since they can be null
+  job_id?: number | null; // corresponds to workshop_assignments.job_id
+  tech_id?: number | null; // corresponds to workshop_assignments.tech_id
+  vehicle_id?: string | null;
+  driver_id?: string | null;
+
+  // UI/legacy fields kept optional for backward compatibility with existing UI code
+  job_identifier?: string; // optional string id used in UI if you prefer a display id
+  description?: string;
+  location?: string;
+  priority?: "low" | "medium" | "high" | "emergency";
+  status?: string;
+  assigned_technician?: string;
 }
 
 export default function TechniciansPage() {
-  const [technicians, setTechnicians] = useState<Technician[]>([])
-  const [availableJobs, setAvailableJobs] = useState<JobAssignment[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
-  const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null)
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
-  const [isAddTechnicianOpen, setIsAddTechnicianOpen] = useState(false)
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [availableJobs, setAvailableJobs] = useState<JobAssignment[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedTechnician, setSelectedTechnician] =
+    useState<Technician | null>(null);
+  const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isAddTechnicianOpen, setIsAddTechnicianOpen] = useState(false);
+  const [jobs, setJobs] = useState([]);
 
   // Form state for adding technician
   const [formData, setFormData] = useState({
@@ -103,156 +134,207 @@ export default function TechniciansPage() {
       diagnostic: 0,
     },
     rating: 0,
-    joinDate: new Date().toISOString().split('T')[0],
+    joinDate: new Date().toISOString().split("T")[0],
     certifications: [] as string[],
     vehicleType: "",
     equipmentLevel: "basic" as "basic" | "advanced" | "specialist",
-    availability: "available" as "available" | "busy" | "off-duty" | "emergency"
-  })
+    availability: "available" as
+      | "available"
+      | "busy"
+      | "off-duty"
+      | "emergency",
+  });
 
-  const [newSpecialty, setNewSpecialty] = useState("")
-  const [newCertification, setNewCertification] = useState("")
+  const [newSpecialty, setNewSpecialty] = useState("");
+  const [newCertification, setNewCertification] = useState("");
 
   // Add job search state for filtering jobs in the assign dialog
-  const [jobSearchTerm, setJobSearchTerm] = useState("")
+  const [jobSearchTerm, setJobSearchTerm] = useState("");
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   const refreshData = async () => {
     // Fetch technicians
     const { data: techniciansData, error: techError } = await supabase
-      .from('technicians_klaver')
-      .select('*')
-      // .eq("type", "internal") // Only internal technicians for now
+      .from("technicians_klaver")
+      .select("*");
     if (techError) {
-      console.error('Error fetching technicians:', techError)
-      setTechnicians([])
-      return
+      console.error("Error fetching technicians:", techError);
+      setTechnicians([]);
+      return;
     }
 
-    // Fetch all job assignments
+    // Fetch workshop assignments
     const { data: assignmentsData, error: assignError } = await supabase
-      .from('job_assignments')
-      .select('*')
+      .from("workshop_assignments")
+      .select("*");
     if (assignError) {
-      console.error('Error fetching job assignments:', assignError)
+      console.error("Error fetching workshop_assignments:", assignError);
+    }
+    const assignments = (assignmentsData || []) as any[];
+
+    // Fetch full job details from workshop_job
+    const { data: jobsDataRaw, error: jobsError } = await supabase
+      .from("workshop_job")
+      .select("*");
+    if (jobsError) {
+      console.error("Error fetching workshop_job:", jobsError);
+    }
+    const jobsData = (jobsDataRaw || []) as any[];
+    setJobs(jobsData as any as []);
+
+    // Build job map for quick lookup (key by job id)
+    const jobMap = new Map<string, any>();
+    for (const j of jobsData) {
+      // normalize key as string
+      if (j?.id !== undefined && j?.id !== null) {
+        jobMap.set(String(j.id), j);
+      } else if (j?.job_id !== undefined && j?.job_id !== null) {
+        jobMap.set(String(j.job_id), j);
+      }
     }
 
-    // Fetch all assignements
-    const { data: assignementsData, error: assignementsError } = await supabase
-      .from('assignements')
-      .select('*')
-    if (assignementsError) {
-      console.error('Error fetching assignements:', assignementsError)
-    }
+    // Enrich assignments with job details
+    const assignmentsWithDetails = assignments.map((a) => {
+      const jobRow = jobMap.get(String(a.job_id)) || null;
+      return {
+        ...a,
+        // preserve assignment id as assignment id; expose job info on top-level optional fields used by UI
+        job_identifier:
+          jobRow?.job_id ??
+          jobRow?.reference ??
+          (jobRow?.id !== undefined ? String(jobRow.id) : undefined),
+        description:
+          jobRow?.description ??
+          jobRow?.title ??
+          jobRow?.summary ??
+          a.description,
+        location: jobRow?.location ?? jobRow?.site ?? a.location,
+        priority: jobRow?.priority ?? a.priority,
+        status: jobRow?.status ?? a.status,
+        job_data: jobRow, // full job row for additional details if needed
+      };
+    });
 
-    // Attach assigned jobs to each technician based on assignements table
+    // Attach assigned jobs to each technician based on workshop_assignments.tech_id
     const techniciansWithJobs = (techniciansData || []).map((tech: any) => {
-      // Find all assignements for this technician
-      const techAssignements = (assignementsData || []).filter((a: any) => a.tech_id === tech.id)
-      // For each assignement, find the corresponding job assignment
-      const assignedJobs = techAssignements.map((a: any) =>
-        (assignmentsData || []).find((job: any) => job.id === a.job_id)
-      ).filter(Boolean)
+      const assignedJobs = assignmentsWithDetails.filter((asg) => {
+        return (
+          asg.tech_id !== null &&
+          asg.tech_id !== undefined &&
+          String(asg.tech_id) === String(tech.id)
+        );
+      });
       return {
         ...tech,
         assignedJobs,
-      }
-    })
-    setTechnicians(techniciansWithJobs as Technician[])
+      };
+    });
 
-    // Fetch available jobs (not assigned to any technician)
-    const { data: jobs, error: jobsError } = await supabase
-      .from('job_assignments')
-      .select('*')
-    if (jobsError) {
-      console.error('Error fetching available jobs:', jobsError)
-    } else {
-      setAvailableJobs((jobs || []) as unknown as JobAssignment[])
-      console.log('Available jobs:', jobs)
-    }
-  }
+    setTechnicians(techniciansWithJobs as Technician[]);
+    console.log("Attached jobs to technicians:", techniciansWithJobs);
+
+    // Available jobs = assignments that are not assigned to any technician (tech_id null/undefined)
+    const available = assignmentsWithDetails.filter(
+      (a) => a.tech_id === null || typeof a.tech_id === "undefined"
+    );
+
+    // Store enriched assignments in availableJobs for UI (this variable now holds all assignments with job details;
+    // UI filters by tech_id when showing assigned jobs; available jobs can be derived by tech_id null)
+    setAvailableJobs(assignmentsWithDetails as unknown as JobAssignment[]);
+    console.log("All enriched assignments:", assignmentsWithDetails);
+    console.log("Available (unassigned) jobs:", available);
+  };
 
   useEffect(() => {
-
-    const jobAssignments = supabase.channel('schema-db-changes')
+    const jobAssignments = supabase
+      .channel("schema-db-changes")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_assignments' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "workshop_assignments" },
         (payload) => {
-          console.log('Change received!', payload)
+          console.log("Change received!", payload);
+          // refetch on change
+          refreshData();
         }
       )
-      .subscribe()
-    refreshData()
+      .subscribe();
+    refreshData();
 
     return () => {
-      jobAssignments.unsubscribe;
-    }
-  }, [])
+      // properly unsubscribe the channel
+      // "jobAssignments" is a RealtimeChannel - call unsubscribe()
+      // (some SDKs return a promise; calling without await is fine here)
+      // Ensure the call is executed
+      // @ts-ignore
+      if (jobAssignments && typeof jobAssignments.unsubscribe === "function") {
+        // supabase v2 channel.unsubscribe returns void/promise
+        jobAssignments.unsubscribe();
+      }
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "available":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "busy":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800";
       case "off-duty":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       case "emergency":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "emergency":
-        return "bg-red-500 text-white"
+        return "bg-red-500 text-white";
       case "high":
-        return "bg-orange-500 text-white"
+        return "bg-orange-500 text-white";
       case "medium":
-        return "bg-yellow-500 text-white"
+        return "bg-yellow-500 text-white";
       case "low":
-        return "bg-green-500 text-white"
+        return "bg-green-500 text-white";
       default:
-        return "bg-gray-500 text-white"
+        return "bg-gray-500 text-white";
     }
-  }
+  };
 
   const getSkillIcon = (skill: string) => {
     switch (skill) {
       case "electrical":
-        return <Zap className="h-4 w-4" />
+        return <Zap className="h-4 w-4" />;
       case "mechanical":
-        return <Wrench className="h-4 w-4" />
+        return <Wrench className="h-4 w-4" />;
       case "battery service":
-        return <Battery className="h-4 w-4" />
+        return <Battery className="h-4 w-4" />;
       case "diagnostic":
-        return <Settings className="h-4 w-4" />
+        return <Settings className="h-4 w-4" />;
       default:
-        return <Wrench className="h-4 w-4" />
+        return <Wrench className="h-4 w-4" />;
     }
-  }
+  };
 
   const calculateJobMatch = (technician: Technician, job: JobAssignment) => {
     // Simplified matching since we don't have requiredSkills in the database
-    const locationScore = 100 // Simplified - in real app, calculate distance
-    const availabilityScore = technician.availability === "available" ? 100 : 0
+    const locationScore = 100; // Simplified - in real app, calculate distance
+    const availabilityScore = technician.availability === "available" ? 100 : 0;
 
-    return Math.round(locationScore * 0.5 + availabilityScore * 0.5)
-  }
+    return Math.round(locationScore * 0.5 + availabilityScore * 0.5);
+  };
 
   const handleAssignJob = async () => {
     try {
       // const { data, error } = await assignJob(selectedJob)
-
     } catch (error) {
-      console.error('Error assigning job:', error)
-      toast.error("Failed to assign job")
+      console.error("Error assigning job:", error);
+      toast.error("Failed to assign job");
     }
-  }
+  };
 
   const handleAddTechnician = async () => {
     try {
@@ -272,13 +354,13 @@ export default function TechniciansPage() {
         vehicleType: formData.vehicleType,
         equipmentLevel: formData.equipmentLevel,
         type: "internal",
-        created_by: '',
-        workshop_id: '',
-      } as Parameters<typeof addTechnician>[0])
+        created_by: "",
+        workshop_id: "",
+      } as Parameters<typeof addTechnician>[0]);
 
       if (result && result.success) {
-        toast.success("Technician added successfully!")
-        setIsAddTechnicianOpen(false)
+        toast.success("Technician added successfully!");
+        setIsAddTechnicianOpen(false);
         // Reset form
         setFormData({
           name: "",
@@ -294,66 +376,77 @@ export default function TechniciansPage() {
             diagnostic: 0,
           },
           rating: 0,
-          joinDate: new Date().toISOString().split('T')[0],
+          joinDate: new Date().toISOString().split("T")[0],
           certifications: [],
           vehicleType: "",
           equipmentLevel: "basic",
-          availability: "available"
-        })
-        refreshData()
+          availability: "available",
+        });
+        refreshData();
       } else {
-        toast.error("Failed to add technician: " + (result?.error ?? "Unknown error"))
+        toast.error(
+          "Failed to add technician: " + (result?.error ?? "Unknown error")
+        );
       }
     } catch (error) {
-      console.error('Error adding technician:', error)
-      toast.error("Failed to add technician")
+      console.error("Error adding technician:", error);
+      toast.error("Failed to add technician");
     }
-  }
+  };
 
   const addSpecialty = () => {
-    if (newSpecialty.trim() && !formData.specialties.includes(newSpecialty.trim())) {
-      setFormData(prev => ({
+    if (
+      newSpecialty.trim() &&
+      !formData.specialties.includes(newSpecialty.trim())
+    ) {
+      setFormData((prev) => ({
         ...prev,
-        specialties: [...prev.specialties, newSpecialty.trim()]
-      }))
-      setNewSpecialty("")
+        specialties: [...prev.specialties, newSpecialty.trim()],
+      }));
+      setNewSpecialty("");
     }
-  }
+  };
 
   const removeSpecialty = (specialty: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      specialties: prev.specialties.filter(s => s !== specialty)
-    }))
-  }
+      specialties: prev.specialties.filter((s) => s !== specialty),
+    }));
+  };
 
   const addCertification = () => {
-    if (newCertification.trim() && !formData.certifications.includes(newCertification.trim())) {
-      setFormData(prev => ({
+    if (
+      newCertification.trim() &&
+      !formData.certifications.includes(newCertification.trim())
+    ) {
+      setFormData((prev) => ({
         ...prev,
-        certifications: [...prev.certifications, newCertification.trim()]
-      }))
-      setNewCertification("")
+        certifications: [...prev.certifications, newCertification.trim()],
+      }));
+      setNewCertification("");
     }
-  }
+  };
 
   const removeCertification = (certification: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      certifications: prev.certifications.filter(c => c !== certification)
-    }))
-  }
+      certifications: prev.certifications.filter((c) => c !== certification),
+    }));
+  };
 
   const filteredTechnicians = technicians.filter((tech) => {
     const matchesSearch =
       tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tech.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tech.specialties.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase()))
+      tech.specialties.some((s) =>
+        s.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-    const matchesStatus = statusFilter === "all" || tech.availability === statusFilter
+    const matchesStatus =
+      statusFilter === "all" || tech.availability === statusFilter;
 
-    return matchesSearch && matchesStatus
-  })
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <>
@@ -382,7 +475,10 @@ export default function TechniciansPage() {
                 <SelectItem value="emergency">Emergency</SelectItem>
               </SelectContent>
             </Select>
-            <Dialog open={isAddTechnicianOpen} onOpenChange={setIsAddTechnicianOpen}>
+            <Dialog
+              open={isAddTechnicianOpen}
+              onOpenChange={setIsAddTechnicianOpen}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -392,13 +488,17 @@ export default function TechniciansPage() {
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Technician</DialogTitle>
-                  <DialogDescription>Enter technician details to add them to the system</DialogDescription>
+                  <DialogDescription>
+                    Enter technician details to add them to the system
+                  </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">
                   {/* Basic Information */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Basic Information
+                    </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="name">Full Name *</Label>
@@ -406,7 +506,12 @@ export default function TechniciansPage() {
                           id="name"
                           placeholder="Enter full name"
                           value={formData.name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              name: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -415,7 +520,12 @@ export default function TechniciansPage() {
                           id="phone"
                           placeholder="+27 XX XXX XXXX"
                           value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              phone: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -425,7 +535,12 @@ export default function TechniciansPage() {
                           type="email"
                           placeholder="email@company.com"
                           value={formData.email}
-                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              email: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -434,7 +549,12 @@ export default function TechniciansPage() {
                           id="location"
                           placeholder="City/Area"
                           value={formData.location}
-                          onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              location: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -443,15 +563,29 @@ export default function TechniciansPage() {
                           id="joinDate"
                           type="date"
                           value={formData.joinDate}
-                          onChange={(e) => setFormData(prev => ({ ...prev, joinDate: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              joinDate: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
                         <Label htmlFor="availability">Availability</Label>
                         <Select
                           value={formData.availability}
-                          onValueChange={(value: "available" | "busy" | "off-duty" | "emergency") =>
-                            setFormData(prev => ({ ...prev, availability: value }))
+                          onValueChange={(
+                            value:
+                              | "available"
+                              | "busy"
+                              | "off-duty"
+                              | "emergency"
+                          ) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              availability: value,
+                            }))
                           }
                         >
                           <SelectTrigger>
@@ -470,7 +604,9 @@ export default function TechniciansPage() {
 
                   {/* Vehicle and Equipment */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Vehicle & Equipment</h3>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Vehicle & Equipment
+                    </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="vehicleType">Vehicle Type *</Label>
@@ -478,15 +614,25 @@ export default function TechniciansPage() {
                           id="vehicleType"
                           placeholder="e.g., Light Truck, Heavy Truck, Van"
                           value={formData.vehicleType}
-                          onChange={(e) => setFormData(prev => ({ ...prev, vehicleType: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              vehicleType: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                       <div>
                         <Label htmlFor="equipmentLevel">Equipment Level</Label>
                         <Select
                           value={formData.equipmentLevel}
-                          onValueChange={(value: "basic" | "advanced" | "specialist") =>
-                            setFormData(prev => ({ ...prev, equipmentLevel: value }))
+                          onValueChange={(
+                            value: "basic" | "advanced" | "specialist"
+                          ) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              equipmentLevel: value,
+                            }))
                           }
                         >
                           <SelectTrigger>
@@ -495,7 +641,9 @@ export default function TechniciansPage() {
                           <SelectContent>
                             <SelectItem value="basic">Basic</SelectItem>
                             <SelectItem value="advanced">Advanced</SelectItem>
-                            <SelectItem value="specialist">Specialist</SelectItem>
+                            <SelectItem value="specialist">
+                              Specialist
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -511,13 +659,21 @@ export default function TechniciansPage() {
                           placeholder="Add specialty (e.g., electrical, mechanical, hydraulic)"
                           value={newSpecialty}
                           onChange={(e) => setNewSpecialty(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addSpecialty()}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && addSpecialty()
+                          }
                         />
-                        <Button onClick={addSpecialty} type="button">Add</Button>
+                        <Button onClick={addSpecialty} type="button">
+                          Add
+                        </Button>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {formData.specialties.map((specialty, index) => (
-                          <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
                             {specialty}
                             <button
                               onClick={() => removeSpecialty(specialty)}
@@ -533,20 +689,30 @@ export default function TechniciansPage() {
 
                   {/* Certifications */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Certifications</h3>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Certifications
+                    </h3>
                     <div className="space-y-3">
                       <div className="flex gap-2">
                         <Input
                           placeholder="Add certification"
                           value={newCertification}
                           onChange={(e) => setNewCertification(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addCertification()}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && addCertification()
+                          }
                         />
-                        <Button onClick={addCertification} type="button">Add</Button>
+                        <Button onClick={addCertification} type="button">
+                          Add
+                        </Button>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {formData.certifications.map((certification, index) => (
-                          <Badge key={index} variant="outline" className="flex items-center gap-1">
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="flex items-center gap-1"
+                          >
                             {certification}
                             <Button
                               onClick={() => removeCertification(certification)}
@@ -562,7 +728,9 @@ export default function TechniciansPage() {
 
                   {/* Skill Levels */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Skill Levels (0-100%)</h3>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Skill Levels (0-100%)
+                    </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="electrical">Electrical</Label>
@@ -572,10 +740,15 @@ export default function TechniciansPage() {
                           min="0"
                           max="100"
                           value={formData.skillLevels.electrical}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            skillLevels: { ...prev.skillLevels, electrical: parseInt(e.target.value) || 0 }
-                          }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              skillLevels: {
+                                ...prev.skillLevels,
+                                electrical: parseInt(e.target.value) || 0,
+                              },
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -586,10 +759,15 @@ export default function TechniciansPage() {
                           min="0"
                           max="100"
                           value={formData.skillLevels.mechanical}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            skillLevels: { ...prev.skillLevels, mechanical: parseInt(e.target.value) || 0 }
-                          }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              skillLevels: {
+                                ...prev.skillLevels,
+                                mechanical: parseInt(e.target.value) || 0,
+                              },
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -600,10 +778,15 @@ export default function TechniciansPage() {
                           min="0"
                           max="100"
                           value={formData.skillLevels.hydraulic}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            skillLevels: { ...prev.skillLevels, hydraulic: parseInt(e.target.value) || 0 }
-                          }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              skillLevels: {
+                                ...prev.skillLevels,
+                                hydraulic: parseInt(e.target.value) || 0,
+                              },
+                            }))
+                          }
                         />
                       </div>
                       <div>
@@ -614,10 +797,15 @@ export default function TechniciansPage() {
                           min="0"
                           max="100"
                           value={formData.skillLevels.diagnostic}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            skillLevels: { ...prev.skillLevels, diagnostic: parseInt(e.target.value) || 0 }
-                          }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              skillLevels: {
+                                ...prev.skillLevels,
+                                diagnostic: parseInt(e.target.value) || 0,
+                              },
+                            }))
+                          }
                         />
                       </div>
                     </div>
@@ -635,10 +823,12 @@ export default function TechniciansPage() {
                         max="5"
                         step="0.01"
                         value={formData.rating}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          rating: parseFloat(e.target.value) || 0
-                        }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            rating: parseFloat(e.target.value) || 0,
+                          }))
+                        }
                       />
                     </div>
                   </div>
@@ -648,14 +838,20 @@ export default function TechniciansPage() {
                   <Button
                     className="flex-1"
                     onClick={handleAddTechnician}
-                    disabled={!formData.name || !formData.phone || !formData.email || !formData.location || !formData.vehicleType}
+                    disabled={
+                      !formData.name ||
+                      !formData.phone ||
+                      !formData.email ||
+                      !formData.location ||
+                      !formData.vehicleType
+                    }
                   >
                     Add Technician
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setIsAddTechnicianOpen(false)
+                      setIsAddTechnicianOpen(false);
                       // Reset form
                       setFormData({
                         name: "",
@@ -671,12 +867,12 @@ export default function TechniciansPage() {
                           diagnostic: 0,
                         },
                         rating: 0,
-                        joinDate: new Date().toISOString().split('T')[0],
+                        joinDate: new Date().toISOString().split("T")[0],
                         certifications: [],
                         vehicleType: "",
                         equipmentLevel: "basic",
-                        availability: "available"
-                      })
+                        availability: "available",
+                      });
                     }}
                   >
                     Cancel
@@ -697,7 +893,10 @@ export default function TechniciansPage() {
           <TabsContent value="directory" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredTechnicians.map((technician) => (
-                <Card key={technician.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={technician.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -705,22 +904,27 @@ export default function TechniciansPage() {
                           <User className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{technician.name}</CardTitle>
+                          <CardTitle className="text-lg">
+                            {technician.name}
+                          </CardTitle>
                           <div className="flex flex-row gap-4">
-                            <p>{technician.id} </p> : <p>{technician.type.toUpperCase()}</p>
+                            <p>{technician.id} </p> :{" "}
+                            <p>{technician.type.toUpperCase()}</p>
                           </div>
                           <div className="flex items-center gap-1">
                             <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                            <span className="text-sm text-gray-600">{technician?.rating}</span>
-
+                            <span className="text-sm text-gray-600">
+                              {technician?.rating}
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      <Badge className={getStatusColor(technician.availability)}>
+                      <Badge
+                        className={getStatusColor(technician.availability)}
+                      >
                         {technician.availability}
                       </Badge>
-
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -728,7 +932,11 @@ export default function TechniciansPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <Phone className="h-4 w-4 text-gray-500" />
                         <span className="text-sm">{technician.phone}</span>
-                        <Button size="sm" variant="outline" className="ml-auto bg-transparent">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="ml-auto bg-transparent"
+                        >
                           Call
                         </Button>
                       </div>
@@ -742,7 +950,11 @@ export default function TechniciansPage() {
                       <h4 className="font-semibold mb-2">Specialties</h4>
                       <div className="flex flex-wrap gap-1">
                         {technician.specialties.map((specialty) => (
-                          <Badge key={specialty} variant="secondary" className="text-xs">
+                          <Badge
+                            key={specialty}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {getSkillIcon(specialty)}
                             <span className="ml-1">{specialty}</span>
                           </Badge>
@@ -753,17 +965,28 @@ export default function TechniciansPage() {
                     <div>
                       <h4 className="font-semibold mb-2">Skill Levels</h4>
                       <div className="space-y-2">
-                        {technician.skillLevels && Object.entries(technician.skillLevels).map(([skill, level]) => (
-                          <div key={skill} className="flex items-center justify-between">
-                            <span className="text-sm capitalize">{skill}</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${level}%` }}></div>
+                        {technician.skillLevels &&
+                          Object.entries(technician.skillLevels).map(
+                            ([skill, level]) => (
+                              <div
+                                key={skill}
+                                className="flex items-center justify-between"
+                              >
+                                <span className="text-sm capitalize">
+                                  {skill}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className="bg-blue-600 h-2 rounded-full"
+                                      style={{ width: `${level}%` }}
+                                    ></div>
+                                  </div>
+                                  {/* <span className="text-xs text-gray-500">{level}%</span> */}
+                                </div>
                               </div>
-                              {/* <span className="text-xs text-gray-500">{level}%</span> */}
-                            </div>
-                          </div>
-                        ))}
+                            )
+                          )}
                       </div>
                     </div>
 
@@ -778,21 +1001,35 @@ export default function TechniciansPage() {
                         </div>
                       </div> */}
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                      {/* <Button variant="outline" size="sm" className="flex-1 bg-transparent">
                         <MapPin className="h-4 w-4 mr-1" />
                         Track
-                      </Button>
+                      </Button> */}
                       {/* Always show Assign Job button */}
-                      <Dialog open={isAssignDialogOpen && selectedTechnician?.id === technician.id} onOpenChange={setIsAssignDialogOpen}>
+                      <Dialog
+                        open={
+                          isAssignDialogOpen &&
+                          selectedTechnician?.id === technician.id
+                        }
+                        onOpenChange={setIsAssignDialogOpen}
+                      >
                         <DialogTrigger asChild>
-                          <Button size="sm" className="flex-1" onClick={() => setSelectedTechnician(technician)}>
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setSelectedTechnician(technician)}
+                          >
                             Assigned Jobs
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
-                            <DialogTitle>Assigned Jobs to {technician.name}</DialogTitle>
-                            <DialogDescription>View all job to assign to this technician</DialogDescription>
+                            <DialogTitle>
+                              Assigned Jobs to {technician.name}
+                            </DialogTitle>
+                            <DialogDescription>
+                              View all jobs to assign to this technician
+                            </DialogDescription>
                           </DialogHeader>
                           {/* Job search input */}
                           <Input
@@ -801,93 +1038,73 @@ export default function TechniciansPage() {
                             onChange={(e) => setJobSearchTerm(e.target.value)}
                             className="mb-2"
                           />
+
                           {/* Scrollable jobs list */}
                           <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                            {(availableJobs.filter(job =>
-                              String(job.technician_id) === String(technician.id) &&
-                              (
-                                job.job_id?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
-                                job.description?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
-                                job.location?.toLowerCase().includes(jobSearchTerm.toLowerCase())
+                            {availableJobs.filter(
+                              (job) =>
+                                String(job.tech_id) === String(technician.id)
+                            ).length === 0 && (
+                              <p className="text-sm text-gray-500 mb-4">
+                                No jobs assigned to this technician.
+                              </p>
+                            )}
+                            {availableJobs
+                              .filter(
+                                (job) =>
+                                  // show assignments that belong to this technician
+                                  String(job.tech_id || "") ===
+                                    String(technician.id) &&
+                                  (String(job.job_id || "")
+                                    .toLowerCase()
+                                    .includes(jobSearchTerm.toLowerCase()) ||
+                                    (job.description || "")
+                                      .toLowerCase()
+                                      .includes(jobSearchTerm.toLowerCase()) ||
+                                    (job.location || "")
+                                      .toLowerCase()
+                                      .includes(jobSearchTerm.toLowerCase()))
                               )
-                            )).map((job) => {
-                              return (
-                                <Card key={job.id} className="hover:bg-gray-50">
-                                  <CardContent className="p-4">
-                                    <div className="flex justify-between items-start mb-2">
-                                      <div>
-                                        <h4 className="font-semibold">{job.job_id}</h4>
-                                        <p className="text-sm text-gray-600">{job.description}</p>
+                              .map((job) => {
+                                return (
+                                  <Card
+                                    key={job.id}
+                                    className="hover:bg-gray-50"
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                          <h4 className="font-semibold">
+                                            {/* show job_id or id as fallback */}
+                                            JOB ID: {job.job_id ?? job.id}
+                                          </h4>
+                                          <p className="text-sm text-gray-600">
+                                            DESCRIPTION {job.description}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <h4>Status</h4>
+                                          <p>{job.status}</p>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <Badge className={getPriorityColor(job.priority)}>
-                                          {job.priority}
-                                        </Badge>
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="text-gray-500">
+                                            Location:
+                                          </span>
+                                          <p>{job.location}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-500">
+                                            Duration:
+                                          </span>
+                                          <p>Estimated time not available</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <span className="text-gray-500">Location:</span>
-                                        <p>{job.location}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-gray-500">Duration:</span>
-                                        <p>Estimated time not available</p>
-                                      </div>
-                                    </div>
-                                    {/* <CardFooter className="mt-2">
-                                                                            <Button variant={"outline"} className="bg-transparent"
-                                                                                onClick={async () => {
-                                                                                    if (!technician) {
-                                                                                        toast.error("No technician selected");
-                                                                                        return;
-                                                                                    }
-                                                                                    if (!job) {
-                                                                                        toast.error("No job selected");
-                                                                                        return;
-                                                                                    }
-                                                                                    try {
-                                                                                        const { data: existingAssignments, error: fetchError } = await supabase
-                                                                                            .from('assignements')
-                                                                                            .select('driver_id')
-                                                                                            .eq('job_id', job.id)
-                                                                                            .single();
-
-                                                                                        if (fetchError) {
-                                                                                            console.error('Error fetching existing assignment:', fetchError);
-                                                                                        }
-                                                                                        const { error } = await supabase
-                                                                                            .from('assignements')
-                                                                                            .upsert([
-                                                                                                {
-                                                                                                    job_id: job.id,
-                                                                                                    tech_id: technician.id,
-                                                                                                    driver_id: existingAssignments?.driver_id || null,
-                                                                                                }
-                                                                                            ])
-                                                                                            .eq('job_id', job.id)
-                                                                                        if (error) {
-                                                                                            toast.error("Error assigning job: " + error.message);
-                                                                                        } else {
-                                                                                            toast.success("Job assigned successfully");
-                                                                                            // Remove the assigned job from availableJobs immediately
-                                                                                            setAvailableJobs(prev => prev.filter(j => j.id !== job.id));
-                                                                                            refreshData();
-                                                                                            setIsAssignDialogOpen(false);
-                                                                                        }
-                                                                                    } catch (error) {
-                                                                                        console.error("Error assigning job:", error);
-                                                                                        toast.error("Error assigning job");
-                                                                                    }
-                                                                                }}
-                                                                            >
-                                                                                Assign
-                                                                            </Button>
-                                                                        </CardFooter> */}
-                                  </CardContent>
-                                </Card>
-                              )
-                            })}
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -997,31 +1214,46 @@ export default function TechniciansPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Technicians</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Total Technicians
+                  </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{technicians.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    {technicians.filter((t) => t.availability === "available").length} available
+                    {
+                      technicians.filter((t) => t.availability === "available")
+                        .length
+                    }{" "}
+                    available
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Average Rating
+                  </CardTitle>
                   <Star className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {(technicians.reduce((sum, t) => sum + t.rating, 0) / technicians.length).toFixed(1)}
+                    {(
+                      technicians.reduce((sum, t) => sum + t.rating, 0) /
+                      technicians.length
+                    ).toFixed(1)}
                   </div>
-                  <p className="text-xs text-muted-foreground">Across all technicians</p>
+                  <p className="text-xs text-muted-foreground">
+                    Across all technicians
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Jobs Completed</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Jobs Completed
+                  </CardTitle>
                   <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 {/* <CardContent>
@@ -1031,12 +1263,16 @@ export default function TechniciansPage() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Avg Response Time
+                  </CardTitle>
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">13 min</div>
-                  <p className="text-xs text-muted-foreground">Average response time</p>
+                  <p className="text-xs text-muted-foreground">
+                    Average response time
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -1044,7 +1280,9 @@ export default function TechniciansPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Technician Performance Ranking</CardTitle>
-                <CardDescription>Ranked by overall performance score</CardDescription>
+                <CardDescription>
+                  Ranked by overall performance score
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -1063,7 +1301,9 @@ export default function TechniciansPage() {
                       .sort((a, b) => b.rating - a.rating)
                       .map((technician, index) => (
                         <TableRow key={technician.id}>
-                          <TableCell className="font-medium">#{index + 1}</TableCell>
+                          <TableCell className="font-medium">
+                            #{index + 1}
+                          </TableCell>
                           <TableCell>{technician.name}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -1074,7 +1314,11 @@ export default function TechniciansPage() {
                           {/* <TableCell>{technician.completedJobs}</TableCell>
                             <TableCell>{technician.responseTime}</TableCell> */}
                           <TableCell>
-                            <Badge className={getStatusColor(technician.availability)}>
+                            <Badge
+                              className={getStatusColor(
+                                technician.availability
+                              )}
+                            >
                               {technician.availability}
                             </Badge>
                           </TableCell>
@@ -1088,5 +1332,5 @@ export default function TechniciansPage() {
         </Tabs>
       </div>
     </>
-  )
+  );
 }

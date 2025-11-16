@@ -30,8 +30,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-black rounded-full mb-4">
               <Image src="/klaver.png" alt="Klaver" width={450} height={450} className="object-contain rounded-full" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintanance</h1>
-            <p className="text-gray-600">Welcome back to your maintanance</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintenance</h1>
+            <p className="text-gray-600">Welcome back to your Maintenance</p>
           </div>
 
           {/* Auth form container */}
@@ -67,7 +67,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           {/* Footer */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              © 2025 Maintanance Fleet Management. All rights reserved.
+              © 2025 Maintenance Fleet Management. All rights reserved.
             </p>
           </div>
         </div>

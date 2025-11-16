@@ -534,17 +534,16 @@ export default function CallCenterPage() {
           <TabsContent value="map" className="m-3">
             <Card>
               <CardHeader>
-                <CardTitle>Breakdown Locations</CardTitle>
+                <CardTitle>Workshop Radius</CardTitle>
                 <CardDescription>
-                  Real-time map view of active breakdowns and technician
-                  locations
+                  Real-time map view of Workshop
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-                  {/* Fix: Use a default center or compute from technicians if technicianCoordinates is undefined */}
-                  <MapView />
-                </div>
+                {/* <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center"> */}
+                {/* Fix: Use a default center or compute from technicians if technicianCoordinates is undefined */}
+                <MapView />
+                {/* </div> */}
               </CardContent>
             </Card>
           </TabsContent>

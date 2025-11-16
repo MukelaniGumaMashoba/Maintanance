@@ -578,21 +578,23 @@ export default function JobsPage() {
           filteredJobs.map((job) => (
             <Card key={job.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <CardTitle className="text-lg">
                       {job.jobId_workshop}
                     </CardTitle>
-                    <Badge className={getStatusColor(job.status)}>
-                      {formatStatusDisplay(job.status)}
-                    </Badge>
-                    <Badge className={getPriorityColor(job.priority)}>
-                      {job.priority}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(job.status)}>
+                        {formatStatusDisplay(job.status)}
+                      </Badge>
+                      <Badge className={getPriorityColor(job.priority)}>
+                        {job.priority}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Link href={`/jobs/${job.id}`}>
-                      <Button variant="outline" size="sm">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Link href={`/jobs/${job.id}`} className="flex-1 sm:flex-none">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
@@ -604,6 +606,7 @@ export default function JobsPage() {
                         setSelectedJobId(job.id);
                         setIsEditOpen(true);
                       }}
+                      className="flex-1 sm:flex-none"
                     >
                       Add Parts
                     </Button>
@@ -646,67 +649,110 @@ export default function JobsPage() {
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Parts to Job</DialogTitle>
-            <DialogDescription>
-              Add parts used in this repair job.
+        <DialogContent className="w-full max-w-md sm:max-w-lg md:max-w-xl mx-4 max-h-[90vh] overflow-hidden">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Assign Parts to Job
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              Add parts required for this repair job. Enter each part name and click the + button to add it to the list.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter part name"
-                value={partName}
-                onChange={(e) => setPartName(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (partName.trim()) {
-                    setParts((prev) => [...prev, partName.trim()]);
-                    setPartName("");
-                  }
-                }}
-              >
-                +
-              </Button>
+          <div className="space-y-6 py-4">
+            {/* Add Part Input */}
+            <div className="space-y-2">
+              <Label htmlFor="part-input" className="text-sm font-medium text-gray-700">
+                Part Name
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="part-input"
+                  placeholder="Enter part name (e.g., Brake Pads, Oil Filter)"
+                  value={partName}
+                  onChange={(e) => setPartName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && partName.trim()) {
+                      setParts((prev) => [...prev, partName.trim()]);
+                      setPartName("");
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (partName.trim()) {
+                      setParts((prev) => [...prev, partName.trim()]);
+                      setPartName("");
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-            {parts.length > 0 ? (
-              <ul className="space-y-1 max-h-40 overflow-auto border rounded p-2 bg-gray-50">
-                {parts.map((part, index) => (
-                  <li
-                    key={index}
-                    className="flex justify-between items-center text-sm bg-white px-2 py-1 rounded border"
-                  >
-                    {part}
-                    <button
-                      onClick={() =>
-                        setParts((prev) => prev.filter((_, i) => i !== index))
-                      }
-                      className="text-red-500 hover:text-red-700 text-xs ml-2"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-400 text-sm italic">
-                No parts added yet.
-              </p>
-            )}
-
-            <Button onClick={addParts}>Add Parts</Button>
+            {/* Parts List */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Added Parts ({parts.length})
+              </Label>
+              {parts.length > 0 ? (
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-3">
+                  <div className="space-y-2">
+                    {parts.map((part, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-white px-3 py-2 rounded-md border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <span className="text-sm font-medium text-gray-800 flex-1">
+                          {part}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setParts((prev) => prev.filter((_, i) => i !== index))
+                          }
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  <div className="text-sm">
+                    No parts added yet
+                  </div>
+                  <div className="text-xs mt-1">
+                    Add parts using the input field above
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline" className="w-full sm:w-auto">
+                Cancel
+              </Button>
             </DialogClose>
+            <Button 
+              onClick={addParts} 
+              disabled={parts.length === 0}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Assign {parts.length} Part{parts.length !== 1 ? 's' : ''} to Job
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
