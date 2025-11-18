@@ -72,7 +72,9 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState(searchParams?.get('status')?.toLowerCase() || "all");
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams?.get("status")?.toLowerCase() || "all"
+  );
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [isCreateJobDialogOpen, setIsCreateJobDialogOpen] = useState(false);
   const [createJobForm, setCreateJobForm] = useState<CreateJobForm>({
@@ -98,10 +100,6 @@ export default function JobsPage() {
     fetchJobs();
   }, []);
 
-  useEffect(() => {
-    filterJobs();
-  }, [jobs, searchTerm, statusFilter, priorityFilter]);
-
   const fetchJobs = async () => {
     const { data, error } = await supabase
       .from("workshop_job")
@@ -121,36 +119,52 @@ export default function JobsPage() {
     // Apply search filter
     if (searchTerm && searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        (job) =>
-          job.jobId_workshop?.toLowerCase().includes(searchLower) ||
-          job.registration_no?.toLowerCase().includes(searchLower) ||
-          job.client_name?.toLowerCase().includes(searchLower) ||
-          job.description?.toLowerCase().includes(searchLower) ||
-          job.job_type?.toLowerCase().includes(searchLower) ||
-          job.location?.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter((job) => {
+        // check commonly available fields on workshop_job rows
+        if (
+          (job.jobId_workshop || "")
+            .toString()
+            .toLowerCase()
+            .includes(searchLower)
+        )
+          return true;
+        if ((job.description || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.registration_no || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.client_name || "").toLowerCase().includes(searchLower))
+          return true;
+        if ((job.client_phone || "").toLowerCase().includes(searchLower))
+          return true;
+        return false;
+      });
     }
 
     // Apply status filter
     if (statusFilter && statusFilter !== "all") {
-      filtered = filtered.filter((job) => 
-        job.status?.toLowerCase() === statusFilter.toLowerCase()
+      filtered = filtered.filter(
+        (job) => job.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
     // Apply priority filter
     if (priorityFilter && priorityFilter !== "all") {
-      filtered = filtered.filter((job) => 
-        job.priority?.toLowerCase() === priorityFilter.toLowerCase()
+      filtered = filtered.filter(
+        (job) => job.priority?.toLowerCase() === priorityFilter.toLowerCase()
       );
     }
 
     // Sort by created date (newest first)
-    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    filtered.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     setFilteredJobs(filtered);
   };
+  useEffect(() => {
+    filterJobs();
+  }, [jobs, searchTerm, statusFilter, priorityFilter]);
 
   const checkVehicleExists = async (registrationNumber: string) => {
     if (!registrationNumber) {
@@ -302,9 +316,14 @@ export default function JobsPage() {
   };
 
   const formatStatusDisplay = (status: string) => {
-    return status?.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ') || 'Unknown';
+    return (
+      status
+        ?.split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ") || "Unknown"
+    );
   };
 
   const getPriorityColor = (priority: string) => {
@@ -342,17 +361,18 @@ export default function JobsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="awaiting approval">
+              <SelectItem value="Awaiting Approval">Pending</SelectItem>
+              <SelectItem value="Part Assigned">Part Assigned</SelectItem>
+              <SelectItem value="Part Ordered">In Progress</SelectItem>
+              <SelectItem value="awaiting-approval">
                 Awaiting Approval
               </SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="in progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="part assigned">Part Assigned</SelectItem>
-              <SelectItem value="part ordered">Part Ordered</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
@@ -363,7 +383,7 @@ export default function JobsPage() {
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="low">Low</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
         </div>
       </div>
 
@@ -593,8 +613,15 @@ export default function JobsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Link href={`/jobs/${job.id}`} className="flex-1 sm:flex-none">
-                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
@@ -655,14 +682,18 @@ export default function JobsPage() {
               Assign Parts to Job
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
-              Add parts required for this repair job. Enter each part name and click the + button to add it to the list.
+              Add parts required for this repair job. Enter each part name and
+              click the + button to add it to the list.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
             {/* Add Part Input */}
             <div className="space-y-2">
-              <Label htmlFor="part-input" className="text-sm font-medium text-gray-700">
+              <Label
+                htmlFor="part-input"
+                className="text-sm font-medium text-gray-700"
+              >
                 Part Name
               </Label>
               <div className="flex gap-2">
@@ -672,7 +703,7 @@ export default function JobsPage() {
                   value={partName}
                   onChange={(e) => setPartName(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && partName.trim()) {
+                    if (e.key === "Enter" && partName.trim()) {
                       setParts((prev) => [...prev, partName.trim()]);
                       setPartName("");
                     }
@@ -717,7 +748,9 @@ export default function JobsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() =>
-                            setParts((prev) => prev.filter((_, i) => i !== index))
+                            setParts((prev) =>
+                              prev.filter((_, i) => i !== index)
+                            )
                           }
                           className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
@@ -729,9 +762,7 @@ export default function JobsPage() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <div className="text-sm">
-                    No parts added yet
-                  </div>
+                  <div className="text-sm">No parts added yet</div>
                   <div className="text-xs mt-1">
                     Add parts using the input field above
                   </div>
@@ -746,12 +777,12 @@ export default function JobsPage() {
                 Cancel
               </Button>
             </DialogClose>
-            <Button 
-              onClick={addParts} 
+            <Button
+              onClick={addParts}
               disabled={parts.length === 0}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Assign {parts.length} Part{parts.length !== 1 ? 's' : ''} to Job
+              Assign {parts.length} Part{parts.length !== 1 ? "s" : ""} to Job
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -275,3 +275,10 @@ View workshop history
 Order parts
 Conduct stock takes
 Check stock quantities
+
+
+Todo
+
+- Labour Cost
+- Parts cost link to vehicle and JC’s
+- Reports do one for vehicles for now

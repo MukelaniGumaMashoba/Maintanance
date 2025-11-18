@@ -224,6 +224,50 @@ export default function WorkshopJobDetailPage() {
   if (isLoading) return <div>Loading...</div>;
   if (!job) return <div>Workshop job not found</div>;
 
+  const changeTechnician = async (
+    technicianId: number,
+    technicianName: string
+  ) => {
+    if (!selectedJobForTech) return;
+    try {
+      const { error: updateError } = await supabase
+        .from("workshop_job")
+        .update({
+          // tech_id: technicianId,
+          updated_at: new Date().toISOString(),
+          // status: "assigned",
+          technician: true,
+        })
+        .eq("id", selectedJobForTech.id);
+
+      if (updateError) throw updateError;
+
+      const { error: insertError } = await supabase
+        .from("workshop_assignments")
+        .update({
+          tech_id: technicianId,
+          assigned_at: new Date().toISOString(),
+        })
+        .eq("job_id", selectedJobForTech.id);
+
+      if (insertError) throw insertError;
+
+      // Update local state to reflect assignment
+      setAssignedTechId(technicianId);
+      setIsAssigned(true);
+      toast("Technician changed to " + technicianName + " assigned.");
+      setIsTechDialogOpen(false);
+    } catch (err) {
+      console.error(
+        "Assign error:",
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: string }).message || ""
+          : ""
+      );
+      toast("Failed to assign technician.");
+    }
+  };
+
   // Assign the selected technician to the job
   const assignTechnicianToJob = async (
     technicianId: number,
@@ -233,7 +277,7 @@ export default function WorkshopJobDetailPage() {
     try {
       const { error: updateError } = await supabase
         .from("workshop_job")
-        .upsert({
+        .update({
           // tech_id: technicianId,
           updated_at: new Date().toISOString(),
           status: "assigned",
@@ -489,15 +533,27 @@ export default function WorkshopJobDetailPage() {
         {/* Footer */}
         <CardFooter className="flex justify-end gap-3 pt-5 border-t border-gray-100">
           {isAssigned ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled
-              className="flex items-center gap-2 text-gray-500 cursor-not-allowed"
-            >
-              <User2 className="h-4 w-4" />
-              Assigned
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled
+                className="flex items-center gap-2 text-gray-500 cursor-not-allowed"
+              >
+                <User2 className="h-4 w-4" />
+                Assigned
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setIsTechDialogOpen(true);
+                  setSelectedJobForTech(job);
+                }}
+              >
+                Change Technician
+              </Button>
+            </div>
           ) : (
             <Button
               size="sm"
@@ -571,14 +627,24 @@ export default function WorkshopJobDetailPage() {
                         : "None"}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      assignTechnicianToJob(tech.id, `${tech.name}`)
-                    }
-                  >
-                    Assign
-                  </Button>
+
+                  {!isAssigned ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        assignTechnicianToJob(tech.id, `${tech.name}`)
+                      }
+                    >
+                      Assign
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => changeTechnician(tech.id, `${tech.name}`)}
+                    >
+                      Change Technician
+                    </Button>
+                  )}
                 </div>
               ))}
 

@@ -190,6 +190,17 @@ export default function FleetJobsPage() {
     }
   };
 
+  const formatStatusDisplay = (status: string) => {
+    return (
+      status
+        ?.split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ") || "Unknown"
+    );
+  };
+
   // Check if vehicle exists by registration number
   const checkVehicleExists = async (registrationNumber: string) => {
     if (!registrationNumber) {
@@ -309,21 +320,19 @@ export default function FleetJobsPage() {
   }, [workshopJob, searchTerm, statusFilter, priorityFilter]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
+    switch (status?.toLowerCase()) {
+      case "awaiting approval":
         return "bg-yellow-100 text-yellow-800";
-      case "assigned":
-        return "bg-blue-100 text-blue-800";
-      case "inprogress":
-        return "bg-orange-100 text-orange-800";
-      case "awaiting-approval":
-        return "bg-purple-100 text-purple-800";
       case "approved":
         return "bg-green-100 text-green-800";
+      case "in progress":
+        return "bg-blue-100 text-blue-800";
       case "completed":
         return "bg-green-100 text-green-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
+      case "part assigned":
+        return "bg-purple-100 text-purple-800";
+      case "part ordered":
+        return "bg-orange-100 text-orange-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -1012,12 +1021,19 @@ export default function FleetJobsPage() {
                       className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
                     >
                       <CardHeader className="pb-3 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-indigo-700 truncate">
-                          {job.jobId_workshop || "Untitled Job"} : {job.status}
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {new Date(job.created_at).toLocaleDateString()}
-                        </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                          <CardTitle className="text-lg">
+                            {job.jobId_workshop}
+                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getStatusColor(job.status)}>
+                              {formatStatusDisplay(job.status)}
+                            </Badge>
+                            <Badge className={getPriorityColor(job.job_type)}>
+                              {job.job_type}
+                            </Badge>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
@@ -1236,11 +1252,12 @@ export default function FleetJobsPage() {
                 <div className="space-y-4">
                   {[
                     "Awaiting Workshop Acceptance",
-                    "In Progress",
+                    "Part Ordered",
                     "Awaiting Approval",
                     "Approved",
                     "Completed",
                     "Rejected",
+                    "Part Assigned",
                   ].map((status) => {
                     const count = workshopJob.filter(
                       (job) => job.status === status
