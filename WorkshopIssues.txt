@@ -282,3 +282,20 @@ Todo
 - Labour Cost
 - Parts cost link to vehicle and JC’s
 - Reports do one for vehicles for now
+- Need to do aaron testing updates
+
+
+aaron
+-Short High Level overview Key Findings Summary: (Please see my reports for all issues)
+
+Job Card Inconsistencies:
+Assigning a technician immediately after job card creation causes duplicate job entries visible to both the Administrator and Fleet Manager.
+
+Job statuses in the Kanban Board and Analytics sections are not reflecting accurate values (e.g., "Awaiting Approval" is zero before I approved a job as the Fleet Manager).
+
+The "Active PDP" count in the Drivers section is not showing the correct value.
+
+Functionality:
+The Technician search function is not working when assigning a technician after creating a new job card.
+
+There is currently no option to edit or delete technicians in the Technicians Assignment section.
