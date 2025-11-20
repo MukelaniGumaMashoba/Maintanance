@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
 
         // Get current stock item to calculate new total value
         const { data: currentStock, error: fetchError } = await supabase
-          .from('stock')
-          .select('cost_excl_vat_zar')
+          .from('parts')
+          .select('total')
           .eq('id', id)
           .single();
 
@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
 
         // Update the stock quantity and total value
         const { error: updateError } = await supabase
-          .from('stock')
+          .from('parts')
           .update({ 
             quantity: new_quantity.toString(),
-            total_value: newTotalValue,
+            total: newTotalValue,
             created_at: new Date().toISOString()
           })
           .eq('id', id);
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         updatedCount++;
       } catch (error) {
         console.error(`Error processing stock update for item ${update.id}:`, error);
-        errors.push(`Error processing item ${update.id}: ${error.message}`);
+        errors.push(`Error processing item ${update.id}: ${error}`);
       }
     }
 

@@ -98,7 +98,7 @@ export default function Layout({ children }) {
 
       {/* Low Stock Items Modal */}
       <Dialog open={showLowStockModal} onOpenChange={setShowLowStockModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-h-[90vh]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -138,11 +138,8 @@ export default function Layout({ children }) {
                         <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
                           Code
                         </th>
-                        <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-left">
-                          Supplier
-                        </th>
                         <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
-                          Type
+                          Category
                         </th>
                         <th className="px-4 py-3 border border-gray-200 font-medium text-gray-700 text-sm text-center">
                           Current Qty
@@ -171,14 +168,11 @@ export default function Layout({ children }) {
                             </div>
                           </td>
                           <td className="px-4 py-3 border border-gray-200 text-sm">
-                            {item.code || "N/A"}
-                          </td>
-                          <td className="px-4 py-3 border border-gray-200 text-sm">
-                            {item.supplier || "N/A"}
+                            {item.item_code || "N/A"}
                           </td>
                           <td className="px-4 py-3 border border-gray-200 text-sm text-center">
                             <Badge className="bg-blue-100 text-blue-800 text-xs">
-                              {item.stock_type || "N/A"}
+                              {item.categories?.name || "Uncategorized"}
                             </Badge>
                           </td>
                           <td className="px-4 py-3 border border-gray-200 text-sm text-center">

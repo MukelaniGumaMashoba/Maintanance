@@ -32,6 +32,20 @@ import {
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface WorkshopJob {
   id: number;
@@ -50,6 +64,11 @@ interface WorkshopJob {
   created_at: string;
   updated_at?: string;
   technician_id?: number;
+
+  // labour fields (optional)
+  labour_hours?: number;
+  labor_cost?: number;
+  total_labor_cost?: number;
 }
 
 interface Vehicle {
@@ -80,6 +99,13 @@ export default function WorkshopJobDetailPage() {
   const [updating, setUpdating] = useState(false);
   const supabase = createClient();
 
+  // Labour state
+  const [labourHours, setLabourHours] = useState<number>(0);
+  const [labourRate, setLabourRate] = useState<number>(0);
+  const [labourTotal, setLabourTotal] = useState<number>(0);
+  const [isLabourDialogOpen, setIsLabourDialogOpen] = useState(false);
+  const [isSavingLabour, setIsSavingLabour] = useState(false);
+
   useEffect(() => {
     const fetchJobAndVehicle = async () => {
       const { data: jobData, error: jobError } = await supabase
@@ -96,6 +122,14 @@ export default function WorkshopJobDetailPage() {
 
       setJob(jobData as any as WorkshopJob);
 
+      // populate labour state from job row if present
+      setLabourHours(jobData?.labour_hours ?? 0);
+      setLabourRate(jobData?.labor_cost ?? 0);
+      const total =
+        jobData?.total_labor_cost ??
+        (jobData?.labour_hours ?? 0) * (jobData?.labor_cost ?? 0);
+      setLabourTotal(total ?? 0);
+
       if (jobData.registration_no) {
         const { data: vehicleData, error: vehicleError } = await supabase
           .from("vehiclesc_workshop")
@@ -110,26 +144,25 @@ export default function WorkshopJobDetailPage() {
 
       const { data: techData, error: insertError } = await supabase
         .from("workshop_assignments")
-        .select("id, tech_id")
+        .select("*")
         .eq("job_id", jobData.id);
 
-      const tech =
-        techData && techData.length > 0
-          ? techData.forEach((assignment) => assignment.tech_id)
-          : null;
+      console.log("Tech Assignment Data:", techData);
+      const tech = techData && techData.length > 0 ? techData[0].tech_id : null;
       // Fetch technician if assigned
+      console.log("Assigned Technician ID:", tech);
       if (tech) {
         const { data: technicianData, error: techError } = await supabase
-          .from("technicians")
+          .from("technicians_klaver")
           .select("*")
           .eq("id", tech)
           .single();
 
         if (!techError && technicianData) {
           setTechnician(technicianData as Technician);
+          console.log("Technician Data:", technicianData);
         }
       }
-
       setIsLoading(false);
     };
     if (params.id) fetchJobAndVehicle();
@@ -163,12 +196,10 @@ export default function WorkshopJobDetailPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Awaiting Workshop Acceptance":
+      case "Awaiting Approval":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "In Progress":
         return "bg-blue-100 text-blue-800 border-blue-200";
-      case "Awaiting Approval":
-        return "bg-purple-100 text-purple-800 border-purple-200";
       case "Approved":
         return "bg-green-100 text-green-800 border-green-200";
       case "Completed":
@@ -195,6 +226,48 @@ export default function WorkshopJobDetailPage() {
 
   if (isLoading) return <div className="p-8 text-center">Loading...</div>;
   if (!job) return <div className="p-8 text-center">Job not found</div>;
+
+  // Save labour details to DB
+  const handleSaveLabour = async () => {
+    if (!job) return;
+    setIsSavingLabour(true);
+    try {
+      const updatedTotal = Number((labourHours || 0) * (labourRate || 0));
+      const { error } = await supabase
+        .from("workshop_job")
+        .update({
+          labour_hours: labourHours,
+          labor_cost: labourRate,
+          total_labor_cost: updatedTotal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+      if (error) {
+        console.error("Error saving labour:", error);
+        toast.error("Failed to save labour");
+      } else {
+        // update local state & job object
+        setLabourTotal(updatedTotal);
+        setJob((prev) =>
+          prev
+            ? {
+                ...prev,
+                labour_hours: labourHours,
+                labor_cost: labourRate,
+                total_labor_cost: updatedTotal,
+              }
+            : prev
+        );
+        toast.success("Labour saved");
+        setIsLabourDialogOpen(false);
+      }
+    } catch (e) {
+      console.error("Save labour failed:", e);
+      toast.error("Failed to save labour");
+    } finally {
+      setIsSavingLabour(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -362,19 +435,21 @@ export default function WorkshopJobDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              {technician ? (
+              {technician?.id !== null && technician ? (
                 <div className="space-y-4">
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-sm text-gray-600">Name</p>
-                    <p className="font-semibold">{technician.name}</p>
+                    <p className="font-semibold text-black">
+                      {technician?.name}
+                    </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-sm text-gray-600">Phone</p>
-                    <p className="font-semibold">{technician.phone}</p>
+                    <p className="font-semibold">{technician?.phone}</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-semibold">{technician.email}</p>
+                    <p className="font-semibold">{technician?.email}</p>
                   </div>
                 </div>
               ) : (
@@ -415,6 +490,37 @@ export default function WorkshopJobDetailPage() {
                       : "Pending"}
                   </p>
                 </div>
+
+                {/* Labour Section */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Labour</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Hours</span>
+                      <p className="font-medium">{labourHours ?? 0}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Rate (R/hr)</span>
+                      <p className="font-medium">
+                        {labourRate !== undefined ? `R ${labourRate}` : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Labour Total</span>
+                      <p className="font-medium text-green-600">{`R ${(
+                        labourTotal ?? labourHours * labourRate
+                      ).toFixed(2)}`}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      onClick={() => setIsLabourDialogOpen(true)}
+                    >
+                      Edit Labour
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -436,17 +542,97 @@ export default function WorkshopJobDetailPage() {
                   <XCircle className="h-4 w-4 mr-2" />
                   {updating ? "Processing..." : "Reject Job"}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300"
-                  onClick={() => router.push("/jobWorkShop")}
-                >
-                  Close
-                </Button>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full border-gray-300"
+                        onClick={async () => {
+                          await supabase
+                            .from("workshop_job")
+                            .update({
+                              status: "Completed",
+                              updated_at: new Date().toISOString(),
+                            })
+                            .eq("id", job.id);
+
+                          toast.success("Job closed successfully");
+                          setJob((prev) =>
+                            prev ? { ...prev, status: "Completed" } : null
+                          );
+                          setTimeout(() => router.push("/jobWorkShop"), 1500);
+                        }}
+                      >
+                        Close
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>This for completed job to be closed!</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Labour Edit Dialog */}
+        <Dialog open={isLabourDialogOpen} onOpenChange={setIsLabourDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Labour</DialogTitle>
+              <DialogDescription>
+                Set labour hours and rate (total = hours × rate)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <div>
+                <label>Hours</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={labourHours}
+                  onChange={(e) => setLabourHours(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <label>Rate (R/hr)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={labourRate}
+                  onChange={(e) => setLabourRate(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <label>Total</label>
+                <div className="p-2 bg-gray-50 rounded border">{`R ${(
+                  (labourHours || 0) * (labourRate || 0)
+                ).toFixed(2)}`}</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLabourDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveLabour}
+                disabled={isSavingLabour}
+              >
+                {isSavingLabour ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

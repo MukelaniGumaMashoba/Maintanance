@@ -106,13 +106,22 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
           })
           .eq('id', partId);
 
+        await supabase
+          .from('workshop_job')
+          .update({
+            total_parts_cost: (part.quantity - quantity) * (part.price || 0),
+            grand_total: (part.price * part.quantity) + (jobCard?.labour_total || 0)
+          })
+          .eq('id', jobCard.id);
+
         // Log the transaction
         await supabase
           .from('inventory_logs')
           .insert({
             part_id: partId,
             change_type: 'remove',
-            quantity_change: -quantity
+            quantity_change: -quantity,
+            job_id: jobCard.id,
           });
       }
 
@@ -230,7 +239,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
               <h4 className="font-medium text-gray-900">Available Parts</h4>
               <Badge variant="outline">{filteredParts.length} parts</Badge>
             </div>
-            
+
             {filteredParts.length === 0 ? (
               <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed">
                 <Package className="w-8 h-8 mx-auto mb-2 text-gray-400" />
@@ -267,7 +276,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Quantity Controls */}
                         <div className="flex items-center gap-2 justify-center sm:justify-end">
                           <Button
@@ -306,7 +315,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
           </div>
 
         </div>
-        
+
         {/* Sticky Actions Footer */}
         <div className="flex-shrink-0 bg-white border-t p-4 -mx-6 -mb-6">
           <div className="flex flex-col sm:flex-row gap-2">

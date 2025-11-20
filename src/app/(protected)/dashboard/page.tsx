@@ -493,7 +493,7 @@ export default function Dashboard() {
                 digitHeight={42}
               />
               <p className="mt-1 text-xs text-white/80">
-                Total Number Of Card Logged
+                Total number of cards logged
               </p>
             </CardContent>
           </Card>

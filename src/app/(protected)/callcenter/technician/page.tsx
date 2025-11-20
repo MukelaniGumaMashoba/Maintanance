@@ -119,6 +119,11 @@ export default function TechniciansPage() {
   const [isAddTechnicianOpen, setIsAddTechnicianOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
 
+  // Edit technician state
+  const [isEditTechnicianOpen, setIsEditTechnicianOpen] = useState(false);
+  const [isUpdatingTechnician, setIsUpdatingTechnician] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Technician> | null>(null);
+
   // Form state for adding technician
   const [formData, setFormData] = useState({
     name: "",
@@ -143,7 +148,8 @@ export default function TechniciansPage() {
       | "busy"
       | "off-duty"
       | "emergency",
-  });
+    type: "internal",
+    });
 
   const [newSpecialty, setNewSpecialty] = useState("");
   const [newCertification, setNewCertification] = useState("");
@@ -289,18 +295,22 @@ export default function TechniciansPage() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "emergency":
-        return "bg-red-500 text-white";
-      case "high":
-        return "bg-orange-500 text-white";
-      case "medium":
-        return "bg-yellow-500 text-white";
-      case "low":
-        return "bg-green-500 text-white";
+  const getJobStatus = (status: string) => {
+    switch (status) {
+      case "Awaiting approval":
+        return "bg-red-500 text-white text-right border-4 rounded-md";
+      case "assigned":
+        return "bg-orange-500 text-white text-right border-4 rounded-md";
+      case "Part Ordered":
+        return "bg-yellow-500 text-white text-right border-4 rounded-md";
+      case "Part Assigned":
+        return "bg-green-500 text-white text-right border-4 rounded-md";
+      case "Completed":
+        return "bg-blue-500 text-white text-right border-4 rounded-md";
+      case "Approved":
+        return "bg-purple-500 text-white text-right border-4 rounded-md";
       default:
-        return "bg-gray-500 text-white";
+        return "bg-gray-500 text-white text-right border-4 rounded-md";
     }
   };
 
@@ -381,6 +391,7 @@ export default function TechniciansPage() {
           vehicleType: "",
           equipmentLevel: "basic",
           availability: "available",
+          type: "internal",
         });
         refreshData();
       } else {
@@ -434,6 +445,52 @@ export default function TechniciansPage() {
     }));
   };
 
+  // Edit-mode helpers for adding/removing specialties & certifications
+  const [editNewSpecialty, setEditNewSpecialty] = useState("");
+  const [editNewCertification, setEditNewCertification] = useState("");
+
+  const addEditSpecialty = () => {
+    if (!editForm) return;
+    const val = editNewSpecialty.trim();
+    if (!val) return;
+    const existing = editForm.specialties ?? [];
+    if (existing.includes(val)) {
+      setEditNewSpecialty("");
+      return;
+    }
+    setEditForm((prev) => ({ ...(prev || {}), specialties: [...existing, val] }));
+    setEditNewSpecialty("");
+  };
+
+  const removeEditSpecialty = (specialty: string) => {
+    if (!editForm) return;
+    setEditForm((prev) => ({
+      ...(prev || {}),
+      specialties: (prev?.specialties || []).filter((s) => s !== specialty),
+    }));
+  };
+
+  const addEditCertification = () => {
+    if (!editForm) return;
+    const val = editNewCertification.trim();
+    if (!val) return;
+    const existing = editForm.certifications ?? [];
+    if (existing.includes(val)) {
+      setEditNewCertification("");
+      return;
+    }
+    setEditForm((prev) => ({ ...(prev || {}), certifications: [...existing, val] }));
+    setEditNewCertification("");
+  };
+
+  const removeEditCertification = (cert: string) => {
+    if (!editForm) return;
+    setEditForm((prev) => ({
+      ...(prev || {}),
+      certifications: (prev?.certifications || []).filter((c) => c !== cert),
+    }));
+  };
+
   const filteredTechnicians = technicians.filter((tech) => {
     const matchesSearch =
       tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -447,6 +504,104 @@ export default function TechniciansPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const openEditTechnician = (tech: Technician) => {
+    setEditForm({
+      id: tech.id,
+      name: tech.name,
+      phone: tech.phone,
+      email: tech.email,
+      location: tech.location,
+      coordinates: tech.coordinates,
+      specialties: [...(tech.specialties || [])],
+      skillLevels: { ...tech.skillLevels },
+      rating: tech.rating,
+      joinDate: tech.joinDate,
+      certifications: [...(tech.certifications || [])],
+      vehicleType: tech.vehicleType,
+      equipmentLevel: tech.equipmentLevel,
+      availability: tech.availability,
+      type: tech.type,
+    });
+    setIsEditTechnicianOpen(true);
+  };
+
+  const handleUpdateTechnician = async () => {
+    if (!editForm || !editForm.id) {
+      toast.error("No technician selected");
+      return;
+    }
+    setIsUpdatingTechnician(true);
+    try {
+      const payload: any = {
+        name: editForm.name,
+        phone: editForm.phone,
+        email: editForm.email,
+        location: editForm.location,
+        coordinates: editForm.coordinates,
+        specialties: editForm.specialties,
+        skillLevels: editForm.skillLevels,
+        rating: editForm.rating,
+        joinDate: editForm.joinDate,
+        certifications: editForm.certifications,
+        vehicleType: editForm.vehicleType,
+        equipmentLevel: editForm.equipmentLevel,
+        availability: editForm.availability,
+        type: editForm.type,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase
+        .from("technicians_klaver")
+        .update(payload)
+        .eq("id", editForm.id);
+      if (error) {
+        console.error("Error updating technician:", error);
+        toast.error("Failed to update technician");
+      } else {
+        toast.success("Technician updated");
+        setIsEditTechnicianOpen(false);
+        setEditForm(null);
+        await refreshData();
+      }
+    } catch (err) {
+      console.error("Error updating technician:", err);
+      toast.error("Failed to update technician");
+    } finally {
+      setIsUpdatingTechnician(false);
+    }
+  };
+
+  // Delete technician handler
+  const handleDeleteTechnician = async (id?: number, assignedCount = 0) => {
+    if (!id) {
+      toast.error("No technician selected");
+      return;
+    }
+    const confirmMsg =
+      assignedCount > 0
+        ? `This technician has ${assignedCount} assigned job(s). Delete anyway?`
+        : "Are you sure you want to delete this technician?";
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const { error } = await supabase
+        .from("technicians_klaver")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Error deleting technician:", error);
+        toast.error("Failed to delete technician");
+        return;
+      }
+
+      toast.success("Technician deleted");
+      await refreshData();
+    } catch (err) {
+      console.error("Error deleting technician:", err);
+      toast.error("Failed to delete technician");
+    }
+  };
 
   return (
     <>
@@ -872,9 +1027,207 @@ export default function TechniciansPage() {
                         vehicleType: "",
                         equipmentLevel: "basic",
                         availability: "available",
+                        type: 'internal',
                       });
                     }}
                   >
+                    Cancel
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            {/* Edit Technician Dialog */}
+            <Dialog
+              open={isEditTechnicianOpen}
+              onOpenChange={setIsEditTechnicianOpen}
+            >
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Technician</DialogTitle>
+                  <DialogDescription>Update technician details and save changes</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Full Name *</Label>
+                        <Input
+                          value={editForm?.name ?? ""}
+                          onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), name: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Phone Number *</Label>
+                        <Input
+                          value={editForm?.phone ?? ""}
+                          onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), phone: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Email *</Label>
+                        <Input
+                          type="email"
+                          value={editForm?.email ?? ""}
+                          onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), email: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Base Location *</Label>
+                        <Input
+                          value={editForm?.location ?? ""}
+                          onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), location: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Availability</Label>
+                        <Select
+                          value={editForm?.availability ?? "available"}
+                          onValueChange={(v) => setEditForm((prev) => ({ ...(prev || {}), availability: v as any }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="available">Available</SelectItem>
+                            <SelectItem value="busy">Busy</SelectItem>
+                            <SelectItem value="off-duty">Off Duty</SelectItem>
+                            <SelectItem value="emergency">Emergency</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vehicle & Equipment */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Vehicle & Equipment</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Vehicle Type</Label>
+                        <Input
+                          value={editForm?.vehicleType ?? ""}
+                          onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), vehicleType: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Equipment Level</Label>
+                        <Select
+                          value={editForm?.equipmentLevel ?? "basic"}
+                          onValueChange={(v) => setEditForm((prev) => ({ ...(prev || {}), equipmentLevel: v as any }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="advanced">Advanced</SelectItem>
+                            <SelectItem value="specialist">Specialist</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Specialties */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Specialties</h3>
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Add specialty"
+                          value={editNewSpecialty}
+                          onChange={(e) => setEditNewSpecialty(e.target.value)}
+                          onKeyPress={(e) => e.key === "Enter" && addEditSpecialty()}
+                        />
+                        <Button onClick={addEditSpecialty} type="button">Add</Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(editForm?.specialties || []).map((s) => (
+                          <Badge key={s} variant="secondary" className="flex items-center gap-1">
+                            {s}
+                            <button onClick={() => removeEditSpecialty(s)} className="ml-1 text-red-500">×</button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Certifications */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Certifications</h3>
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Add certification"
+                          value={editNewCertification}
+                          onChange={(e) => setEditNewCertification(e.target.value)}
+                          onKeyPress={(e) => e.key === "Enter" && addEditCertification()}
+                        />
+                        <Button onClick={addEditCertification} type="button">Add</Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(editForm?.certifications || []).map((c) => (
+                          <Badge key={c} variant="outline" className="flex items-center gap-1">
+                            {c}
+                            <button onClick={() => removeEditCertification(c)} className="ml-1 text-red-500">×</button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skill Levels */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Skill Levels (0-100%)</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {["electrical","mechanical","hydraulic","diagnostic"].map((skill) => (
+                        <div key={skill}>
+                          <Label className="capitalize">{skill}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={editForm?.skillLevels?.[skill as keyof typeof editForm.skillLevels] ?? 0}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...(prev || {}),
+                                skillLevels: {
+                                  ...(prev?.skillLevels || { electrical:0, mechanical:0, hydraulic:0, diagnostic:0 }),
+                                  [skill]: parseInt(e.target.value) || 0,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Rating</h3>
+                    <div>
+                      <Label>Rating (0-5)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step="0.01"
+                        value={editForm?.rating ?? 0}
+                        onChange={(e) => setEditForm((prev) => ({ ...(prev || {}), rating: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button className="flex-1" onClick={handleUpdateTechnician} disabled={isUpdatingTechnician}>
+                    {isUpdatingTechnician ? "Saving..." : "Save Changes"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setIsEditTechnicianOpen(false); setEditForm(null); }}>
                     Cancel
                   </Button>
                 </div>
@@ -1001,11 +1354,32 @@ export default function TechniciansPage() {
                         </div>
                       </div> */}
                     <div className="flex gap-2">
-                      {/* <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Track
-                      </Button> */}
-                      {/* Always show Assign Job button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-transparent"
+                        onClick={() => openEditTechnician(technician)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-transparent text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() =>
+                          handleDeleteTechnician(
+                            technician.id,
+                            technician.assignedJobs?.length ?? 0
+                          )
+                        }
+                      >
+                        Delete
+                      </Button>
+                       {/* <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                         <MapPin className="h-4 w-4 mr-1" />
+                         Track
+                       </Button> */}
+                       {/* Always show Assign Job button */}
                       <Dialog
                         open={
                           isAssignDialogOpen &&
@@ -1028,7 +1402,7 @@ export default function TechniciansPage() {
                               Assigned Jobs to {technician.name}
                             </DialogTitle>
                             <DialogDescription>
-                              View all jobs to assign to this technician
+                              View all jobs to assigned to this technician
                             </DialogDescription>
                           </DialogHeader>
                           {/* Job search input */}
@@ -1082,9 +1456,9 @@ export default function TechniciansPage() {
                                             DESCRIPTION {job.description}
                                           </p>
                                         </div>
-                                        <div>
+                                        <div className="">
                                           <h4>Status</h4>
-                                          <p>{job.status}</p>
+                                          <p className={getJobStatus(job.status as string)}>{job.status}</p>
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-2 gap-4 text-sm">

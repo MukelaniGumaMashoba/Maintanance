@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Package, 
-  Search, 
-  Plus, 
-  X, 
+import {
+  Package,
+  Search,
+  Plus,
+  X,
   CheckCircle,
   AlertCircle,
   QrCode,
@@ -18,12 +18,13 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { se } from 'date-fns/locale/se';
 
-export default function AssignPartsModal({ 
-  isOpen, 
-  onClose, 
-  jobCard, 
-  onPartsAssigned 
+export default function AssignPartsModal({
+  isOpen,
+  onClose,
+  jobCard,
+  onPartsAssigned
 }) {
   const [stockItems, setStockItems] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
@@ -79,24 +80,24 @@ export default function AssignPartsModal({
   };
 
   const filteredStockItems = stockItems.filter(item => {
-    const matchesSearch = 
+    const matchesSearch =
       item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Only show items with available stock
     const hasStock = parseInt(item.quantity || '0') > 0;
-    
+
     return matchesSearch && hasStock;
   });
 
   const addPart = (item) => {
     const existingPart = selectedParts.find(part => part.stock_id === item.id);
-    
+
     if (existingPart) {
       // Increase quantity if already selected
-      setSelectedParts(prev => prev.map(part => 
-        part.stock_id === item.id 
+      setSelectedParts(prev => prev.map(part =>
+        part.stock_id === item.id
           ? { ...part, quantity: part.quantity + 1 }
           : part
       ));
@@ -113,7 +114,7 @@ export default function AssignPartsModal({
         total_cost: parseFloat(item.cost_excl_vat_zar || '0')
       }]);
     }
-    
+
     // Clear search and hide dropdown
     setSearchTerm('');
     setShowDropdown(false);
@@ -125,13 +126,13 @@ export default function AssignPartsModal({
 
   const updatePartQuantity = (stockId, newQuantity) => {
     const quantity = Math.max(0, parseInt(newQuantity) || 0);
-    setSelectedParts(prev => prev.map(part => 
-      part.stock_id === stockId 
-        ? { 
-            ...part, 
-            quantity,
-            total_cost: (part.cost_per_unit * quantity).toFixed(2)
-          }
+    setSelectedParts(prev => prev.map(part =>
+      part.stock_id === stockId
+        ? {
+          ...part,
+          quantity,
+          total_cost: (part.cost_per_unit * quantity).toFixed(2)
+        }
         : part
     ));
   };
@@ -162,7 +163,7 @@ export default function AssignPartsModal({
         parts: selectedParts,
         ipAddress: ipAddress.trim()
       });
-      
+
       const response = await fetch(`/api/job-cards/${jobCard.id}/assign-parts`, {
         method: 'PUT',
         headers: {
@@ -174,8 +175,12 @@ export default function AssignPartsModal({
         }),
       });
 
+      await supabase.from("workshop_job").update({
+        totaa_parts_cost: selectedParts.reduce((sum, part) => sum + (parseFloat(part.total_cost) || 0), 0),
+      }).eq("id", jobCard.id);
+
       console.log('Response status:', response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Response error:', errorData);
@@ -184,7 +189,7 @@ export default function AssignPartsModal({
 
       const result = await response.json();
       console.log('Assignment result:', result);
-      
+
       // Store QR code from response
       if (result.qr_code) {
         console.log('QR code received:', result.qr_code);
@@ -196,7 +201,7 @@ export default function AssignPartsModal({
         toast.success('Parts assigned successfully!');
         toast.info('Job will appear in the "Assigned Parts" section.');
         toast.warning('QR code generation requires database fields to be added. Please contact administrator.');
-        
+
         // Call callback to refresh job cards
         if (onPartsAssigned) {
           onPartsAssigned();
@@ -204,10 +209,10 @@ export default function AssignPartsModal({
         onClose();
         return;
       }
-      
+
       toast.success('Parts assigned successfully!');
       toast.info('Job will appear in the "Assigned Parts" section.');
-      
+
       // Call callback to refresh job cards
       if (onPartsAssigned) {
         onPartsAssigned();
@@ -383,13 +388,13 @@ export default function AssignPartsModal({
       job_description: job.job_description,
       status: job.status,
       priority: job.priority,
-      
+
       // Customer information
       customer_name: job.customer_name,
       customer_email: job.customer_email,
       customer_phone: job.customer_phone,
       customer_address: job.customer_address,
-      
+
       // Vehicle information
       vehicle_registration: job.vehicle_registration,
       vehicle_make: job.vehicle_make,
@@ -397,25 +402,25 @@ export default function AssignPartsModal({
       vehicle_year: job.vehicle_year,
       vin_numer: job.vin_numer,
       odormeter: job.odormeter,
-      
+
       // Quotation details
       quotation_total_amount: job.quotation_total_amount,
       quotation_products: job.quotation_products,
       quote_status: job.quote_status,
       quote_date: job.quote_date,
       quote_expiry_date: job.quote_expiry_date,
-      
+
       // Job location and timing
       job_location: job.job_location,
       latitude: job.latitude,
       longitude: job.longitude,
       created_at: job.created_at,
       updated_at: job.updated_at,
-      
+
       // Parts information (if available)
       parts_required: job.parts_required,
       total_parts: job.parts_required?.length || 0,
-      
+
       // Additional job details
       special_instructions: job.special_instructions,
       access_requirements: job.access_requirements,
@@ -423,7 +428,7 @@ export default function AssignPartsModal({
       site_contact_phone: job.site_contact_phone,
       estimated_duration_hours: job.estimated_duration_hours,
       estimated_cost: job.estimated_cost,
-      
+
       // Metadata
       job_id: job.id,
       account_id: job.account_id,
@@ -489,28 +494,28 @@ export default function AssignPartsModal({
                           className="hover:bg-gray-50 p-3 border-gray-100 border-b last:border-b-0 cursor-pointer"
                           onClick={() => addPart(item)}
                         >
-                                                  <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{String(item.description || '')}</div>
-                            <div className="text-gray-500 text-sm">{String(item.code || '')}</div>
-                            <div className="text-gray-400 text-xs">{String(item.supplier || '')}</div>
-                            {item.cost_excl_vat_zar && (
-                              <div className="font-medium text-green-600 text-xs">
-                                R{parseFloat(item.cost_excl_vat_zar).toFixed(2)} each
-                              </div>
-                            )}
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{String(item.description || '')}</div>
+                              <div className="text-gray-500 text-sm">{String(item.code || '')}</div>
+                              <div className="text-gray-400 text-xs">{String(item.supplier || '')}</div>
+                              {item.cost_excl_vat_zar && (
+                                <div className="font-medium text-green-600 text-xs">
+                                  R{parseFloat(item.cost_excl_vat_zar).toFixed(2)} each
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="outline" className="text-xs">
+                                Stock: {parseInt(item.quantity || '0')}
+                              </Badge>
+                              {item.stock_type && (
+                                <div className="mt-1 text-gray-400 text-xs">
+                                  {String(item.stock_type)}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <Badge variant="outline" className="text-xs">
-                              Stock: {parseInt(item.quantity || '0')}
-                            </Badge>
-                            {item.stock_type && (
-                              <div className="mt-1 text-gray-400 text-xs">
-                                {String(item.stock_type)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
                         </div>
                       ))
                     )}
@@ -570,7 +575,7 @@ export default function AssignPartsModal({
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleSubmit}
                 disabled={submitting || selectedParts.length === 0 || !ipAddress.trim()}
                 className="bg-blue-600 hover:bg-blue-700"
@@ -593,9 +598,9 @@ export default function AssignPartsModal({
                 <div className="text-center">
                   <h4 className="mb-4 font-medium text-gray-900">Job QR Code</h4>
                   <div className="mb-4">
-                    <img 
-                      src={qrCodeUrl} 
-                      alt="Job QR Code" 
+                    <img
+                      src={qrCodeUrl}
+                      alt="Job QR Code"
                       className="mx-auto border rounded-lg"
                       style={{ maxWidth: '200px' }}
                     />
@@ -603,7 +608,7 @@ export default function AssignPartsModal({
                   <p className="mb-4 text-gray-500 text-xs">
                     Scan this QR code to access complete job information
                   </p>
-                  
+
                   {/* Job Summary */}
                   <div className="gap-4 grid grid-cols-1 md:grid-cols-2 mb-4 text-left">
                     <div className="space-y-2">
@@ -656,7 +661,7 @@ export default function AssignPartsModal({
                   )}
 
                   <div className="space-y-2">
-                    <Button 
+                    <Button
                       onClick={handlePrintQR}
                       className="bg-blue-600 hover:bg-blue-700 w-full"
                     >

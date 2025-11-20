@@ -140,6 +140,7 @@ export default function InventoryPage() {
         .from('workshop_job')
         .select('*')
         .neq('status', 'Awaiting Approval')
+        .or('status.neq.Completed')
         .order('created_at', { ascending: false });
 
       if (jobsError) {
@@ -232,7 +233,7 @@ export default function InventoryPage() {
     setSelectedPartLogs(data || []);
     setShowLogsModal(true);
   };
-
+  
   const handleAssignParts = (jobCard) => {
     setSelectedJobCard(jobCard);
     setShowAssignModal(true);
@@ -520,6 +521,35 @@ export default function InventoryPage() {
                     )}
                   </div>
                 </div>
+
+
+                <div className="text-sm">
+                  <p className="font-medium text-gray-700">
+                    Total parts Cost: R{
+                      (() => {
+                        const sum = (job.parts_required || []).reduce((acc, req) => {
+                          const partPrice =
+                            parts.find(p => p.id === req.id)?.price ?? req.price ?? 0;
+                          const qty = req.quantity ?? 1;
+                          return acc + partPrice * qty;
+                        }, 0);
+
+                        // fire-and-forget Supabase update
+                        supabase
+                          .from("workshop_job")
+                          .update({ total_parts_cost: sum })
+                          .eq("id", job?.id)
+                          .then(({ error }) => {
+                            if (error) console.error("Supabase update error:", error);
+                          });
+
+                        return sum.toFixed(2);
+                      })()
+                    }
+                  </p>
+                </div>
+
+
 
                 <div className="flex justify-between items-center pt-2">
                   <Button

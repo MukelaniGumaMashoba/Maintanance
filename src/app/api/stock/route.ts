@@ -15,13 +15,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const supplier = searchParams.get('supplier');
-    const stockType = searchParams.get('stock_type');
+    const stockType = searchParams.get('item_code');
 
     // Build the query
     let query = supabase
-      .from('stock')
+      .from('parts')
       .select('*')
       .order('description', { ascending: true });
+
+    // fkey category to item to get category name
+    query = query.select('*, categories:category_id(name)');
 
     // Apply filters
     if (search) {
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (stockType) {
-      query = query.eq('stock_type', stockType);
+      query = query.eq('item_code', stockType);
     }
 
     const { data: stock, error } = await query;
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Convert quantity to number for display (since it's stored as text)
-    const processedStock = stock?.map(item => ({
+    const processedStock = stock?.map((item: any) => ({
       ...item,
       quantity: item.quantity || '0'
     })) || [];

@@ -32,7 +32,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Clock, CheckCircle, Search, Eye, Plus } from "lucide-react";
+import {
+  FileText,
+  Clock,
+  CheckCircle,
+  Search,
+  Eye,
+  Plus,
+  AlertCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -372,18 +380,6 @@ export default function JobsPage() {
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
-          {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
-              <SelectItem value="emergency">Emergency</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select> */}
         </div>
       </div>
 
@@ -606,6 +602,10 @@ export default function JobsPage() {
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(job.status)}>
                         {formatStatusDisplay(job.status)}
+                        {job.status === "Awaiting approval" &&
+                          -(
+                            <AlertCircle className="h-4 w-4 bg-red-500 animate-ping" />
+                          )}
                       </Badge>
                       <Badge className={getPriorityColor(job.priority)}>
                         {job.priority}
@@ -782,7 +782,7 @@ export default function JobsPage() {
               disabled={parts.length === 0}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Assign {parts.length} Part{parts.length !== 1 ? "s" : ""} to Job
+              Add {parts.length} Part{parts.length !== 1 ? "s" : ""} to Job
             </Button>
           </DialogFooter>
         </DialogContent>

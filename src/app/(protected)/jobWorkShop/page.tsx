@@ -472,7 +472,7 @@ export default function FleetJobsPage() {
           location: createJobForm.location,
           client_name: createJobForm.client_name,
           client_phone: createJobForm.client_phone,
-          status: "Awaiting Workshop Acceptance",
+          status: "Awaiting Approval",
         })
         .select()
         .single();
@@ -808,7 +808,7 @@ export default function FleetJobsPage() {
   //         >
   //           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
   //             {[
-  //               "Awaiting Workshop Acceptance",
+  //               "Awaiting Approval",
   //               "In Progress",
   //               "Awaiting Approval",
   //               "Approved",
@@ -1111,6 +1111,8 @@ export default function FleetJobsPage() {
                 "Approved",
                 "Completed",
                 "Rejected",
+                "assigned",
+                "Approved - Ready For Parts Assignment",
               ].map((status) => (
                 <Card key={status}>
                   <CardHeader className="pb-3">
@@ -1251,13 +1253,14 @@ export default function FleetJobsPage() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    "Awaiting Workshop Acceptance",
-                    "Part Ordered",
                     "Awaiting Approval",
+                    "Part Ordered",
                     "Approved",
                     "Completed",
                     "Rejected",
                     "Part Assigned",
+                    "assigned",
+                    "Approved - Ready For Parts Assignment",
                   ].map((status) => {
                     const count = workshopJob.filter(
                       (job) => job.status === status

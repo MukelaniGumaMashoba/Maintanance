@@ -20,81 +20,106 @@ export default function RequestedParts({ jobId }: { jobId: number }) {
   const supabase = createClient();
 
   useEffect(() => {
+    const normalizePart = (p: any): Part => {
+      if (!p || typeof p !== "object") return { part_name: String(p) } as Part;
+      return {
+        part_name: p.part_name ?? p.description ?? p.item_code ?? undefined,
+        quantity: p.quantity ?? p.qty ?? undefined,
+        price: p.price ?? p.unit_price ?? undefined,
+        total_cost: p.total_cost ?? p.total ?? undefined,
+        description: p.description ?? undefined,
+        item_code: p.item_code ?? undefined,
+      } as Part;
+    };
+
     const fetchParts = async () => {
+      setLoading(true);
+      setParts([]);
+
       if (!jobId) {
         setLoading(false);
         return;
       }
+
       try {
-        // Fetch only job_parts field from table filtered by jobId
-
-        const { data: jc, error: jcError } = await supabase
-          .from("workshop_job")
-          .select("id")
-          .eq("id", jobId)
-          .single();
-
-        if (jcError || !jc) {
-          console.error("Error fetching job:", jcError);
-          setParts([]);
-          setLoading(false);
-          return;
-        }
-
-        // jc is validated above, so use the definite id (not undefined)
-        const workshopJobId = jc.id;
-
-        const { data, error } = await supabase
+        const { data: rows, error } = await supabase
           .from("workshop_jobpart")
-          .select("job_parts")
-          .eq("job_id", workshopJobId)
+          .select(
+            // "id, job_parts, given_parts" // to show both requested and assigned
+            "id, job_parts"
+          )
+          .eq("job_id", jobId)
           .order("created_at", { ascending: false });
 
         if (error) {
-          console.error("Error fetching parts:", error);
+          console.error("Error fetching workshop_jobpart:", error);
           setParts([]);
           setLoading(false);
           return;
         }
 
-        if (data && data.length > 0) {
-          // Flatten job_parts arrays or objects from each row into a single parts array
-          const allParts: Part[] = data.flatMap((row) => {
-            const jp = (row as any).job_parts;
-            if (!jp) return [];
-            if (Array.isArray(jp)) return jp;
-            if (typeof jp === "object") return [jp];
-            return [];
-          });
+        const allParts: Part[] = (rows || []).flatMap((r: any) => {
+          const jp = r.job_parts ?? r.given_parts;
+          if (jp) {
+            if (Array.isArray(jp)) {
+              return jp.map((p) => normalizePart(p));
+            }
+            if (typeof jp === "object") {
+              return [normalizePart(jp)];
+            }
+            if (typeof jp === "string" && jp.trim()) {
+              return [{ part_name: jp } as Part];
+            }
+          }
 
-          // Filter out invalid/null parts
-          const validParts = allParts.filter(
-            (p) =>
-              p &&
-              (typeof p === "object") &&
-              (Object.keys(p).length > 0)
-          );
+          // fallback to individual fields on the row
+          if (
+            r.part_name ||
+            r.quantity ||
+            r.price ||
+            r.total_cost ||
+            r.description ||
+            r.item_code
+          ) {
+            return [
+              normalizePart({
+                part_name: r.part_name,
+                quantity: r.quantity,
+                price: r.price,
+                total_cost: r.total_cost,
+                description: r.description,
+                item_code: r.item_code,
+              }),
+            ];
+          }
 
-          setParts(validParts);
-        } else {
-          setParts([]);
-        }
+          return [];
+        });
+
+        const validParts = allParts.filter(
+          (p) => p && (p.part_name || p.description || p.item_code)
+        );
+        setParts(validParts);
       } catch (e) {
-        console.error("Failed to fetch parts table:", e);
+        console.error("Failed to fetch parts:", e);
         setParts([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchParts();
   }, [jobId, supabase]);
 
-  if (loading) return <div className="text-sm text-gray-500">Loading parts...</div>;
+  if (loading)
+    return <div className="text-sm text-gray-500">Loading parts...</div>;
 
   if (parts.length === 0) {
     return (
       <div className="border-t pt-3">
-        <p className="text-sm font-medium text-gray-600 mb-2">Requested Parts:</p>
+        <p className="text-sm font-medium text-gray-600 mb-2">
+          Requested Parts:
+        </p>
         <p className="text-sm text-gray-500">No parts requested yet</p>
       </div>
     );
@@ -102,17 +127,22 @@ export default function RequestedParts({ jobId }: { jobId: number }) {
 
   return (
     <div className="border-t pt-3">
-      <p className="text-sm font-medium text-gray-600 mb-2">Requested Parts ({parts.length}):</p>
+      <p className="text-sm font-medium text-gray-600 mb-2">
+        Requested Parts ({parts.length}):
+      </p>
       <div className="flex flex-wrap gap-2">
         {parts.map((part, index) => {
-          const partName = part.part_name || part.description || part.item_code || "Unknown Part";
-          const quantity = part.quantity || 1;
-          const price = part.price || part.total_cost;
+          const partName =
+            part.part_name ||
+            part.description ||
+            part.item_code ||
+            "Unknown Part";
+          const quantity = part.quantity ?? 1;
+          const price = part.price ?? part.total_cost;
 
           return (
             <Badge key={index} variant="outline" className="text-xs">
-              {partName} (x{quantity})
-              {price && ` - R${price}`}
+              {partName} (x{quantity}){price !== undefined && ` • R${price}`}
             </Badge>
           );
         })}

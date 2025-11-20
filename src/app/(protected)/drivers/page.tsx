@@ -759,10 +759,10 @@ export default function Drivers() {
                 <p className="text-2xl font-bold text-purple-600">
                   {
                     drivers.filter(
-                      (d) =>
-                        d.professional_driving_permit &&
-                        d.pdp_expiry_date &&
-                        new Date(d.pdp_expiry_date) > new Date()
+                      (d) => d.professional_driving_permit
+                      // &&
+                      //   d.pdp_expiry_date &&
+                      //   new Date(d.pdp_expiry_date) > new Date()
                     ).length
                   }
                 </p>

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create initial inventory logs
-    const initialLogs = createdParts.map(part => ({
+    const initialLogs = createdParts.map((part: any) => ({
       part_id: part.id,
       change_type: 'add',
       quantity_change: part.quantity

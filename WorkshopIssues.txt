@@ -101,7 +101,7 @@ add view btn to view full details (/jobs/51) actions(performed by fleet manager(
 performance metrix => prefer to job types(electrical), number of jobs, avg costing, 
 
 statuses(
-1. Awaiting Workshop acceptance(Once open job card and workshop allocated, workshop provide update to when should come)(booking vehicle)
+1. Awaiting Approval(Once open job card and workshop allocated, workshop provide update to when should come)(booking vehicle)
 2. Workshop accepted(VEHICLE TObe delivered)(once workshop accepted job, once it there must confirm it there and confirm goes to 3.)
 3. Vehicles at workshop(pending qoutation(Load qoutation, once loaded if over spec threehold request inspection, under must go to pendng approval which wll be done fleet manager))
 4. Qoute loaded(1.pENDING INSEPCTION
@@ -285,17 +285,6 @@ Todo
 - Need to do aaron testing updates
 
 
-aaron
--Short High Level overview Key Findings Summary: (Please see my reports for all issues)
-
-Job Card Inconsistencies:
-Assigning a technician immediately after job card creation causes duplicate job entries visible to both the Administrator and Fleet Manager.
-
-Job statuses in the Kanban Board and Analytics sections are not reflecting accurate values (e.g., "Awaiting Approval" is zero before I approved a job as the Fleet Manager).
-
-The "Active PDP" count in the Drivers section is not showing the correct value.
-
-Functionality:
-The Technician search function is not working when assigning a technician after creating a new job card.
-
-There is currently no option to edit or delete technicians in the Technicians Assignment section.
+-- Part Assigned missing or requested
+-- Add labour cost (hours x labour amount)
+- Inventory part assigned not showing

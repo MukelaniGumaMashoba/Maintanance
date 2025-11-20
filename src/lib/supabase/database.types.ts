@@ -1113,6 +1113,7 @@ export type Database = {
         Row: {
           change_type: string | null
           id: number
+          job_id: number | null
           part_id: number | null
           quantity_change: number | null
           timestamp: string | null
@@ -1120,6 +1121,7 @@ export type Database = {
         Insert: {
           change_type?: string | null
           id?: number
+          job_id?: number | null
           part_id?: number | null
           quantity_change?: number | null
           timestamp?: string | null
@@ -1127,6 +1129,7 @@ export type Database = {
         Update: {
           change_type?: string | null
           id?: number
+          job_id?: number | null
           part_id?: number | null
           quantity_change?: number | null
           timestamp?: string | null
@@ -1140,6 +1143,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_allocations: {
+        Row: {
+          allocated_at: string | null
+          allocated_by: string | null
+          created_at: string
+          id: number
+          job_card_id: number | null
+          notes: string | null
+          status: string | null
+          sublet_id: number | null
+        }
+        Insert: {
+          allocated_at?: string | null
+          allocated_by?: string | null
+          created_at?: string
+          id?: number
+          job_card_id?: number | null
+          notes?: string | null
+          status?: string | null
+          sublet_id?: number | null
+        }
+        Update: {
+          allocated_at?: string | null
+          allocated_by?: string | null
+          created_at?: string
+          id?: number
+          job_card_id?: number | null
+          notes?: string | null
+          status?: string | null
+          sublet_id?: number | null
+        }
+        Relationships: []
       }
       job_assignments: {
         Row: {
@@ -1775,6 +1811,36 @@ export type Database = {
           },
         ]
       }
+      parts_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          notes: string | null
+          parts_data: Json | null
+          status: string | null
+          supplier_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          notes?: string | null
+          parts_data?: Json | null
+          status?: string | null
+          supplier_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          notes?: string | null
+          parts_data?: Json | null
+          status?: string | null
+          supplier_id?: number | null
+        }
+        Relationships: []
+      }
       product_items: {
         Row: {
           category: string
@@ -2373,32 +2439,41 @@ export type Database = {
       }
       sublets: {
         Row: {
+          address: string | null
           cost: number | null
           created_at: string | null
           description: string
+          email: string | null
           id: number
           job_card: number | null
-          job_card_id: string | null
+          name: string | null
+          phone: string | null
           status: string | null
           supplier_id: number | null
         }
         Insert: {
+          address?: string | null
           cost?: number | null
           created_at?: string | null
           description: string
+          email?: string | null
           id?: number
           job_card?: number | null
-          job_card_id?: string | null
+          name?: string | null
+          phone?: string | null
           status?: string | null
           supplier_id?: number | null
         }
         Update: {
+          address?: string | null
           cost?: number | null
           created_at?: string | null
           description?: string
+          email?: string | null
           id?: number
           job_card?: number | null
-          job_card_id?: string | null
+          name?: string | null
+          phone?: string | null
           status?: string | null
           supplier_id?: number | null
         }
@@ -3439,6 +3514,7 @@ export type Database = {
           job_type: string | null
           jobId_workshop: string | null
           labor_cost: number | null
+          labour_hours: number | null
           location: string | null
           notes: string | null
           parts_required: Json | null
@@ -3449,6 +3525,8 @@ export type Database = {
           safety_checklist_completed: boolean | null
           start_time: string | null
           status: string | null
+          sublet: number | null
+          technician: boolean | null
           technician_id: string | null
           technician_name: string | null
           technician_phone: string | null
@@ -3488,6 +3566,7 @@ export type Database = {
           job_type?: string | null
           jobId_workshop?: string | null
           labor_cost?: number | null
+          labour_hours?: number | null
           location?: string | null
           notes?: string | null
           parts_required?: Json | null
@@ -3498,6 +3577,8 @@ export type Database = {
           safety_checklist_completed?: boolean | null
           start_time?: string | null
           status?: string | null
+          sublet?: number | null
+          technician?: boolean | null
           technician_id?: string | null
           technician_name?: string | null
           technician_phone?: string | null
@@ -3537,6 +3618,7 @@ export type Database = {
           job_type?: string | null
           jobId_workshop?: string | null
           labor_cost?: number | null
+          labour_hours?: number | null
           location?: string | null
           notes?: string | null
           parts_required?: Json | null
@@ -3547,6 +3629,8 @@ export type Database = {
           safety_checklist_completed?: boolean | null
           start_time?: string | null
           status?: string | null
+          sublet?: number | null
+          technician?: boolean | null
           technician_id?: string | null
           technician_name?: string | null
           technician_phone?: string | null

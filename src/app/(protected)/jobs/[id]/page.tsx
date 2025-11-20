@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { AnyARecord } from "dns";
 
 interface WorkshopJob {
   id: number;
@@ -47,6 +48,11 @@ interface WorkshopJob {
   attachments?: string[];
   created_at: string;
   job_type?: string;
+
+  // labour fields (optional)
+  labour_hours?: number;
+  labour_rate?: number;
+  labour_total?: number;
 }
 
 interface Technician {
@@ -68,14 +74,15 @@ export default function WorkshopJobDetailPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [assignedTechId, setAssignedTechId] = useState<number | null>(null);
   const [isAssigned, setIsAssigned] = useState(false);
-  const [searchTechnicianSpecialty, setSearchTechnicianSpecialty] =
-    useState("");
+  const [searchTechnician, setSearchTechnician] = useState("");
   const [selectedJobForTech, setSelectedJobForTech] =
     useState<WorkshopJob | null>(null);
   const [isTechDialogOpen, setIsTechDialogOpen] = useState(false);
   const [selectedTechnician, setSelectedTechnician] =
     useState<Technician | null>(null);
   const [parts, setParts] = useState<any[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
 
   const fetchParts = async () => {
     const { data, error } = await supabase
@@ -120,11 +127,15 @@ export default function WorkshopJobDetailPage() {
 
     console.log(data);
 
-    if (error) {
-      console.error("Error fetching assigned technician:", error);
+    if (!data) {
+      setError("No technician assigned yet");
       return;
     }
-    if (!data) return;
+
+    if (error) {
+      setError("Error fetching assigned technician:" + error);
+      return;
+    }
     const techId = data.tech_id;
     console.log("technicaion: " + techId);
 
@@ -176,7 +187,9 @@ export default function WorkshopJobDetailPage() {
         setIsLoading(false);
         return;
       }
-      setJob(data as any);
+      const jobData = data as any;
+      setJob(jobData);
+
       setSelectedJobForTech(data as any); // Set selected job here for assigned tech fetching
       // Fetch assignment
       const { data: assignment, error: assignmentError } = await supabase
@@ -509,6 +522,11 @@ export default function WorkshopJobDetailPage() {
             <p className="text-sm text-gray-500 italic">No part requested</p>
           )}
 
+          {/* <div>
+            {error && (
+              <p className="text-sm text-red-500 italic">{error}</p>
+            )}
+          </div> */}
           {/* Technician Info */}
           <div className="flex items-center gap-2 mt-6 border-t pt-4 border-gray-100">
             <div className="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100">
@@ -532,7 +550,7 @@ export default function WorkshopJobDetailPage() {
 
         {/* Footer */}
         <CardFooter className="flex justify-end gap-3 pt-5 border-t border-gray-100">
-          {isAssigned ? (
+          {isAssigned && job.status === "Approved" ? (
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -554,7 +572,7 @@ export default function WorkshopJobDetailPage() {
                 Change Technician
               </Button>
             </div>
-          ) : (
+          ) : job.status !== "Awaiting approval" ? (
             <Button
               size="sm"
               onClick={() => {
@@ -566,6 +584,12 @@ export default function WorkshopJobDetailPage() {
               <User2 className="h-4 w-4" />
               Assign Technician
             </Button>
+          ) : (
+            <div>
+              <p className="text-sm text-orange-300">
+                Awaiting Approval Before Assign Technician
+              </p>
+            </div>
           )}
         </CardFooter>
       </Card>
@@ -579,31 +603,33 @@ export default function WorkshopJobDetailPage() {
               {selectedJobForTech?.jobId_workshop}
             </DialogTitle>
             <DialogDescription>
-              Search and select a technician based on Job Type.
+              Search and select a technician based on Job Type, name, location,
+              or specialties.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mb-3">
             <Input
-              placeholder="Filter by job type..."
-              value={searchTechnicianSpecialty}
-              onChange={(e) => setSearchTechnicianSpecialty(e.target.value)}
+              placeholder="Search for technician..."
+              value={searchTechnician}
+              onChange={(e) => setSearchTechnician(e.target.value)}
               autoFocus
             />
           </div>
 
           <div className="max-h-[300px] overflow-y-auto space-y-2">
             {technicians
-              // .filter((tech) => {
-              //   const techSpecialtyTerms = tech.specialties;
-              //   const searchTerms = searchTechnicianSpecialty
-              //     .toLowerCase()
-              //     .split(/[\s,]+/);
-              //   // Return true if any job type keyword is included in tech specialty terms
-              //   return searchTerms.some((term) =>
-              //     techSpecialtyTerms.includes(term)
-              //   );
-              // })
+              .filter((tech) => {
+                const searchTerms = searchTechnician.toLowerCase();
+                return (
+                  tech.name?.toLowerCase().includes(searchTerms) ||
+                  tech.surname?.toLowerCase().includes(searchTerms) ||
+                  tech.location?.toLowerCase().includes(searchTerms) ||
+                  tech.specialties
+                    .map((s) => s.toLowerCase())
+                    .some((s) => s.includes(searchTerms))
+                );
+              })
               .map((tech) => (
                 <div
                   key={tech.id}
