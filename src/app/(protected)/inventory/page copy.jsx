@@ -32,8 +32,6 @@ import DashboardTabs from '@/components/shared/DashboardTabs';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewAssignPartsModal from '@/components/ui-personal/new-assign-parts-modal';
-import { en } from 'zod/v4/locales';
-import { redirect } from 'next/navigation';
 
 export default function InventoryPage() {
   const supabase = createClient();
@@ -219,7 +217,6 @@ export default function InventoryPage() {
   );
 
   const handleViewLogs = async (partId) => {
-    setShowLogsModal(true);
     try {
       const { data: logs, error: logsError } = await supabase
         .from("inventory_logs")
@@ -228,7 +225,8 @@ export default function InventoryPage() {
         .order("timestamp", { ascending: false });
 
       console.log("Fetched logs:", logs);
-
+      setSelectedPartLogs(logs);
+      setShowLogsModal(true);   
 
       if (logsError) {
         toast.error("Failed to fetch logs");
@@ -240,8 +238,6 @@ export default function InventoryPage() {
       const jobIds = Array.from(
         new Set((logs || []).map((l) => l.job_id).filter(Boolean))
       );
-
-      console.log("Unique job IDs from logs:", jobIds);
 
       let jobsMap = {};
       if (jobIds.length > 0) {
@@ -267,7 +263,7 @@ export default function InventoryPage() {
         job: l.job_id ? jobsMap[String(l.job_id)] ?? null : null,
       }));
 
-      setSelectedPartLogs(enriched);
+
     } catch (err) {
       console.error("Failed to fetch logs:", err);
       toast.error("Failed to fetch logs");
@@ -1216,87 +1212,73 @@ export default function InventoryPage() {
             <DialogTitle>Inventory History</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {selectedPartLogs.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                No inventory logs found for this part.
-              </div>
-            ) : (
-              <>
-                {selectedPartLogs.map((log) => (
-                  <div key={log.id} className="border rounded p-3">
-                    <div className="flex justify-self-start items-start gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${log.change_type === "add"
-                              ? "bg-green-100 text-green-800"
-                              : log.change_type === "remove"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-blue-100 text-blue-800"
-                              }`}
-                          >
-                            {log.change_type
-                              ? log.change_type.charAt(0).toUpperCase() +
-                              log.change_type.slice(1)
-                              : "Update"}
-                          </span>
-                          <span className="ml-2 font-medium">
-                            {log.quantity_change > 0 ? "+" : ""}
-                            {log.quantity_change}
-                          </span>
-                        </div>
-
-                        {/* Show associated job info when available */}
-                        {log.job ? (
-                          <div className="text-sm text-gray-700 mb-1 items-center gap-2">
-                            <div className="">
-                              <strong>Job:</strong>{" "}
-                              {log.job.jobId_workshop ?? `#${log.job.id}`}{" "}
-                              {log.job.registration_no ? (
-                                <span className="ml-2 text-gray-500">
-                                  • Vehicle : {log.job.registration_no}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="ml-auto border-2 rounded-md px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-700 text-center">
-                              <Button
-                                variant="link"
-                                className="text-xs text-indigo-600 hover:underline"
-                                onClick={
-                                  () => {
-                                    redirect(`/jobWorkShop/${log.job.id}`)
-                                  }
-                                }
-                              >
-                                View Job
-                              </Button>
-                            </div>
-                          </div>
-                        ) : log.job_id ? (
-                          <div className="text-sm text-gray-700 mb-1">
-                            <strong>Job ID:</strong> {log.job_id}
-                          </div>
-                        ) : null}
-
-                        {log.parts && log.parts.description ? (
-                          <div className="text-sm text-gray-600">
-                            <strong>Part:</strong> {log.parts.description}{" "}
-                            {log.parts.item_code ? (
-                              <span className="text-gray-500">• {log.parts.item_code}</span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="text-sm text-gray-600 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </div>
+            {selectedPartLogs.map((log) => (
+              <div key={log.id} className="border rounded p-3">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${log.change_type === "add"
+                            ? "bg-green-100 text-green-800"
+                            : log.change_type === "remove"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                      >
+                        {log.change_type
+                          ? log.change_type.charAt(0).toUpperCase() +
+                          log.change_type.slice(1)
+                          : "Update"}
+                      </span>
+                      <span className="ml-2 font-medium">
+                        {log.quantity_change > 0 ? "+" : ""}
+                        {log.quantity_change}
+                      </span>
                     </div>
+
+                    {/* Show associated job info when available */}
+                    {log.job ? (
+                      <div className="text-sm text-gray-700 mb-1 flex items-center gap-2">
+                        <div className="min-w-0">
+                          <strong>Job:</strong>{" "}
+                          {log.job.jobId_workshop ?? `#${log.job.id}`}{" "}
+                          {log.job.registration_no ? (
+                            <span className="ml-2 text-gray-500">
+                              • Reg: {log.job.registration_no}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="ml-auto">
+                          <Link
+                            href={`/jobWorkShop/${log.job.id}`}
+                            className="text-xs text-indigo-600 hover:underline"
+                          >
+                            View job
+                          </Link>
+                        </div>
+                      </div>
+                    ) : log.job_id ? (
+                      <div className="text-sm text-gray-700 mb-1">
+                        <strong>Job ID:</strong> {log.job_id}
+                      </div>
+                    ) : null}
+
+                    {log.parts && log.parts.description ? (
+                      <div className="text-sm text-gray-600">
+                        <strong>Part:</strong> {log.parts.description}{" "}
+                        {log.parts.item_code ? (
+                          <span className="text-gray-500">• {log.parts.item_code}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                ))
-                }
-              </>
-            )}
+
+                  <div className="text-sm text-gray-600 whitespace-nowrap">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

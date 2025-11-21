@@ -277,7 +277,7 @@ export default function StockLevelsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      // Add the dialog component next to the export button in the header
+      {/* // Add the dialog component next to the export button in the header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Stock Levels</h1>
@@ -286,7 +286,7 @@ export default function StockLevelsPage() {
           </p>
         </div>
         <div className="space-x-2">
-          <StockEntryDialog />
+          {/* <StockEntryDialog /> */}
           <Button onClick={exportToCSV} variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export CSV
