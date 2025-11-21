@@ -330,7 +330,7 @@ export default function Vehicles() {
       .insert(vehicleData)
     if (error) {
       console.error(error.message)
-      toast.error('Failed to add vehicle')
+      toast.error('Failed to add vehicle' + error.message)
     } else {
       console.log(vehicle)
       toast.success('Vehicle added successfully')
@@ -471,7 +471,7 @@ export default function Vehicles() {
       {/* Add Vehicle Form */}
       {isAddingVehicle && (
         <Card>
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle>Add New Vehicle</CardTitle>
           </CardHeader>
           <CardContent>
@@ -504,7 +504,7 @@ export default function Vehicles() {
                 <p>Example: ABC123GP,Toyota,Hilux,2023,vehicle,White,diesel,manual,50000,15000km</p>
               </div>
             </div>
-          </CardContent>
+          </CardContent> */}
 
           <CardContent>
             <Form {...form}>

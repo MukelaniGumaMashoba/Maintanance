@@ -21,6 +21,9 @@ interface RepairRecord {
   created_at: string;
   total_cost: number;
   technician_name: string;
+  labor_cost?: number;
+  total_parts_cost?: number;
+  grand_total?: number; 
 }
 
 interface PendingRepairRecord {
@@ -115,6 +118,8 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
             created_at: job?.created_at || a.created_at,
             total_cost: total || 0,
             technician_name: tech?.name || "Unassigned",
+            labor_cost: job?.total_labor_cost || 0,
+            total_parts_cost: job?.total_parts_cost || 0,
           };
         });
 
@@ -149,7 +154,7 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
         <CardTitle>Repair History ({repairs.length} records)</CardTitle>
       </CardHeader>
       <CardContent>
-        <CardTitle className="mb-4">Repairs InProgress</CardTitle>
+        <CardTitle className="mb-4">Repairs In Progress</CardTitle>
         <Table>
           <TableHeader>
             <TableRow>
@@ -157,7 +162,8 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Technician</TableHead>
-              <TableHead>Cost</TableHead>
+              <TableHead>Labor Cost</TableHead>
+              <TableHead>Parts Cost</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
           </TableHeader>
@@ -180,6 +186,9 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
                 <TableCell>{repair.technician_name}</TableCell>
                 <TableCell>
                   R {repair.total_cost?.toFixed(2) || "0.00"}
+                </TableCell>
+                <TableCell>
+                  R {repair.labor_cost?.toFixed(2) || "0.00"}
                 </TableCell>
                 <TableCell>
                   {new Date(repair.created_at).toLocaleDateString()}
@@ -224,7 +233,7 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
                 </TableCell>
                 {/* <TableCell>{repair.technician_name}</TableCell> */}
                 <TableCell>
-                  R {repair.total_cost?.toFixed(2) || "0.00"}
+                  R {repair.grand_total?.toFixed(2) || "0.00"}
                 </TableCell>
                 <TableCell>
                   {new Date(repair.created_at).toLocaleDateString()}
