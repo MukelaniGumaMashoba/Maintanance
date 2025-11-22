@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 interface RepairRecord {
   id: number;
@@ -23,7 +25,7 @@ interface RepairRecord {
   technician_name: string;
   labor_cost?: number;
   total_parts_cost?: number;
-  grand_total?: number; 
+  grand_total?: number;
 }
 
 interface PendingRepairRecord {
@@ -35,6 +37,7 @@ interface PendingRepairRecord {
   created_at: string;
   total_cost: number;
   technician_name: string;
+  grand_total?: number;
 }
 
 export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
@@ -217,7 +220,14 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
           </TableHeader>
           <TableBody>
             {pendingRepairs.map((repair) => (
-              <TableRow key={repair.id}>
+              <TableRow
+                key={repair.id}
+                onClick={() => {
+                  console.log(`Navigating to /jobWorkShop/${repair.id}`);
+                  redirect(`/jobWorkShop/${repair.id}`);
+                }}
+                style={{ cursor: "pointer" }}
+              >
                 <TableCell className="font-medium">
                   {repair.jobId_workshop}
                 </TableCell>
@@ -231,7 +241,6 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
                     {repair.status}
                   </Badge>
                 </TableCell>
-                {/* <TableCell>{repair.technician_name}</TableCell> */}
                 <TableCell>
                   R {repair.grand_total?.toFixed(2) || "0.00"}
                 </TableCell>

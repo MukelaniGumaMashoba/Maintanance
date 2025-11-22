@@ -69,6 +69,9 @@ export default function InventoryPage() {
   const [thresholds, setThresholds] = useState({});
   const [defaultThreshold, setDefaultThreshold] = useState(10);
 
+
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
   useEffect(() => {
     fetchData();
     checkLowStock();
@@ -220,6 +223,7 @@ export default function InventoryPage() {
 
   const handleViewLogs = async (partId) => {
     setShowLogsModal(true);
+    setIsLoadingLogs(true);
     try {
       const { data: logs, error: logsError } = await supabase
         .from("inventory_logs")
@@ -266,8 +270,8 @@ export default function InventoryPage() {
         ...l,
         job: l.job_id ? jobsMap[String(l.job_id)] ?? null : null,
       }));
-
       setSelectedPartLogs(enriched);
+      setIsLoadingLogs(false);
     } catch (err) {
       console.error("Failed to fetch logs:", err);
       toast.error("Failed to fetch logs");
@@ -1215,89 +1219,95 @@ export default function InventoryPage() {
           <DialogHeader>
             <DialogTitle>Inventory History</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {selectedPartLogs.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                No inventory logs found for this part.
-              </div>
-            ) : (
-              <>
-                {selectedPartLogs.map((log) => (
-                  <div key={log.id} className="border rounded p-3">
-                    <div className="flex justify-self-start items-start gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${log.change_type === "add"
-                              ? "bg-green-100 text-green-800"
-                              : log.change_type === "remove"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-blue-100 text-blue-800"
-                              }`}
-                          >
-                            {log.change_type
-                              ? log.change_type.charAt(0).toUpperCase() +
-                              log.change_type.slice(1)
-                              : "Update"}
-                          </span>
-                          <span className="ml-2 font-medium">
-                            {log.quantity_change > 0 ? "+" : ""}
-                            {log.quantity_change}
-                          </span>
-                        </div>
+          {isLoadingLogs ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="border-b-2 border-blue-600 rounded-full w-8 h-8 animate-spin"></div>
+              <span className="ml-2">Loading logs...</span>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {selectedPartLogs.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  No inventory logs found for this part.
+                </div>
+              ) : (
+                <>
+                  {selectedPartLogs.map((log) => (
+                    <div key={log.id} className="border rounded p-3">
+                      <div className="flex justify-self-start items-start gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${log.change_type === "add"
+                                ? "bg-green-100 text-green-800"
+                                : log.change_type === "remove"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-blue-100 text-blue-800"
+                                }`}
+                            >
+                              {log.change_type
+                                ? log.change_type.charAt(0).toUpperCase() +
+                                log.change_type.slice(1)
+                                : "Update"}
+                            </span>
+                            <span className="ml-2 font-medium">
+                              {log.quantity_change > 0 ? "+" : ""}
+                              {log.quantity_change}
+                            </span>
+                          </div>
 
-                        {/* Show associated job info when available */}
-                        {log.job ? (
-                          <div className="text-sm text-gray-700 mb-1 items-center gap-2">
-                            <div className="">
-                              <strong>Job:</strong>{" "}
-                              {log.job.jobId_workshop ?? `#${log.job.id}`}{" "}
-                              {log.job.registration_no ? (
-                                <span className="ml-2 text-gray-500">
-                                  • Vehicle : {log.job.registration_no}
-                                </span>
+                          {/* Show associated job info when available */}
+                          {log.job ? (
+                            <div className="text-sm text-gray-700 mb-1 items-center gap-2">
+                              <div className="">
+                                <strong>Job:</strong>{" "}
+                                {log.job.jobId_workshop ?? `#${log.job.id}`}{" "}
+                                {log.job.registration_no ? (
+                                  <span className="ml-2 text-gray-500">
+                                    • Vehicle : {log.job.registration_no}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="ml-auto border-2 rounded-md px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-700 text-center">
+                                <Button
+                                  variant="link"
+                                  className="text-xs text-indigo-600 hover:underline"
+                                  onClick={
+                                    () => {
+                                      redirect(`/jobWorkShop/${log.job.id}`)
+                                    }
+                                  }
+                                >
+                                  View Job
+                                </Button>
+                              </div>
+                            </div>
+                          ) : log.job_id ? (
+                            <div className="text-sm text-gray-700 mb-1">
+                              <strong>Job ID:</strong> {log.job_id}
+                            </div>
+                          ) : null}
+
+                          {log.parts && log.parts.description ? (
+                            <div className="text-sm text-gray-600">
+                              <strong>Part:</strong> {log.parts.description}{" "}
+                              {log.parts.item_code ? (
+                                <span className="text-gray-500">• {log.parts.item_code}</span>
                               ) : null}
                             </div>
-                            <div className="ml-auto border-2 rounded-md px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-700 text-center">
-                              <Button
-                                variant="link"
-                                className="text-xs text-indigo-600 hover:underline"
-                                onClick={
-                                  () => {
-                                    redirect(`/jobWorkShop/${log.job.id}`)
-                                  }
-                                }
-                              >
-                                View Job
-                              </Button>
-                            </div>
-                          </div>
-                        ) : log.job_id ? (
-                          <div className="text-sm text-gray-700 mb-1">
-                            <strong>Job ID:</strong> {log.job_id}
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
 
-                        {log.parts && log.parts.description ? (
-                          <div className="text-sm text-gray-600">
-                            <strong>Part:</strong> {log.parts.description}{" "}
-                            {log.parts.item_code ? (
-                              <span className="text-gray-500">• {log.parts.item_code}</span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="text-sm text-gray-600 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
+                        <div className="text-sm text-gray-600 whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-                }
-              </>
-            )}
-          </div>
+                  ))
+                  }
+                </>
+              )}
+            </div>)}
         </DialogContent>
       </Dialog>
     </div>

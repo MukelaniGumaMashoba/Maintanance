@@ -81,13 +81,13 @@ const roleNavigation: Record<string, NavItem[]> = {
     // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
-    // {
-    //   name: "Reports",
-    //   href: "/reports",
-    //   Icon: DockIcon,
-    //   hasSubMenu: true,
-    //   subMenu: [], // This is now valid
-    // },
+    {
+      name: "Reports",
+      href: "/reports",
+      Icon: DockIcon,
+      hasSubMenu: true,
+      subMenu: [], // This is now valid
+    },
   ],
 
   // Is the Admin and Part manager

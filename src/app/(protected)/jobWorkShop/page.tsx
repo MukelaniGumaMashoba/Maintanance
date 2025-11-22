@@ -47,6 +47,7 @@ import {
   MessageSquare,
   FileImage,
   Download,
+  ThumbsDown,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -639,299 +640,6 @@ export default function FleetJobsPage() {
     }
   }, [availableWorkshops, lastAssigned]);
 
-  // return (
-  //   <>
-  //     <div className="flex-1 space-y-6 p-6 bg-gray-50 min-h-screen">
-  //       {/* Header Section */}
-  //       <div className="flex items-center justify-between border-b pb-4">
-  //         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-  //           All Jobs
-  //         </h2>
-  //         <div className="flex items-center space-x-3">
-  //           {/* Search */}
-  //           <div className="relative">
-  //             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-  //             <Input
-  //               placeholder="Search jobs..."
-  //               value={searchTerm}
-  //               onChange={(e) => setSearchTerm(e.target.value)}
-  //               className="pl-8 w-64 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 transition"
-  //             />
-  //           </div>
-
-  //           {/* Filters */}
-  //           <Select value={statusFilter} onValueChange={setStatusFilter}>
-  //             <SelectTrigger className="w-40 border border-gray-300 rounded-md">
-  //               <SelectValue placeholder="Status" />
-  //             </SelectTrigger>
-  //             <SelectContent>
-  //               <SelectItem value="all">All Status</SelectItem>
-  //               <SelectItem value="pending">Pending</SelectItem>
-  //               <SelectItem value="assigned">Assigned</SelectItem>
-  //               <SelectItem value="inprogress">In Progress</SelectItem>
-  //               <SelectItem value="awaiting-approval">Awaiting Approval</SelectItem>
-  //               <SelectItem value="approved">Approved</SelectItem>
-  //               <SelectItem value="completed">Completed</SelectItem>
-  //               <SelectItem value="cancelled">Cancelled</SelectItem>
-  //             </SelectContent>
-  //           </Select>
-
-  //           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-  //             <SelectTrigger className="w-40 border border-gray-300 rounded-md">
-  //               <SelectValue placeholder="Priority" />
-  //             </SelectTrigger>
-  //             <SelectContent>
-  //               <SelectItem value="all">All Priority</SelectItem>
-  //               <SelectItem value="emergency">Emergency</SelectItem>
-  //               <SelectItem value="high">High</SelectItem>
-  //               <SelectItem value="medium">Medium</SelectItem>
-  //               <SelectItem value="low">Low</SelectItem>
-  //             </SelectContent>
-  //           </Select>
-  //         </div>
-  //       </div>
-
-  //       {/* Tabs */}
-  //       <Tabs defaultValue="workshopJobs" className="space-y-6">
-  //         <TabsList className="bg-white shadow rounded-lg border flex">
-  //           {["workshopJobs", "kanban", "analytics"].map((tab) => (
-  //             <TabsTrigger
-  //               key={tab}
-  //               value={tab}
-  //               className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
-  //             >
-  //               {tab === "workshopJobs"
-  //                 ? "Workshop Jobs"
-  //                 : tab === "kanban"
-  //                 ? "Kanban Board"
-  //                 : "Analytics"}
-  //             </TabsTrigger>
-  //           ))}
-  //         </TabsList>
-
-  //         {/* Workshop Jobs */}
-  //         <TabsContent
-  //           value="workshopJobs"
-  //           className="space-y-6 bg-white rounded-xl p-6 shadow border"
-  //         >
-  //           <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-  //             <h2 className="text-2xl font-semibold text-gray-900">Workshop Jobs</h2>
-  //             <FileText className="h-5 w-5 text-gray-500" />
-  //           </div>
-
-  //           {workshopJob.length === 0 ? (
-  //             <p className="text-center text-gray-500 mt-8">No workshop jobs found.</p>
-  //           ) : (
-  //             <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-  //               {workshopJob.map((job) => (
-  //                 <Card
-  //                   key={job.id || job.jobId_workshop}
-  //                   className="border border-gray-200 rounded-xl bg-white hover:shadow-lg transition-shadow duration-300"
-  //                 >
-  //                   <CardHeader className="flex justify-between items-center pb-3">
-  //                     <h3 className="text-lg font-semibold text-orange-500 truncate">
-  //                       {job.jobId_workshop || "Untitled Job"} — {job.status}
-  //                     </h3>
-  //                     <span className="text-sm text-gray-500">
-  //                       {new Date(job.created_at).toLocaleDateString()}
-  //                     </span>
-  //                   </CardHeader>
-
-  //                   <CardContent className="space-y-4 text-gray-700 text-sm">
-  //                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  //                       <div>
-  //                         <p>
-  //                           <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
-  //                         </p>
-  //                         <p className="truncate">
-  //                           <strong>Description:</strong> {job.description || "No description"}
-  //                         </p>
-  //                         <p>
-  //                           <strong>Estimated Cost:</strong>{" "}
-  //                           {job.estimated_cost ? `R ${job.estimated_cost.toFixed(2)}` : "N/A"}
-  //                         </p>
-  //                       </div>
-  //                       <div>
-  //                         <p>
-  //                           <strong>Client Name:</strong> {job.client_name || "N/A"}
-  //                         </p>
-  //                         <p>
-  //                           <strong>Client Phone:</strong> {job.client_phone || "N/A"}
-  //                         </p>
-  //                         <p>
-  //                           <strong>Location:</strong> {job.location || "Unknown"}
-  //                         </p>
-  //                         <p>
-  //                           <strong>Notes:</strong> {job.notes || "-"}
-  //                         </p>
-  //                       </div>
-  //                     </div>
-
-  //                     <RequestedParts jobId={job.id} />
-  //                   </CardContent>
-
-  //                   <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-  //                     <Button
-  //                       variant="outline"
-  //                       size="sm"
-  //                       className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition"
-  //                       onClick={() => {
-  //                         setSelectedJobForWorkflow(job);
-  //                         setIsWorkflowOpen(true);
-  //                       }}
-  //                     >
-  //                       <CheckCircle className="h-4 w-4 mr-2" />
-  //                       {job.status?.includes("Awaiting") ? "Approve/Reject" : "View Workflow"}
-  //                     </Button>
-
-  //                     <Link href={`/jobWorkShop/${job.id}`}>
-  //                       <Button
-  //                         variant="outline"
-  //                         size="sm"
-  //                         className="border-gray-300 hover:bg-gray-100 transition"
-  //                       >
-  //                         <Eye className="h-4 w-4 mr-2" />
-  //                         View Details
-  //                       </Button>
-  //                     </Link>
-  //                   </CardFooter>
-  //                 </Card>
-  //               ))}
-  //             </div>
-  //           )}
-  //         </TabsContent>
-
-  //         {/* Kanban */}
-  //         <TabsContent
-  //           value="kanban"
-  //           className="p-6 bg-white rounded-xl shadow border"
-  //         >
-  //           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-  //             {[
-  //               "Awaiting Approval",
-  //               "In Progress",
-  //               "Awaiting Approval",
-  //               "Approved",
-  //               "Completed",
-  //             ].map((status) => (
-  //               <Card
-  //                 key={status}
-  //                 className="border border-gray-200 rounded-xl shadow-sm"
-  //               >
-  //                 <CardHeader className="pb-3 border-b">
-  //                   <CardTitle className="flex items-center justify-between text-sm font-semibold text-gray-900">
-  //                     {status}
-  //                     <Badge
-  //                       className="bg-orange-100 text-orange-600 border border-orange-200"
-  //                       variant="secondary"
-  //                     >
-  //                       {workshopJob.filter((job) => job.status === status).length}
-  //                     </Badge>
-  //                   </CardTitle>
-  //                 </CardHeader>
-  //                 <CardContent className="space-y-3 p-3">
-  //                   {workshopJob
-  //                     .filter((job) => job.status === status)
-  //                     .map((job) => (
-  //                       <Card
-  //                         key={job.id}
-  //                         className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition"
-  //                       >
-  //                         <p className="text-sm font-medium text-gray-900">
-  //                           {job.jobId_workshop}
-  //                         </p>
-  //                         <p className="text-xs text-gray-500">{job.registration_no}</p>
-  //                         <p className="text-xs text-gray-700 line-clamp-2">
-  //                           {job.description}
-  //                         </p>
-  //                       </Card>
-  //                     ))}
-  //                 </CardContent>
-  //               </Card>
-  //             ))}
-  //           </div>
-  //         </TabsContent>
-
-  //         {/* Analytics */}
-  //         <TabsContent
-  //           value="analytics"
-  //           className="p-6 bg-white rounded-xl shadow border"
-  //         >
-  //           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-  //             <Card>
-  //               <CardHeader className="flex justify-between items-center pb-2">
-  //                 <CardTitle className="text-sm font-medium text-gray-900">
-  //                   Total Jobs
-  //                 </CardTitle>
-  //                 <FileText className="h-4 w-4 text-gray-500" />
-  //               </CardHeader>
-  //               <CardContent>
-  //                 <div className="text-2xl font-bold text-orange-500">
-  //                   {workshopJob.length}
-  //                 </div>
-  //                 <p className="text-xs text-gray-500">Workshop jobs created</p>
-  //               </CardContent>
-  //             </Card>
-
-  //             <Card>
-  //               <CardHeader className="flex justify-between items-center pb-2">
-  //                 <CardTitle className="text-sm font-medium text-gray-900">
-  //                   In Progress
-  //                 </CardTitle>
-  //                 <Clock className="h-4 w-4 text-gray-500" />
-  //               </CardHeader>
-  //               <CardContent>
-  //                 <div className="text-2xl font-bold text-orange-500">
-  //                   {workshopJob.filter((job) => job.status === "In Progress").length}
-  //                 </div>
-  //                 <p className="text-xs text-gray-500">Active jobs being worked on</p>
-  //               </CardContent>
-  //             </Card>
-
-  //             <Card>
-  //               <CardHeader className="flex justify-between items-center pb-2">
-  //                 <CardTitle className="text-sm font-medium text-gray-900">
-  //                   Completed
-  //                 </CardTitle>
-  //                 <CheckCircle className="h-4 w-4 text-gray-500" />
-  //               </CardHeader>
-  //               <CardContent>
-  //                 <div className="text-2xl font-bold text-orange-500">
-  //                   {workshopJob.filter((job) => job.status === "Completed").length}
-  //                 </div>
-  //                 <p className="text-xs text-gray-500">Successfully completed jobs</p>
-  //               </CardContent>
-  //             </Card>
-
-  //             <Card>
-  //               <CardHeader className="flex justify-between items-center pb-2">
-  //                 <CardTitle className="text-sm font-medium text-gray-900">
-  //                   Avg. Cost
-  //                 </CardTitle>
-  //                 <DollarSign className="h-4 w-4 text-gray-500" />
-  //               </CardHeader>
-  //               <CardContent>
-  //                 <div className="text-2xl font-bold text-orange-500">
-  //                   R{" "}
-  //                   {workshopJob.length > 0
-  //                     ? (
-  //                         workshopJob.reduce(
-  //                           (sum, job) => sum + (job.estimated_cost || 0),
-  //                           0
-  //                         ) / workshopJob.length
-  //                       ).toFixed(0)
-  //                     : "0"}
-  //                 </div>
-  //                 <p className="text-xs text-gray-500">Average job cost</p>
-  //               </CardContent>
-  //             </Card>
-  //           </div>
-  //         </TabsContent>
-  //       </Tabs>
-  //     </div>
-  //   </>
-  // );
-
   return (
     <>
       <div className="flex-1 space-y-4 p-4 pt-6">
@@ -959,23 +667,12 @@ export default function FleetJobsPage() {
                 <SelectItem value="awaiting-approval">
                   Awaiting Approval
                 </SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="Approved">Approved</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="emergency">Emergency</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select> */}
           </div>
         </div>
 
@@ -1149,11 +846,11 @@ export default function FleetJobsPage() {
                             <p className="text-xs text-gray-600 line-clamp-2">
                               {job.description}
                             </p>
-                            <div className="flex items-center justify-between text-xs text-gray-500">
+                            {/* <div className="flex items-center justify-between text-xs text-gray-500">
                               {job.estimated_cost && (
                                 <span>R {job.estimated_cost}</span>
                               )}
-                            </div>
+                            </div> */}
                           </div>
                         </Card>
                       ))}
@@ -1189,7 +886,7 @@ export default function FleetJobsPage() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {
-                      workshopJob.filter((job) => job.status === "In Progress")
+                      workshopJob.filter((job) => job.status === "assigned")
                         .length
                     }
                   </div>
@@ -1220,25 +917,18 @@ export default function FleetJobsPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Avg. Cost
+                    Rejected
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <ThumbsDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    R{" "}
-                    {workshopJob.length > 0
-                      ? (
-                          workshopJob.reduce(
-                            (sum, job) => sum + (job.estimated_cost || 0),
-                            0
-                          ) / workshopJob.length
-                        ).toFixed(0)
-                      : "0"}
+                    {
+                      workshopJob.filter((job) => job.status === "Rejected")
+                        .length
+                    }
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Average job cost
-                  </p>
+                  <p className="text-xs text-muted-foreground">Rejected Jobs</p>
                 </CardContent>
               </Card>
             </div>
@@ -1409,229 +1099,3 @@ export default function FleetJobsPage() {
     </>
   );
 }
-
-// <div className="flex justify-end">
-//   <Dialog open={isCreateJobDialogOpen} onOpenChange={setIsCreateJobDialogOpen}>
-//     <DialogTrigger asChild>
-//       <Button>Create Job Card</Button>
-//     </DialogTrigger>
-
-//     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-//       <DialogHeader>
-//         <DialogTitle>Create New Workshop Job</DialogTitle>
-//         <DialogDescription>
-//           Create a new job and assign it to a workshop. All fields marked with * are required.
-//         </DialogDescription>
-//       </DialogHeader>
-
-//       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createWorkshopJob(); }}>
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//           <div>
-//             <Label htmlFor="registration_number">Registration Number *</Label>
-//             <Input
-//               id="registration_number"
-//               placeholder="DD80MKGP"
-//               value={createJobForm.registration_number}
-//               onChange={(e) => setCreateJobForm({
-//                 ...createJobForm,
-//                 registration_number: e.target.value.toUpperCase()
-//               })}
-//               className={vehicleExists === false ? "border-red-500" : vehicleExists === true ? "border-green-500" : ""}
-//             />
-//             {vehicleExists === false && (
-//               <p className="text-sm text-red-500 mt-1">Vehicle not found in database</p>
-//             )}
-//             {vehicleExists === true && (
-//               <p className="text-sm text-green-500 mt-1">Vehicle found ✓</p>
-//             )}
-//           </div>
-
-//           <div>
-//             <Label htmlFor="job_type">Type of Work *</Label>
-//             <Select
-//               value={createJobForm.job_type}
-//               onValueChange={(value) => setCreateJobForm({
-//                 ...createJobForm,
-//                 job_type: value
-//               })}
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="Select type of work" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="towing">Towing</SelectItem>
-//                 <SelectItem value="mechanical">Mechanical</SelectItem>
-//                 <SelectItem value="electrical">Electrical</SelectItem>
-//                 <SelectItem value="breakdown">Breakdown</SelectItem>
-//                 <SelectItem value="carwash">Car Wash</SelectItem>
-//                 <SelectItem value="check">Check Overall</SelectItem>
-//                 <SelectItem value="driveline">Drive Line Repairs</SelectItem>
-//                 <SelectItem value="panel-beating">Panel Beating</SelectItem>
-//                 <SelectItem value="fitmentcentre">Fitment Centre</SelectItem>
-//               </SelectContent>
-//             </Select>
-//           </div>
-//         </div>
-
-//         <div>
-//           <Label htmlFor="description">Problem Description *</Label>
-//           <Textarea
-//             id="description"
-//             placeholder="Describe the problem..."
-//             value={createJobForm.description}
-//             onChange={(e) => setCreateJobForm({
-//               ...createJobForm,
-//               description: e.target.value
-//             })}
-//           />
-//         </div>
-//         <div>
-//           <Label htmlFor="description">Problem Notes *</Label>
-//           <Textarea
-//             id="description"
-//             placeholder="Job Notes the problem or work needed..."
-//             value={createJobForm.notes}
-//             onChange={(e) => setCreateJobForm({
-//               ...createJobForm,
-//               notes: e.target.value
-//             })}
-//             rows={3}
-//           />
-//         </div>
-
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//           <div>
-//             <Label htmlFor="client_name">Client Name</Label>
-//             <Input
-//               id="client_name"
-//               placeholder="Client name"
-//               value={createJobForm.client_name}
-//               onChange={(e) => setCreateJobForm({
-//                 ...createJobForm,
-//                 client_name: e.target.value
-//               })}
-//             />
-//           </div>
-//           <div>
-//             <Label htmlFor="client_phone">Client Phone</Label>
-//             <Input
-//               id="client_phone"
-//               placeholder="Phone number"
-//               value={createJobForm.client_phone}
-//               onChange={(e) => setCreateJobForm({
-//                 ...createJobForm,
-//                 client_phone: e.target.value
-//               })}
-//             />
-//           </div>
-//           <div>
-//             <Label htmlFor="location">Job Location *</Label>
-//             {/*<Input
-//               id="location"
-//               placeholder="21 Zama Road, Johannesburg, 20232"
-//               value={createJobForm.location}
-//               onChange={(e) => {
-//                 const newLocation = e.target.value
-//                 setCreateJobForm({ ...createJobForm, location: newLocation })
-//                 // autoSelectWorkshop(newLocation) // 🔹 auto-select on change
-//               }}
-//             /> */}
-//             <Input
-//               id="location"
-//               placeholder="Enter job location"
-//               value={createJobForm.location}
-//               onChange={(e) => {
-//                 const newLocation = e.target.value;
-//                 setCreateJobForm({ ...createJobForm, location: newLocation });
-
-//                 const keywords = extractLocationKeywords(newLocation);
-
-//                 const locationMatch = workshops.find(w => {
-//                   const city = w.city?.toLowerCase() || "";
-//                   const town = w.town?.toLowerCase() || "";
-//                   const province = w.province?.toLowerCase() || "";
-
-//                   return keywords.some(k => city.includes(k) || town.includes(k) || province.includes(k));
-//                 });
-
-//                 if (locationMatch) {
-//                   setSearchWorkshop(locationMatch.city || locationMatch.town || locationMatch.province);
-//                 } else {
-//                   setSearchWorkshop("no-location");
-//                 }
-//               }}
-
-//             />
-//           </div>
-//         </div>
-
-//         <div>
-//           <label className="text-center block mb-1 font-medium">Available Workshops</label>
-//         </div>
-//         {searchWorkshop && searchWorkshop !== "no-location" && (
-//           <div className="mb-4">
-//             <Label className="text-sm font-medium mb-2 block">
-//               Workshops in {searchWorkshop}:
-//             </Label>
-//             <div className="space-y-2 max-h-40 overflow-y-auto">
-//               {availableWorkshops.length > 0 ? (
-//                 availableWorkshops.map(workshop => (
-//                   <div
-//                     key={workshop.id}
-//                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-//                     onClick={() => setCreateJobForm({
-//                       ...createJobForm,
-//                       selected_workshop_id: workshop.id
-//                     })}
-//                   >
-//                     <div className="flex items-center justify-between">
-//                       <div>
-//                         <p className="font-medium">{workshop.work_name}</p>
-//                         <p className="text-sm text-gray-600">
-//                           {workshop.trading_name && `${workshop.trading_name} • `}
-//                           {workshop.city || workshop.town || workshop.province}
-//                         </p>
-//                         {workshop.labour_rate && (
-//                           <p className="text-xs text-gray-500">
-//                             Labour Rate: R{workshop.labour_rate}/hr
-//                           </p>
-//                         )}
-//                       </div>
-//                       <div className="flex items-center">
-//                         {createJobForm.selected_workshop_id === workshop.id && (
-//                           <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-//                             <div className="w-2 h-2 bg-white rounded-full"></div>
-//                           </div>
-//                         )}
-//                       </div>
-//                     </div>
-//                   </div>
-//                 ))
-//               ) : (
-//                 <p className="text-sm text-gray-500 text-center py-2">
-//                   No workshops found in this location
-//                 </p>
-//               )}
-//             </div>
-//           </div>
-//         )}
-
-//         <div className="flex justify-end space-x-2 pt-4">
-//           <Button
-//             type="button"
-//             variant="outline"
-//             onClick={() => setIsCreateJobDialogOpen(false)}
-//           >
-//             Cancel
-//           </Button>
-//           <Button
-//             type="submit"
-//             disabled={isSubmitting || !createJobForm.registration_number || !createJobForm.job_type || !createJobForm.description || !createJobForm.selected_workshop_id}
-//           >
-//             {isSubmitting ? "Creating..." : "Create Job"}
-//           </Button>
-//         </div>
-//       </form>
-//     </DialogContent>
-//   </Dialog>
-// </div>

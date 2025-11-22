@@ -69,6 +69,7 @@ interface WorkshopJob {
   labour_hours?: number;
   labor_cost?: number;
   total_labor_cost?: number;
+  grand_total?: number;
 }
 
 interface Vehicle {
@@ -477,16 +478,16 @@ export default function WorkshopJobDetailPage() {
                 <div className="bg-green-50 p-3 rounded border border-green-200">
                   <p className="text-sm text-green-700">Estimated Cost</p>
                   <p className="text-xl font-bold text-green-800">
-                    {job.estimated_cost
-                      ? `R ${job.estimated_cost.toFixed(2)}`
+                    {job.labor_cost
+                      ? `R ${job.labor_cost.toFixed(2)}`
                       : "TBD"}
                   </p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
                   <p className="text-sm text-blue-700">Actual Cost</p>
                   <p className="text-xl font-bold text-blue-800">
-                    {job.actual_cost
-                      ? `R ${job.actual_cost.toFixed(2)}`
+                    {job.grand_total
+                      ? `R ${job.grand_total.toFixed(2)}`
                       : "Pending"}
                   </p>
                 </div>
