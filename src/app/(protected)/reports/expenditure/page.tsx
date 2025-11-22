@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Download, Print, Search, Calendar, Car, DollarSign, Wrench, TrendingUp } from "lucide-react"
+import { Download, Printer, Search, Calendar, Car, DollarSign, Wrench, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -76,7 +76,7 @@ export default function ExpenditureReportPage() {
             <Download className="h-4 w-4 mr-2" />Export CSV
           </Button>
           <Button variant="outline" size="sm" onClick={() => exportToPDF(filteredData, 'Expenditure Report')}>
-            <Print className="h-4 w-4 mr-2" />Print PDF
+            <Printer className="h-4 w-4 mr-2" />Print PDF
           </Button>
         </div>
       </header>

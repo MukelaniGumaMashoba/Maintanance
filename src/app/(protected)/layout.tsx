@@ -46,7 +46,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
-import { getReportCountsByCategory } from "@/lib/reports-data";
+
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -111,17 +111,17 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "System Settings", href: "/settings", Icon: Settings },
   ],
 };
-const reportCategoryIcons: Record<string, React.ElementType> = {
-  vehicles: Car,
-  "vehicle-assignments": ArrowRightLeft,
-  inspections: ClipboardListIcon,
-  issues: ShieldAlert,
-  service: Wrench,
-  "work-orders": GanttChart,
-  contacts: Users,
-  parts: Package,
-  fuel: Fuel,
-};
+const reportCategories = [
+  { name: "Vehicles", href: "/reports?category=vehicles", icon: Car },
+  { name: "Workshop", href: "/reports?category=workshop", icon: Wrench },
+  { name: "Personnel", href: "/reports?category=personnel", icon: Users },
+  { name: "Inventory", href: "/reports?category=inventory", icon: Package },
+  { name: "Financial", href: "/reports?category=financial", icon: DollarSign },
+  { name: "Procurement", href: "/reports?category=procurement", icon: Building2 },
+  { name: "Expenditure", href: "/reports/expenditure", icon: DollarSign },
+  { name: "Utilization", href: "/reports/utilization", icon: ChartBar },
+  { name: "Executive", href: "/reports/executive", icon: Briefcase },
+];
 export default function ProtectedLayout({
   children,
   role,
@@ -129,29 +129,11 @@ export default function ProtectedLayout({
   const currentNavItems: NavItem[] =
     roleNavigation[role] || roleNavigation["fleet manager"];
 
-  useEffect(() => {
-    const reportCounts = getReportCountsByCategory();
-    const reportMenuItem = currentNavItems.find(
-      (item: { name: string }) => item.name === "Reports"
-    );
 
-    if (reportMenuItem) {
-      reportMenuItem.subMenu = [
-        { name: "All Reports", href: "/reports", icon: ScrollText },
-        ...reportCounts.map((item) => ({
-          name: `${item.category
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, (l) => l.toUpperCase())} (${item.count})`,
-          href: `/reports/${item.category}`,
-          icon: reportCategoryIcons[item.category] || ChevronsRight,
-        })),
-      ];
-    }
-  }, [currentNavItems]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
-  const [navigation, setNavigation] = useState<any[]>([]);
+  const [navigation, setNavigation] = useState<NavItem[]>([]);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -173,12 +155,27 @@ export default function ProtectedLayout({
       setUserRole(role);
       // Set navigation based on role
       const roleNav = roleNavigation[role as keyof typeof roleNavigation] || [];
-      setNavigation(roleNav);
+      
+      // Update reports submenu
+      const updatedNav = roleNav.map(item => {
+        if (item.name === "Reports") {
+          return {
+            ...item,
+            subMenu: [
+              { name: "All Reports", href: "/reports", icon: ScrollText },
+              ...reportCategories
+            ]
+          };
+        }
+        return item;
+      });
+      
+      setNavigation(updatedNav);
       console.log(
         "Layout - Navigation set for role:",
         role,
         "Items:",
-        roleNav.length
+        updatedNav.length
       );
     } else {
       console.log("Layout - No role found, redirecting to login");
@@ -229,15 +226,18 @@ export default function ProtectedLayout({
                 return (
                   <Collapsible
                     key={item.name}
-                    defaultOpen={item.subMenu.some((subItem: any) =>
-                      pathname.startsWith(subItem.href)
-                    )}
+                    defaultOpen={
+                      (pathname.startsWith('/reports') ||
+                      item.subMenu?.some((subItem: any) =>
+                        pathname.startsWith(subItem.href)
+                      )) ?? false
+                    }
                     className="list-none"
                   >
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton
-                          isActive={isActive}
+                          isActive={isActive || pathname.startsWith('/reports')}
                           className="flex items-center justify-between w-full text-sm font-medium text-gray-200 hover:text-white hover:bg-[#F57C00]/30 px-3 py-2 rounded-lg transition"
                         >
                           <span>{item.name}</span>
@@ -247,26 +247,31 @@ export default function ProtectedLayout({
                     </SidebarMenuItem>
                     <CollapsibleContent>
                       <SidebarMenuSub className="ml-4 mt-1 space-y-1">
-                        {item.subMenu.map((subItem: SubMenuItem) => (
-                          <SidebarMenuSubItem key={subItem.name}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={pathname.startsWith(subItem.href)}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
-                                pathname.startsWith(subItem.href)
-                                  ? "bg-[#F57C00]/20 text-[#F57C00]"
-                                  : "text-gray-400 hover:text-white hover:bg-[#F57C00]/20"
-                              }`}
-                            >
-                              <Link href={subItem.href}>
-                                {subItem.icon && (
-                                  <subItem.icon className="h-4 w-4" />
-                                )}
-                                <span>{subItem.name}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                        {item.subMenu?.map((subItem: SubMenuItem) => {
+                          const isSubActive = pathname === subItem.href || 
+                            (subItem.href.includes('?category=') && pathname.startsWith('/reports') && 
+                             typeof window !== 'undefined' && window.location.search.includes(subItem.href.split('?')[1]));
+                          return (
+                            <SidebarMenuSubItem key={subItem.name}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={isSubActive}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
+                                  isSubActive
+                                    ? "bg-[#F57C00]/20 text-[#F57C00]"
+                                    : "text-gray-400 hover:text-white hover:bg-[#F57C00]/20"
+                                }`}
+                              >
+                                <Link href={subItem.href}>
+                                  {subItem.icon && (
+                                    <subItem.icon className="h-4 w-4" />
+                                  )}
+                                  <span>{subItem.name}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </Collapsible>
