@@ -53,10 +53,16 @@
     "zod": "^3.25.71"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.25",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
+    "prisma": "^7.0.0",
     "supabase": "^2.30.4",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",

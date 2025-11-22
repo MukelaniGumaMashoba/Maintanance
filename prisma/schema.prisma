@@ -1,0 +1,1919 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["auth", "public"]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_log_entries {
+  instance_id String?   @db.Uuid
+  id          String    @id @db.Uuid
+  payload     Json?     @db.Json
+  created_at  DateTime? @db.Timestamptz(6)
+  ip_address  String    @default("") @db.VarChar(64)
+
+  @@index([instance_id], map: "audit_logs_instance_id_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model flow_state {
+  id                     String                @id @db.Uuid
+  user_id                String?               @db.Uuid
+  auth_code              String
+  code_challenge_method  code_challenge_method
+  code_challenge         String
+  provider_type          String
+  provider_access_token  String?
+  provider_refresh_token String?
+  created_at             DateTime?             @db.Timestamptz(6)
+  updated_at             DateTime?             @db.Timestamptz(6)
+  authentication_method  String
+  auth_code_issued_at    DateTime?             @db.Timestamptz(6)
+  saml_relay_states      saml_relay_states[]
+
+  @@index([created_at(sort: Desc)])
+  @@index([auth_code], map: "idx_auth_code")
+  @@index([user_id, authentication_method], map: "idx_user_id_auth_method")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model identities {
+  provider_id     String
+  user_id         String    @db.Uuid
+  identity_data   Json
+  provider        String
+  last_sign_in_at DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  email           String?   @default(dbgenerated("lower((identity_data ->> 'email'::text))"))
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  users           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider_id, provider], map: "identities_provider_id_provider_unique")
+  @@index([email])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model instances {
+  id              String    @id @db.Uuid
+  uuid            String?   @db.Uuid
+  raw_base_config String?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_amr_claims {
+  session_id            String   @db.Uuid
+  created_at            DateTime @db.Timestamptz(6)
+  updated_at            DateTime @db.Timestamptz(6)
+  authentication_method String
+  id                    String   @id(map: "amr_id_pk") @db.Uuid
+  sessions              sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([session_id, authentication_method], map: "mfa_amr_claims_session_id_authentication_method_pkey")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_challenges {
+  id                     String      @id @db.Uuid
+  factor_id              String      @db.Uuid
+  created_at             DateTime    @db.Timestamptz(6)
+  verified_at            DateTime?   @db.Timestamptz(6)
+  ip_address             String      @db.Inet
+  otp_code               String?
+  web_authn_session_data Json?
+  mfa_factors            mfa_factors @relation(fields: [factor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "mfa_challenges_auth_factor_id_fkey")
+
+  @@index([created_at(sort: Desc)], map: "mfa_challenge_created_at_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_factors {
+  id                           String           @id @db.Uuid
+  user_id                      String           @db.Uuid
+  friendly_name                String?
+  factor_type                  factor_type
+  status                       factor_status
+  created_at                   DateTime         @db.Timestamptz(6)
+  updated_at                   DateTime         @db.Timestamptz(6)
+  secret                       String?
+  phone                        String?
+  last_challenged_at           DateTime?        @unique @db.Timestamptz(6)
+  web_authn_credential         Json?
+  web_authn_aaguid             String?          @db.Uuid
+  last_webauthn_challenge_data Json?
+  mfa_challenges               mfa_challenges[]
+  users                        users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, phone], map: "unique_phone_factor_per_user")
+  @@index([user_id, created_at], map: "factor_id_created_at_idx")
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_authorizations {
+  id                    String                     @id @db.Uuid
+  authorization_id      String                     @unique
+  client_id             String                     @db.Uuid
+  user_id               String?                    @db.Uuid
+  redirect_uri          String
+  scope                 String
+  state                 String?
+  resource              String?
+  code_challenge        String?
+  code_challenge_method code_challenge_method?
+  response_type         oauth_response_type        @default(code)
+  status                oauth_authorization_status @default(pending)
+  authorization_code    String?                    @unique
+  created_at            DateTime                   @default(now()) @db.Timestamptz(6)
+  expires_at            DateTime                   @default(dbgenerated("(now() + '00:03:00'::interval)")) @db.Timestamptz(6)
+  approved_at           DateTime?                  @db.Timestamptz(6)
+  oauth_clients         oauth_clients              @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                 users?                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_clients {
+  id                   String                  @id @db.Uuid
+  client_secret_hash   String?
+  registration_type    oauth_registration_type
+  redirect_uris        String
+  grant_types          String
+  client_name          String?
+  client_uri           String?
+  logo_uri             String?
+  created_at           DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                @default(now()) @db.Timestamptz(6)
+  deleted_at           DateTime?               @db.Timestamptz(6)
+  client_type          oauth_client_type       @default(confidential)
+  oauth_authorizations oauth_authorizations[]
+  oauth_consents       oauth_consents[]
+  sessions             sessions[]
+
+  @@index([deleted_at])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_consents {
+  id            String        @id @db.Uuid
+  user_id       String        @db.Uuid
+  client_id     String        @db.Uuid
+  scopes        String
+  granted_at    DateTime      @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime?     @db.Timestamptz(6)
+  oauth_clients oauth_clients @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, client_id], map: "oauth_consents_user_client_unique")
+  @@index([user_id, granted_at(sort: Desc)], map: "oauth_consents_user_order_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model one_time_tokens {
+  id         String              @id @db.Uuid
+  user_id    String              @db.Uuid
+  token_type one_time_token_type
+  token_hash String
+  relates_to String
+  created_at DateTime            @default(now()) @db.Timestamp(6)
+  updated_at DateTime            @default(now()) @db.Timestamp(6)
+  users      users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, token_type])
+  @@index([relates_to], map: "one_time_tokens_relates_to_hash_idx", type: Hash)
+  @@index([token_hash], map: "one_time_tokens_token_hash_hash_idx", type: Hash)
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model refresh_tokens {
+  instance_id String?   @db.Uuid
+  id          BigInt    @id @default(autoincrement())
+  token       String?   @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  user_id     String?   @db.VarChar(255)
+  revoked     Boolean?
+  created_at  DateTime? @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  parent      String?   @db.VarChar(255)
+  session_id  String?   @db.Uuid
+  sessions    sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([instance_id])
+  @@index([instance_id, user_id])
+  @@index([parent])
+  @@index([session_id, revoked])
+  @@index([updated_at(sort: Desc)])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model saml_providers {
+  id                String        @id @db.Uuid
+  sso_provider_id   String        @db.Uuid
+  entity_id         String        @unique
+  metadata_xml      String
+  metadata_url      String?
+  attribute_mapping Json?
+  created_at        DateTime?     @db.Timestamptz(6)
+  updated_at        DateTime?     @db.Timestamptz(6)
+  name_id_format    String?
+  sso_providers     sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model saml_relay_states {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  request_id      String
+  for_email       String?
+  redirect_to     String?
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  flow_state_id   String?       @db.Uuid
+  flow_state      flow_state?   @relation(fields: [flow_state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([for_email])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model schema_migrations {
+  version String @id @db.VarChar(255)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sessions {
+  id                     String           @id @db.Uuid
+  user_id                String           @db.Uuid
+  created_at             DateTime?        @db.Timestamptz(6)
+  updated_at             DateTime?        @db.Timestamptz(6)
+  factor_id              String?          @db.Uuid
+  aal                    aal_level?
+  not_after              DateTime?        @db.Timestamptz(6)
+  refreshed_at           DateTime?        @db.Timestamp(6)
+  user_agent             String?
+  ip                     String?          @db.Inet
+  tag                    String?
+  oauth_client_id        String?          @db.Uuid
+  refresh_token_hmac_key String?
+  refresh_token_counter  BigInt?
+  mfa_amr_claims         mfa_amr_claims[]
+  refresh_tokens         refresh_tokens[]
+  oauth_clients          oauth_clients?   @relation(fields: [oauth_client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                  users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([not_after(sort: Desc)])
+  @@index([oauth_client_id])
+  @@index([user_id])
+  @@index([user_id, created_at], map: "user_id_created_at_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_domains {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  domain          String
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_providers {
+  id                String              @id @db.Uuid
+  resource_id       String?
+  created_at        DateTime?           @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  disabled          Boolean?
+  saml_providers    saml_providers[]
+  saml_relay_states saml_relay_states[]
+  sso_domains       sso_domains[]
+
+  @@index([resource_id], map: "sso_providers_resource_id_pattern_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  instance_id                 String?                @db.Uuid
+  id                          String                 @id @db.Uuid
+  aud                         String?                @db.VarChar(255)
+  role                        String?                @db.VarChar(255)
+  email                       String?                @db.VarChar(255)
+  encrypted_password          String?                @db.VarChar(255)
+  email_confirmed_at          DateTime?              @db.Timestamptz(6)
+  invited_at                  DateTime?              @db.Timestamptz(6)
+  confirmation_token          String?                @db.VarChar(255)
+  confirmation_sent_at        DateTime?              @db.Timestamptz(6)
+  recovery_token              String?                @db.VarChar(255)
+  recovery_sent_at            DateTime?              @db.Timestamptz(6)
+  email_change_token_new      String?                @db.VarChar(255)
+  email_change                String?                @db.VarChar(255)
+  email_change_sent_at        DateTime?              @db.Timestamptz(6)
+  last_sign_in_at             DateTime?              @db.Timestamptz(6)
+  raw_app_meta_data           Json?
+  raw_user_meta_data          Json?
+  is_super_admin              Boolean?
+  created_at                  DateTime?              @db.Timestamptz(6)
+  updated_at                  DateTime?              @db.Timestamptz(6)
+  phone                       String?                @unique
+  phone_confirmed_at          DateTime?              @db.Timestamptz(6)
+  phone_change                String?                @default("")
+  phone_change_token          String?                @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime?              @db.Timestamptz(6)
+  confirmed_at                DateTime?              @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?                @default("") @db.VarChar(255)
+  email_change_confirm_status Int?                   @default(0) @db.SmallInt
+  banned_until                DateTime?              @db.Timestamptz(6)
+  reauthentication_token      String?                @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime?              @db.Timestamptz(6)
+  is_sso_user                 Boolean                @default(false)
+  deleted_at                  DateTime?              @db.Timestamptz(6)
+  is_anonymous                Boolean                @default(false)
+  identities                  identities[]
+  mfa_factors                 mfa_factors[]
+  oauth_authorizations        oauth_authorizations[]
+  oauth_consents              oauth_consents[]
+  one_time_tokens             one_time_tokens[]
+  sessions                    sessions[]
+  breakdowns                  breakdowns[]
+  drivers                     drivers[]
+  drivers_klaver              drivers_klaver[]
+  job_assignments             job_assignments[]
+  job_card                    job_card[]
+  parts_orders                parts_orders[]
+  profiles                    profiles?
+  vehicle_inspections         vehicle_inspections[]
+  vehiclesc                   vehiclesc[]
+  vehiclesc_workshop          vehiclesc_workshop[]
+
+  @@index([instance_id])
+  @@index([is_anonymous])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model approvals {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quotation_id String?     @db.Uuid
+  approver_id  String?     @db.Uuid
+  status       String?
+  reason       String?
+  created_at   DateTime?   @default(now()) @db.Timestamp(6)
+  quotations   quotations? @relation(fields: [quotation_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model assignements {
+  id              BigInt           @id @default(autoincrement())
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_by      String?          @db.Uuid
+  job_id          BigInt?
+  breakdown_id    BigInt?
+  tech_id         Int?
+  driver_id       BigInt?
+  vehicle_id      BigInt?
+  breakdowns      breakdowns?      @relation(fields: [breakdown_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  drivers         drivers?         @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_assignments job_assignments? @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians     technicians?     @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles        profiles?        @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc       vehiclesc?       @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model breakdowns {
+  order_no                                                  String?              @unique
+  status                                                    String?              @default("requested")
+  emergency_type                                            String?
+  location                                                  String?
+  issue_description                                         String?
+  image_urls                                                String?
+  created_at                                                DateTime?            @default(now()) @db.Timestamp(6)
+  id                                                        BigInt               @id @unique @default(autoincrement())
+  driver_name                                               String?
+  phone                                                     String?
+  registration                                              String?
+  make                                                      String?
+  model                                                     String?
+  year                                                      Int?
+  vin                                                       String?
+  owner_name                                                String?
+  owner_phone                                               String?
+  owner_email                                               String?
+  driver_phone                                              String?
+  insurance_provider                                        String?
+  policy_number                                             String?
+  coverage_type                                             String?
+  breakdown_location                                        String?
+  coordinates                                               Json?
+  reported_at                                               DateTime?            @db.Timestamp(6)
+  client_type                                               String?
+  external_client_id                                        String?
+  service_history                                           Json?                @default("[]")
+  breakdown_type                                            String?
+  job_id                                                    BigInt?
+  tow_capacity                                              BigInt?
+  tow_weight                                                BigInt?
+  engine_number                                             String?
+  registration_date                                         DateTime?            @db.Date
+  license_expiry_date                                       DateTime?            @db.Date
+  inspected                                                 Boolean?             @default(false)
+  tech_id                                                   Int?
+  updated_at                                                DateTime?            @default(now()) @db.Timestamptz(6)
+  fuel_type                                                 String?
+  colour                                                    String?
+  created_by                                                String?              @db.Uuid
+  workshop_id                                               String?              @db.Uuid
+  sub_model                                                 String?
+  transmission_type                                         String?
+  assignements                                              assignements[]
+  users                                                     users?               @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_assignments_breakdowns_job_idTojob_assignments        job_assignments?     @relation("breakdowns_job_idTojob_assignments", fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians                                               technicians?         @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workshop                                                  workshop?            @relation(fields: [workshop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_assignments_job_assignments_breakdowns_idTobreakdowns job_assignments[]    @relation("job_assignments_breakdowns_idTobreakdowns")
+  vehiclesc                                                 vehiclesc[]
+  vehiclesc_workshop                                        vehiclesc_workshop[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model capabilities {
+  workshop_id              String   @id @db.Uuid
+  dekra                    Boolean? @default(false)
+  apmma                    Boolean? @default(false)
+  cra                      Boolean? @default(false)
+  era                      Boolean? @default(false)
+  mibco                    Boolean? @default(false)
+  miwa                     Boolean? @default(false)
+  raaf                     Boolean? @default(false)
+  rmi                      Boolean? @default(false)
+  saarsa                   Boolean? @default(false)
+  sambra                   Boolean? @default(false)
+  saqa                     Boolean? @default(false)
+  sata                     Boolean? @default(false)
+  block_boring             Boolean? @default(false)
+  crank_grinding           Boolean? @default(false)
+  valve_grinding           Boolean? @default(false)
+  block_pressure_test      Boolean? @default(false)
+  engine_block_resurfacing Boolean? @default(false)
+  standard_wash            Boolean? @default(false)
+  valet                    Boolean? @default(false)
+  vehicles_detailing       Boolean? @default(false)
+  suspension               Boolean? @default(false)
+  service                  Boolean? @default(false)
+  m_brakes                 Boolean? @default(false)
+  minor_repairs            Boolean? @default(false)
+  major_repairs            Boolean? @default(false)
+  engine_overhuals         Boolean? @default(false)
+  drive_line               Boolean? @default(false)
+  clutch_overhuals         Boolean? @default(false)
+  wiring_minor             Boolean? @default(false)
+  wiring_major             Boolean? @default(false)
+  starters                 Boolean? @default(false)
+  light_retros             Boolean? @default(false)
+  radios_audio             Boolean? @default(false)
+  two_way_radio            Boolean? @default(false)
+  msr                      Boolean? @default(false)
+  nsr                      Boolean? @default(false)
+  hail_demage              Boolean? @default(false)
+  couch_builder            Boolean? @default(false)
+  body_modification        Boolean? @default(false)
+  ambulance                Boolean? @default(false)
+  cash_in_transit          Boolean? @default(false)
+  dent_vehicles            Boolean? @default(false)
+  wheel_alignment          Boolean? @default(false)
+  wheel_balancing          Boolean? @default(false)
+  tig_welder               Boolean? @default(false)
+  mig_welder               Boolean? @default(false)
+  pipe_bender              Boolean? @default(false)
+  battery_charge           Boolean? @default(false)
+  battery_tester           Boolean? @default(false)
+  brakes                   Boolean? @default(false)
+  driver_line_cv_joints    Boolean? @default(false)
+  clutch_over_huals        Boolean? @default(false)
+  gearbox_bench            Boolean? @default(false)
+  propshaft_bench          Boolean? @default(false)
+  workshop                 workshop @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model categories {
+  id    Int     @id @default(autoincrement())
+  name  String
+  parts parts[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model client {
+  id                 Int       @id @default(autoincrement())
+  company_name       String?
+  contact_person     String?
+  phone              String?
+  email              String?
+  address            String?
+  city               String?
+  province           String?
+  postal_code        String?
+  clienttype         String?
+  status             String?
+  rating             Int?
+  total_jobs         Int?
+  total_revenue      Decimal?  @db.Decimal
+  average_job_value  Decimal?  @default(0) @db.Decimal
+  payment_terms      String?
+  credit_limit       Decimal?  @db.Decimal
+  registration_date  DateTime? @default(now()) @db.Timestamp(6)
+  last_job_date      DateTime? @db.Timestamp(6)
+  preferred_services String[]
+  contract_type      String?   @default("standard")
+  accountmanager     String?   @default("Unassigned")
+  specialties        String[]
+  service_areas      String[]
+  availability       Boolean?  @default(true)
+  client_type        String?
+  vehicle_types      String[]
+  certifications     String[]
+  completed_jobs     Int?
+  response_time      Int?
+  hourly_rate        BigInt?
+  equipment_types    String[]
+  contract_status    String?
+  capacity           Json?
+  emergency_phone    String?
+  rates              Json?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model company {
+  id                                 BigInt            @id @default(autoincrement())
+  created_at                         DateTime          @default(now()) @db.Timestamptz(6)
+  created_by                         String?           @default(dbgenerated("auth.uid()")) @db.Uuid
+  updated_at                         DateTime?         @default(now()) @db.Timestamp(6)
+  company_name                       String?
+  company_contact                    String?
+  company_email                      String?
+  company_phone                      String?
+  company_contactname                String?
+  company_size                       Int?
+  company_infor                      String?
+  company_industry                   String?
+  company_website                    String?
+  company_tax_id                     String?
+  company_no_vehicles                Int?
+  company_v_type                     String?
+  company_regions                    String?
+  company_fms                        String?
+  job_assignments                    job_assignments[]
+  profiles_profiles_companyTocompany profiles[]        @relation("profiles_companyTocompany")
+  workshop                           workshop[]
+  workshop_klaver                    workshop_klaver[]
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model company_features {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  company_id  Int?
+  breakdown   Boolean?
+  inventory   Boolean?
+  maintanance Boolean?
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model customer_quotes {
+  id                           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_number                   String           @unique @db.VarChar(50)
+  job_date                     DateTime?        @default(now()) @db.Timestamptz(6)
+  due_date                     DateTime?        @db.Timestamptz(6)
+  completion_date              DateTime?        @db.Timestamptz(6)
+  status                       String?          @default("pending") @db.VarChar(20)
+  job_type                     String           @db.VarChar(20)
+  job_description              String?
+  priority                     String?          @default("medium") @db.VarChar(20)
+  account_id                   String?          @db.Uuid
+  customer_name                String?          @db.VarChar(255)
+  customer_email               String?          @db.VarChar(255)
+  customer_phone               String?          @db.VarChar(50)
+  customer_address             String?
+  vehicle_id                   String?          @db.Uuid
+  vehicle_registration         String?          @db.VarChar(50)
+  vehicle_make                 String?          @db.VarChar(100)
+  vehicle_model                String?          @db.VarChar(100)
+  vehicle_year                 Int?
+  assigned_technician_id       String?          @db.Uuid
+  technician_name              String?          @db.VarChar(255)
+  technician_phone             String?          @db.VarChar(50)
+  job_location                 String?          @db.VarChar(255)
+  latitude                     Decimal?         @db.Decimal(10, 8)
+  longitude                    Decimal?         @db.Decimal(11, 8)
+  products_required            Json?            @default("[]")
+  parts_required               Json?            @default("[]")
+  equipment_used               Json?            @default("[]")
+  estimated_duration_hours     Int?
+  actual_duration_hours        Int?
+  estimated_cost               Decimal?         @default(0) @db.Decimal(12, 2)
+  actual_cost                  Decimal?         @default(0) @db.Decimal(12, 2)
+  start_time                   DateTime?        @db.Timestamptz(6)
+  end_time                     DateTime?        @db.Timestamptz(6)
+  work_notes                   String?
+  completion_notes             String?
+  job_status                   String?          @default("not_started") @db.VarChar(50)
+  safety_checklist_completed   Boolean?         @default(false)
+  quality_check_passed         Boolean?         @default(false)
+  customer_signature_obtained  Boolean?         @default(false)
+  before_photos                Json?            @default("[]")
+  after_photos                 Json?            @default("[]")
+  documents                    Json?            @default("[]")
+  customer_satisfaction_rating Int?
+  customer_feedback            String?
+  quotation_number             String?          @db.VarChar(50)
+  quote_date                   DateTime?        @db.Timestamptz(6)
+  quote_expiry_date            DateTime?        @db.Timestamptz(6)
+  quote_status                 String?          @default("draft") @db.VarChar(20)
+  purchase_type                String?          @db.VarChar(20)
+  quotation_job_type           String?          @db.VarChar(20)
+  quotation_products           Json?            @default("[]")
+  quotation_subtotal           Decimal?         @default(0) @db.Decimal(12, 2)
+  quotation_vat_amount         Decimal?         @default(0) @db.Decimal(12, 2)
+  quotation_total_amount       Decimal?         @default(0) @db.Decimal(12, 2)
+  quote_email_subject          String?          @db.VarChar(255)
+  quote_email_body             String?
+  quote_email_footer           String?
+  quote_notes                  String?
+  quote_type                   String?          @default("external") @db.VarChar(20)
+  special_instructions         String?
+  access_requirements          String?
+  site_contact_person          String?          @db.VarChar(255)
+  site_contact_phone           String?          @db.VarChar(50)
+  created_by                   String?          @db.Uuid
+  created_at                   DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_by                   String?          @db.Uuid
+  role                         String?          @db.VarChar
+  ip_address                   String?
+  qr_code                      String?
+  vin_number                   String?
+  temporary_registration       String?          @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  odormeter                    String?
+  new_account_number           String?
+  quote_products               quote_products[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model drivers {
+  first_name                  String
+  surname                     String
+  id_or_passport_number       String
+  id_or_passport_document     String?
+  email_address               String?
+  cell_number                 String?
+  sa_issued                   Boolean?              @default(false)
+  work_permit_upload          String?
+  license_number              String?
+  license_expiry_date         DateTime?             @db.Date
+  license_code                String?
+  driver_restriction_code     String?
+  vehicle_restriction_code    String?
+  front_of_driver_pic         String?
+  rear_of_driver_pic          String?
+  professional_driving_permit Boolean?              @default(false)
+  pdp_expiry_date             DateTime?             @db.Date
+  created_at                  DateTime?             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  id                          BigInt                @id @unique @default(autoincrement())
+  created_by                  String?               @db.Uuid
+  user_id                     String?               @db.Uuid
+  assignements                assignements[]
+  users                       users?                @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  inspection                  inspection[]
+  job_assignments             job_assignments[]
+  vehicle_inspections         vehicle_inspections[]
+  vehiclesc                   vehiclesc[]
+  vehiclesc_workshop          vehiclesc_workshop[]
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model drivers_klaver {
+  first_name                  String
+  surname                     String
+  id_or_passport_number       String
+  id_or_passport_document     String?
+  email_address               String?
+  cell_number                 String?
+  sa_issued                   Boolean?  @default(false)
+  work_permit_upload          String?
+  license_number              String?
+  license_expiry_date         DateTime? @db.Date
+  license_code                String?
+  driver_restriction_code     String?
+  vehicle_restriction_code    String?
+  front_of_driver_pic         String?
+  rear_of_driver_pic          String?
+  professional_driving_permit Boolean?  @default(false)
+  pdp_expiry_date             DateTime? @db.Date
+  created_at                  DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  id                          BigInt    @id @unique @default(autoincrement())
+  created_by                  String?   @db.Uuid
+  user_id                     String?   @db.Uuid
+  users                       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inspection {
+  id         BigInt     @id @default(autoincrement())
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  vihecle    BigInt?
+  driver     BigInt?
+  data       Json?
+  drivers    drivers?   @relation(fields: [driver], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc  vehiclesc? @relation(fields: [vihecle], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inventory_logs {
+  id              Int       @id @default(autoincrement())
+  part_id         Int?
+  change_type     String?
+  quantity_change Int?
+  timestamp       DateTime? @default(now()) @db.Timestamp(6)
+  job_id          BigInt?
+  parts           parts?    @relation(fields: [part_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model job_allocations {
+  id           BigInt    @id @default(autoincrement())
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  sublet_id    BigInt?
+  job_card_id  BigInt?
+  notes        String?
+  status       String?
+  allocated_by String?   @default(dbgenerated("auth.uid()")) @db.Uuid
+  allocated_at DateTime? @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model job_assignments {
+  accepted                                             Boolean?
+  result_images                                        String[]
+  completed_at                                         DateTime?           @db.Timestamp(6)
+  id                                                   BigInt              @id @unique @default(autoincrement())
+  location                                             String?
+  emergency_type                                       String?
+  description                                          String
+  fleet_status                                         String?
+  order_no                                             String?
+  status                                               String?             @default("Breakdown Request")
+  priority                                             String?             @default("medium")
+  created_at                                           DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at                                           DateTime?           @default(now()) @db.Timestamptz(6)
+  coordinates                                          Json?
+  assigned_technician                                  String?             @db.Uuid
+  technician_phone                                     String?
+  estimated_cost                                       Decimal?            @db.Decimal(10, 2)
+  actual_cost                                          Decimal?            @db.Decimal(10, 2)
+  client_type                                          String?
+  client_name                                          String?             @default("LP Trucks")
+  approval_required                                    Boolean?            @default(false)
+  approved_by                                          String?
+  approved_at                                          DateTime?           @db.Timestamptz(6)
+  notes                                                String?
+  attachments                                          String[]            @default([])
+  technician_id                                        Int?
+  breakdowns_id                                        BigInt?
+  job_id                                               String?             @unique
+  job_status                                           status?             @default(Onprogress)
+  created_by                                           String?             @db.Uuid
+  updated_by                                           String?             @db.Uuid
+  breakdown_req                                        Boolean?            @default(false)
+  inspected                                            Boolean?
+  image_path                                           String?
+  subcontractor_id                                     BigInt?
+  scanned                                              Boolean?            @default(false)
+  driver_id                                            BigInt?
+  eta                                                  String?
+  vehicle_id                                           BigInt?
+  service                                              String?
+  assignements                                         assignements[]
+  breakdowns_breakdowns_job_idTojob_assignments        breakdowns[]        @relation("breakdowns_job_idTojob_assignments")
+  breakdowns_job_assignments_breakdowns_idTobreakdowns breakdowns?         @relation("job_assignments_breakdowns_idTobreakdowns", fields: [breakdowns_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                                                users?              @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  drivers                                              drivers?            @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company                                              company?            @relation(fields: [subcontractor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians                                          technicians?        @relation(fields: [technician_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc                                            vehiclesc?          @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_card                                             job_card[]
+  quotations                                           quotations[]
+  quotations_klaver                                    quotations_klaver[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model job_card {
+  id                BigInt              @id @default(autoincrement())
+  job_assignment_id BigInt?
+  updated_by        String              @db.Uuid
+  date              DateTime?           @db.Date
+  client_name       String?
+  contact           String?
+  time              DateTime?           @db.Time(6)
+  location          String?
+  job_type          String?
+  vehicle_make      String?
+  horse_fleet_no    String?
+  horse_reg_no      String?
+  odo_reading       Int?
+  mechanic          String?
+  trailer_fleet_no  String?
+  trailer_reg_no    String?
+  technician        String?
+  description       String?
+  notes             String?
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  job_assignments   job_assignments?    @relation(fields: [job_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users             users               @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quotations        quotations[]
+  quotations_klaver quotations_klaver[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model job_card_approvals {
+  id            Int        @id @default(autoincrement())
+  job_card_id   String?    @db.Uuid
+  approver_type String?
+  status        String?
+  notes         String?
+  approved_at   DateTime?  @db.Timestamp(6)
+  created_at    DateTime?  @default(now()) @db.Timestamp(6)
+  job_cards     job_cards? @relation(fields: [job_card_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model job_cards {
+  id                           String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_number                   String                        @unique @db.VarChar(50)
+  job_date                     DateTime?                     @default(now()) @db.Timestamptz(6)
+  due_date                     DateTime?                     @db.Timestamptz(6)
+  completion_date              DateTime?                     @db.Timestamptz(6)
+  status                       String?                       @default("pending") @db.VarChar(20)
+  job_type                     String                        @db.VarChar(20)
+  job_description              String?
+  priority                     String?                       @default("medium") @db.VarChar(20)
+  account_id                   String?                       @db.Uuid
+  customer_name                String?                       @db.VarChar(255)
+  customer_email               String?                       @db.VarChar(255)
+  customer_phone               String?                       @db.VarChar(50)
+  customer_address             String?
+  vehicle_id                   String?                       @db.Uuid
+  vehicle_registration         String?                       @db.VarChar(50)
+  vehicle_make                 String?                       @db.VarChar(100)
+  vehicle_model                String?                       @db.VarChar(100)
+  vehicle_year                 Int?
+  assigned_technician_id       String?                       @db.Uuid
+  technician_name              String?                       @db.VarChar(255)
+  technician_phone             String?                       @db.VarChar(50)
+  job_location                 String?                       @db.VarChar(255)
+  latitude                     Decimal?                      @db.Decimal(10, 8)
+  longitude                    Decimal?                      @db.Decimal(11, 8)
+  products_required            Json?                         @default("[]")
+  parts_required               Json?                         @default("[]")
+  equipment_used               Json?                         @default("[]")
+  estimated_duration_hours     Int?
+  actual_duration_hours        Int?
+  estimated_cost               Decimal?                      @default(0) @db.Decimal(12, 2)
+  actual_cost                  Decimal?                      @default(0) @db.Decimal(12, 2)
+  start_time                   DateTime?                     @db.Timestamptz(6)
+  end_time                     DateTime?                     @db.Timestamptz(6)
+  work_notes                   String?
+  completion_notes             String?
+  job_status                   String?                       @default("not_started") @db.VarChar(50)
+  safety_checklist_completed   Boolean?                      @default(false)
+  quality_check_passed         Boolean?                      @default(false)
+  customer_signature_obtained  Boolean?                      @default(false)
+  before_photos                Json?                         @default("[]")
+  after_photos                 Json?                         @default("[]")
+  documents                    Json?                         @default("[]")
+  customer_satisfaction_rating Int?
+  customer_feedback            String?
+  quotation_number             String?                       @db.VarChar(50)
+  quote_date                   DateTime?                     @db.Timestamptz(6)
+  quote_expiry_date            DateTime?                     @db.Timestamptz(6)
+  quote_status                 String?                       @default("draft") @db.VarChar(20)
+  purchase_type                String?                       @db.VarChar(20)
+  quotation_job_type           String?                       @db.VarChar(20)
+  quotation_products           Json?                         @default("[]")
+  quotation_subtotal           Decimal?                      @default(0) @db.Decimal(12, 2)
+  quotation_vat_amount         Decimal?                      @default(0) @db.Decimal(12, 2)
+  quotation_total_amount       Decimal?                      @default(0) @db.Decimal(12, 2)
+  quote_email_subject          String?                       @db.VarChar(255)
+  quote_email_body             String?
+  quote_email_footer           String?
+  quote_notes                  String?
+  quote_type                   String?                       @default("external") @db.VarChar(20)
+  special_instructions         String?
+  access_requirements          String?
+  site_contact_person          String?                       @db.VarChar(255)
+  site_contact_phone           String?                       @db.VarChar(50)
+  created_by                   String?                       @db.Uuid
+  created_at                   DateTime?                     @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime?                     @default(now()) @db.Timestamptz(6)
+  updated_by                   String?                       @db.Uuid
+  role                         String?                       @db.VarChar
+  ip_address                   String?
+  qr_code                      String?
+  vin_numer                    String?
+  odormeter                    String?
+  temporary_registration       String?                       @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  repair                       Boolean?                      @default(false)
+  new_account_number           String?
+  approval_status              String?
+  labor_cost                   Decimal?                      @db.Decimal(10, 2)
+  total_parts_cost             Decimal?                      @db.Decimal(10, 2)
+  total_labor_cost             Decimal?                      @db.Decimal(10, 2)
+  total_sublet_cost            Decimal?                      @db.Decimal(10, 2)
+  grand_total                  Decimal?                      @db.Decimal(10, 2)
+  job_card_approvals           job_card_approvals[]
+  vehicle_maintenance_history  vehicle_maintenance_history[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model maintenance_records {
+  id             BigInt     @id @default(autoincrement())
+  created_at     DateTime   @default(now()) @db.Timestamptz(6)
+  vehicle_id     BigInt?
+  schedule_date  DateTime?  @db.Timestamp(6)
+  completed_date DateTime?  @db.Timestamp(6)
+  notes          String?
+  workshop_id    String?    @db.Uuid
+  vehiclesc      vehiclesc? @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workshop       workshop?  @relation(fields: [workshop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model parts {
+  id               Int              @id @default(autoincrement())
+  category_id      Int?
+  item_code        String?
+  description      String?
+  price            Decimal?         @db.Decimal(10, 2)
+  quantity         Int?
+  total            Decimal?         @db.Decimal(12, 2)
+  vehicle_brand_id Int?
+  supplier         String?
+  location         String?
+  inventory_logs   inventory_logs[]
+  categories       categories?      @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehicle_brands   vehicle_brands?  @relation(fields: [vehicle_brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model parts_orders {
+  id          BigInt   @id @default(autoincrement())
+  supplier_id BigInt?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  parts_data  Json?    @db.Json
+  notes       String?
+  status      String?
+  created_by  String?  @db.Uuid
+  users       users?   @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model product_items {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type         String
+  product      String
+  description  String?
+  category     String
+  price        Float
+  quantity     Float?  @default(1)
+  discount     Float?  @default(0)
+  rental       Float?  @default(0)
+  installation Float?  @default(0)
+  subscription Float?  @default(0)
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id                                        String               @id @unique @db.Uuid
+  full_name                                 String?
+  phone_number                              String?
+  created_at                                DateTime?            @default(now()) @db.Timestamp(6)
+  role                                      String?
+  email                                     String?
+  company                                   BigInt?
+  department                                String?
+  workshop_id                               String?              @db.Uuid
+  permissions                               Json?                @default("{}")
+  company_name                              String?
+  assignements                              assignements[]
+  company_profiles_companyTocompany         company?             @relation("profiles_companyTocompany", fields: [company], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                                     users                @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  workshop_profiles_workshop_idToworkshop   workshop?            @relation("profiles_workshop_idToworkshop", fields: [workshop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quotations                                quotations[]
+  quotations_klaver                         quotations_klaver[]
+  technicians                               technicians[]
+  technicians_klaver                        technicians_klaver[]
+  vehiclesc                                 vehiclesc[]
+  vehiclesc_workshop                        vehiclesc_workshop[]
+  workshop_workshop_fleet_managerToprofiles workshop[]           @relation("workshop_fleet_managerToprofiles")
+  workshop_klaver                           workshop_klaver[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model quotations {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  breakdown_id     String?
+  cost_center_id   String?          @db.Uuid
+  estimate_amount  Decimal?         @db.Decimal(10, 2)
+  status           String?          @default("pending")
+  reason           String?
+  created_at       DateTime?        @default(now()) @db.Timestamp(6)
+  job_type         String?
+  issue            String?
+  parts_needed     String[]
+  estimated_cost   Decimal?         @db.Decimal(10, 2)
+  priority         String?          @default("medium")
+  estimated_time   String?
+  additional_notes String?
+  job_id           BigInt?
+  paid             Boolean?         @default(false)
+  orderno          String?
+  drivername       String?
+  vehiclereg       String?
+  description      String?
+  laborcost        Decimal?         @db.Decimal(10, 2)
+  partscost        Decimal?         @db.Decimal(10, 2)
+  totalcost        Decimal?         @db.Decimal(10, 2)
+  createdat        DateTime?        @default(now()) @db.Timestamptz(6)
+  created_by       String?          @db.Uuid
+  jobcard_id       BigInt?
+  markupPrice      Float?
+  type             String?
+  typeJob          String?
+  labourcost       BigInt?
+  tech_id          Int?
+  approvals        approvals[]
+  profiles         profiles?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_assignments  job_assignments? @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_card         job_card?        @relation(fields: [jobcard_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians      technicians?     @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model quotations_klaver {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  breakdown_id     String?
+  cost_center_id   String?          @db.Uuid
+  estimate_amount  Decimal?         @db.Decimal(10, 2)
+  status           String?          @default("pending")
+  reason           String?
+  created_at       DateTime?        @default(now()) @db.Timestamp(6)
+  job_type         String?
+  issue            String?
+  parts_needed     String[]
+  estimated_cost   Decimal?         @db.Decimal(10, 2)
+  priority         String?          @default("medium")
+  estimated_time   String?
+  additional_notes String?
+  job_id           BigInt?
+  paid             Boolean?         @default(false)
+  orderno          String?
+  drivername       String?
+  vehiclereg       String?
+  description      String?
+  laborcost        Decimal?         @db.Decimal(10, 2)
+  partscost        Decimal?         @db.Decimal(10, 2)
+  totalcost        Decimal?         @db.Decimal(10, 2)
+  createdat        DateTime?        @default(now()) @db.Timestamptz(6)
+  created_by       String?          @db.Uuid
+  jobcard_id       BigInt?
+  markupPrice      Float?
+  type             String?
+  typeJob          String?
+  labourcost       BigInt?
+  tech_id          Int?
+  profiles         profiles?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_assignments  job_assignments? @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_card         job_card?        @relation(fields: [jobcard_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians      technicians?     @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model quote_products {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at            DateTime        @default(now()) @db.Timestamptz(6)
+  quote_id              String          @db.Uuid
+  product_name          String
+  quantity              Int             @default(1)
+  cash_price            Float           @default(0)
+  cash_discount         Float           @default(0)
+  rental_price          Float           @default(0)
+  rental_discount       Float           @default(0)
+  installation_price    Float?          @default(0)
+  installation_discount Float           @default(0)
+  subtotal              Float           @default(0)
+  open                  Boolean?        @default(true)
+  technician            String?
+  date                  DateTime?       @db.Date
+  time                  DateTime?       @db.Time(6)
+  parts_assigned        String[]
+  discount              Float?
+  vehicle               String[]
+  role                  String?
+  customer_quotes       customer_quotes @relation(fields: [quote_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model stock {
+  id                BigInt    @id @default(autoincrement())
+  supplier          String?
+  code              String?
+  description       String?
+  stock_type        String?
+  quantity          String?
+  cost_excl_vat_zar String?
+  total_value       String?
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  USD               String?
+
+  @@schema("public")
+}
+
+model stock_orders {
+  id                  BigInt           @id @default(autoincrement())
+  order_number        String           @unique @db.VarChar(50)
+  order_date          DateTime?        @default(now()) @db.Timestamptz(6)
+  supplier            String?          @db.VarChar(255)
+  total_amount_ex_vat Decimal          @db.Decimal(15, 2)
+  total_amount_usd    Decimal?         @db.Decimal(15, 2)
+  status              String?          @default("pending") @db.VarChar(50)
+  notes               String?
+  created_by          String?          @db.VarChar(100)
+  created_at          DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?        @default(now()) @db.Timestamptz(6)
+  order_items         Json             @default("[]")
+  invoice_link        String?
+  approved            Boolean?         @default(false)
+  stock_payments      stock_payments[]
+
+  @@schema("public")
+}
+
+model stock_payments {
+  id                BigInt        @id @default(autoincrement())
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  order_number      String?       @db.VarChar
+  payment_reference String?
+  amount            Float?
+  stock_orders      stock_orders? @relation(fields: [order_number], references: [order_number], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model stock_pricing {
+  id                BigInt    @id @default(autoincrement())
+  supplier          String?
+  code              String?
+  description       String?
+  stock_type        String?
+  cost_excl_vat_zar String?
+  total_value       String?
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  USD               String?
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sublets {
+  id           Int           @id @default(autoincrement())
+  supplier_id  Int?
+  description  String
+  cost         Decimal?      @db.Decimal(10, 2)
+  status       String?
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  job_card     BigInt?
+  name         String?
+  address      String?
+  phone        String?
+  email        String?
+  workshop_job workshop_job? @relation(fields: [job_card], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  suppliers    suppliers?    @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model suppliers {
+  id             Int       @id @default(autoincrement())
+  name           String
+  contact_person String?
+  email          String?
+  phone          String?
+  address        String?
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  sublets        sublets[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model technician_vassign {
+  id          BigInt       @id @default(autoincrement())
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  tech_id     Int?
+  vehicle_id  BigInt?
+  technicians technicians? @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc   vehiclesc?   @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model technician_vehicles {
+  order_no           String?   @unique
+  status             String?   @default("requested")
+  emergency_type     String?
+  location           String?
+  issue_description  String?
+  image_urls         String?
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+  id                 BigInt    @id @unique @default(autoincrement())
+  driver_name        String?
+  phone              String?
+  registration       String?
+  make               String?
+  model              String?
+  year               Int?
+  vin                String?
+  owner_name         String?
+  owner_phone        String?
+  owner_email        String?
+  driver_phone       String?
+  insurance_provider String?
+  policy_number      String?
+  coverage_type      String?
+  breakdown_location String?
+  coordinates        Json?
+  priority           String?
+  reported_at        DateTime? @db.Timestamp(6)
+  estimated_cost     Decimal?  @db.Decimal
+  actual_cost        Decimal?  @db.Decimal
+  client_type        String?
+  external_client_id String?
+  service_history    Json?     @default("[]")
+  breakdown_type     String?
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model technicians {
+  id                 Int                  @id @unique @default(autoincrement())
+  name               String
+  phone              String
+  email              String
+  location           String
+  coordinates        Json
+  specialties        String[]
+  skill_levels       Json
+  rating             Decimal?             @db.Decimal(3, 2)
+  join_date          DateTime             @db.Date
+  certifications     String[]
+  vehicle_type       String
+  equipment_level    String
+  status             Boolean?             @default(true)
+  availability       availability?        @default(available)
+  type               String?
+  workshop_id        String?              @db.Uuid
+  created_by         String?              @db.Uuid
+  isActive           Boolean?             @default(true)
+  assignements       assignements[]
+  breakdowns         breakdowns[]
+  job_assignments    job_assignments[]
+  quotations         quotations[]
+  quotations_klaver  quotations_klaver[]
+  technician_vassign technician_vassign[]
+  profiles           profiles?            @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc          vehiclesc[]
+  vehiclesc_workshop vehiclesc_workshop[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model technicians_klaver {
+  id              Int           @id @unique @default(autoincrement())
+  name            String
+  phone           String
+  email           String
+  location        String
+  coordinates     Json
+  specialties     String[]
+  skill_levels    Json
+  rating          Decimal?      @db.Decimal(3, 2)
+  join_date       DateTime      @db.Date
+  certifications  String[]
+  vehicle_type    String
+  equipment_level String
+  status          Boolean?      @default(true)
+  availability    availability? @default(available)
+  type            String?
+  workshop_id     String?       @db.Uuid
+  created_by      String?       @db.Uuid
+  isActive        Boolean?      @default(true)
+  profiles        profiles?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model vehicle_brands {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  parts      parts[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vehicle_inspections {
+  driver_id       Int?
+  vehicle_id      Int?
+  inspected       Boolean    @default(false)
+  inspection_date DateTime?  @default(now()) @db.Timestamptz(6)
+  created_at      DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?  @default(now()) @db.Timestamptz(6)
+  user_id         String?    @db.Uuid
+  id              BigInt     @id @unique @default(autoincrement())
+  drivers         drivers?   @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           users?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc       vehiclesc? @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model vehicle_maintenance_history {
+  id                 Int                 @id @default(autoincrement())
+  vehicle_id         Int?
+  job_card_id        String?             @db.Uuid
+  maintenance_type   String?
+  description        String?
+  cost               Decimal?            @db.Decimal(10, 2)
+  completed_date     DateTime?           @db.Timestamp(6)
+  created_at         DateTime?           @default(now()) @db.Timestamp(6)
+  job_cards          job_cards?          @relation(fields: [job_card_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehiclesc_workshop vehiclesc_workshop? @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vehiclesc {
+  registration_number    String
+  engine_number          String?
+  vin_number             String?
+  make                   String?
+  model                  String
+  sub_model              String?
+  manufactured_year      String
+  vehicle_type           String                @default("vehicle")
+  registration_date      DateTime?             @db.Date
+  license_expiry_date    DateTime?             @db.Date
+  purchase_price         Decimal?              @db.Decimal(12, 2)
+  retail_price           Decimal?              @db.Decimal(12, 2)
+  vehicle_priority       String?               @default("medium")
+  fuel_type              String?               @default("petrol")
+  transmission_type      String?               @default("manual")
+  tank_capacity          Decimal?              @db.Decimal(10, 2)
+  register_number        String?
+  take_on_kilometers     Decimal               @db.Decimal(10, 2)
+  service_intervals      String
+  boarding_km_hours      Decimal?              @db.Decimal(10, 2)
+  expected_boarding_date DateTime?             @db.Date
+  cost_centres           String?
+  colour                 String
+  created_by             String?               @db.Uuid
+  created_at             DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?             @default(now()) @db.Timestamptz(6)
+  id                     BigInt                @id @unique @default(autoincrement())
+  inspected              Boolean?              @default(false)
+  workshop_id            String?               @db.Uuid
+  type                   String?
+  tech_id                Int?
+  driver_id              BigInt?
+  company_id             BigInt?
+  status                 String?
+  assignements           assignements[]
+  inspection             inspection[]
+  job_assignments        job_assignments[]
+  maintenance_records    maintenance_records[]
+  technician_vassign     technician_vassign[]
+  vehicle_inspections    vehicle_inspections[]
+  breakdowns             breakdowns?           @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                  users?                @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles               profiles?             @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "vehiclesc_created_by_fkey1")
+  drivers                drivers?              @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians            technicians?          @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vehiclesc_workshop {
+  registration_number         String
+  engine_number               String?
+  vin_number                  String?
+  make                        String?
+  model                       String
+  sub_model                   String?
+  manufactured_year           String
+  vehicle_type                String                        @default("vehicle")
+  registration_date           DateTime?                     @db.Date
+  license_expiry_date         DateTime?                     @db.Date
+  purchase_price              Decimal?                      @db.Decimal(12, 2)
+  retail_price                Decimal?                      @db.Decimal(12, 2)
+  vehicle_priority            String?                       @default("medium")
+  fuel_type                   String?                       @default("petrol")
+  transmission_type           String?                       @default("manual")
+  tank_capacity               Decimal?                      @db.Decimal(10, 2)
+  register_number             String?
+  take_on_kilometers          Decimal                       @db.Decimal(10, 2)
+  service_intervals           String
+  boarding_km_hours           Decimal?                      @db.Decimal(10, 2)
+  expected_boarding_date      DateTime?                     @db.Date
+  cost_centres                String?
+  colour                      String
+  created_by                  String?                       @db.Uuid
+  created_at                  DateTime?                     @default(now()) @db.Timestamp(6)
+  updated_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
+  id                          BigInt                        @id @unique @default(autoincrement())
+  inspected                   Boolean?                      @default(false)
+  workshop_id                 String?                       @db.Uuid
+  type                        String?
+  tech_id                     Int?
+  driver_id                   BigInt?
+  company_id                  BigInt?
+  status                      String?
+  operator_name               String?
+  site                        String?
+  chasis                      String?
+  asset_type                  String?
+  vehicle_maintenance_history vehicle_maintenance_history[]
+  breakdowns                  breakdowns?                   @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                       users?                        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles                    profiles?                     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "vehiclesc_workshop_created_by_fkey1")
+  drivers                     drivers?                      @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technicians                 technicians?                  @relation(fields: [tech_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop {
+  id                                        String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  work_name                                 String
+  trading_name                              String?
+  number_of_working_days                    Int?
+  labour_rate                               Decimal?              @db.Decimal
+  fleet_rate                                Decimal?              @db.Decimal
+  company_registration_doc                  String?
+  after_hours_number                        String?
+  franchise                                 String?
+  vat_number                                BigInt?
+  vat_certificate                           String?
+  vat_cert_expiry_date                      DateTime?             @db.Date
+  bbbee_level                               String?
+  hdi_perc                                  String?
+  bbbee_expire_date                         DateTime?             @db.Date
+  insurance_policy_number                   BigInt?
+  insurance_company_name                    String?
+  bank_name                                 String?
+  account_no                                BigInt?
+  bank_letter                               String?
+  province                                  String?
+  street                                    String?
+  city                                      String?
+  town                                      String?
+  postal_code                               Int?
+  created_at                                DateTime?             @default(now()) @db.Timestamptz(6)
+  vehicles_type                             String[]
+  workshop_type                             String[]
+  validated                                 String?               @default("pending")
+  type                                      String?
+  company_id                                BigInt?
+  fleet_manager                             String?               @db.Uuid
+  breakdowns                                breakdowns[]
+  capabilities                              capabilities?
+  maintenance_records                       maintenance_records[]
+  profiles_profiles_workshop_idToworkshop   profiles[]            @relation("profiles_workshop_idToworkshop")
+  company                                   company?              @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_workshop_fleet_managerToprofiles profiles?             @relation("workshop_fleet_managerToprofiles", fields: [fleet_manager], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workshop_assign                           workshop_assign[]
+  workshop_breakdown                        workshop_breakdown[]
+  workshop_documents                        workshop_documents[]
+  workshop_tools                            workshop_tools[]
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_assign {
+  id           BigInt        @id(map: "workshop_job_pkey") @default(autoincrement())
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  workshop_id  String?       @db.Uuid
+  job_id       BigInt?
+  workshop_job workshop_job? @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workshop     workshop?     @relation(fields: [workshop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "workshop_job_workshop_id_fkey")
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_assignments {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  tech_id     BigInt?
+  vehicle_id  String?
+  assigned_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  job_id      BigInt?
+  driver_id   String?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_breakdown {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  vehicle_id  Int?
+  reported_by BigInt?
+  description String?
+  status      String?
+  workshop_id String?   @db.Uuid
+  workshop    workshop? @relation(fields: [workshop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_documents {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workshop_id   String?   @db.Uuid
+  document_type String
+  document_url  String
+  picture       String?
+  verified      Boolean?  @default(false)
+  uploaded_at   DateTime? @default(now()) @db.Timestamptz(6)
+  workshop      workshop? @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_job {
+  id                           BigInt            @id(map: "workshop_job_pkey1") @default(autoincrement())
+  created_at                   DateTime          @default(now()) @db.Timestamptz(6)
+  registration_no              String?
+  job_type                     String?
+  description                  String?
+  type_of_work                 String?
+  client_name                  String?
+  client_phone                 String?
+  location                     String?
+  notes                        String?
+  jobId_workshop               String?           @unique
+  status                       String?           @default("Awaiting Approval")
+  accepted                     Boolean?          @default(false)
+  updated_at                   DateTime?         @default(now()) @db.Timestamptz(6)
+  estimated_cost               Decimal?          @default(0) @db.Decimal(12, 2)
+  actual_cost                  Decimal?          @default(0) @db.Decimal(12, 2)
+  technician_id                String?           @db.Uuid
+  assigned_technician_id       String?           @db.Uuid
+  technician_name              String?           @db.VarChar(255)
+  technician_phone             String?           @db.VarChar(50)
+  priority                     String?           @default("medium") @db.VarChar(20)
+  job_status                   String?           @default("not_started") @db.VarChar(50)
+  start_time                   DateTime?         @db.Timestamptz(6)
+  end_time                     DateTime?         @db.Timestamptz(6)
+  completion_date              DateTime?         @db.Timestamptz(6)
+  due_date                     DateTime?         @db.Timestamptz(6)
+  work_notes                   String?
+  completion_notes             String?
+  customer_satisfaction_rating Int?
+  customer_feedback            String?
+  before_photos                Json?             @default("[]")
+  after_photos                 Json?             @default("[]")
+  documents                    Json?             @default("[]")
+  parts_required               Json?             @default("[]")
+  products_required            Json?             @default("[]")
+  equipment_used               Json?             @default("[]")
+  estimated_duration_hours     Int?
+  actual_duration_hours        Int?
+  safety_checklist_completed   Boolean?          @default(false)
+  quality_check_passed         Boolean?          @default(false)
+  customer_signature_obtained  Boolean?          @default(false)
+  approval_status              String?           @default("draft")
+  labor_cost                   Decimal?          @db.Decimal(10, 2)
+  total_parts_cost             Decimal?          @db.Decimal(10, 2)
+  total_labor_cost             Decimal?          @db.Decimal(10, 2)
+  total_sublet_cost            Decimal?          @db.Decimal(10, 2)
+  grand_total                  Decimal?          @db.Decimal(10, 2)
+  technician                   Boolean?          @default(false)
+  sublet                       Int?              @default(0)
+  labour_hours                 BigInt?
+  sublets                      sublets[]
+  workshop_assign              workshop_assign[]
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workshop_jobpart {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  job_parts   Json?
+  given_parts Json?
+  job_id      BigInt?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workshop_klaver {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  work_name                String
+  trading_name             String?
+  number_of_working_days   Int?
+  labour_rate              Decimal?  @db.Decimal
+  fleet_rate               Decimal?  @db.Decimal
+  company_registration_doc String?
+  after_hours_number       String?
+  franchise                String?
+  vat_number               BigInt?
+  vat_certificate          String?
+  vat_cert_expiry_date     DateTime? @db.Date
+  bbbee_level              String?
+  hdi_perc                 String?
+  bbbee_expire_date        DateTime? @db.Date
+  insurance_policy_number  BigInt?
+  insurance_company_name   String?
+  bank_name                String?
+  account_no               BigInt?
+  bank_letter              String?
+  province                 String?
+  street                   String?
+  city                     String?
+  town                     String?
+  postal_code              Int?
+  created_at               DateTime? @default(now()) @db.Timestamptz(6)
+  vehicles_type            String[]
+  workshop_type            String[]
+  validated                String?   @default("pending")
+  type                     String?
+  company_id               BigInt?
+  fleet_manager            String?   @db.Uuid
+  company                  company?  @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles                 profiles? @relation(fields: [fleet_manager], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshop_tools {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workshop_id  String?   @db.Uuid
+  category     String
+  tool_name    String
+  has_tool     Boolean?  @default(false)
+  document_url String?
+  picture      String?
+  verified     Boolean?  @default(false)
+  workshop     workshop? @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+enum aal_level {
+  aal1
+  aal2
+  aal3
+
+  @@schema("auth")
+}
+
+enum code_challenge_method {
+  s256
+  plain
+
+  @@schema("auth")
+}
+
+enum factor_status {
+  unverified
+  verified
+
+  @@schema("auth")
+}
+
+enum factor_type {
+  totp
+  webauthn
+  phone
+
+  @@schema("auth")
+}
+
+enum oauth_authorization_status {
+  pending
+  approved
+  denied
+  expired
+
+  @@schema("auth")
+}
+
+enum oauth_client_type {
+  public
+  confidential
+
+  @@schema("auth")
+}
+
+enum oauth_registration_type {
+  dynamic
+  manual
+
+  @@schema("auth")
+}
+
+enum oauth_response_type {
+  code
+
+  @@schema("auth")
+}
+
+enum one_time_token_type {
+  confirmation_token
+  reauthentication_token
+  recovery_token
+  email_change_token_new
+  email_change_token_current
+  phone_change_token
+
+  @@schema("auth")
+}
+
+enum availability {
+  available
+  busy
+  off_duty  @map("off-duty")
+  emergency
+
+  @@schema("public")
+}
+
+enum roles {
+  driver
+  technician
+  call_centre   @map("call centre")
+  cost_centre   @map("cost centre")
+  fleet_manager @map("fleet manager")
+  customer
+
+  @@schema("public")
+}
+
+enum status {
+  Done
+  Onprogress
+
+  @@schema("public")
+}

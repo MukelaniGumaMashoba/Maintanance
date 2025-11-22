@@ -3,408 +3,374 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import {
-  Save,
-  Share,
   Download,
   PrinterIcon as Print,
   Filter,
-  X,
   ChevronLeft,
   ChevronRight,
+  Search,
+  Calendar,
+  MapPin,
+  User,
+  Wrench,
+  TrendingUp,
+  BarChart3,
   Settings,
+  Car,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { 
+  getVehicleReports, 
+  getMaintenanceHistoryReports,
+  exportToCSV, 
+  exportToPDF 
+} from "@/lib/reports-db"
 
-// Mock data for fuel entries report
-const mockFuelData = [
-  {
-    vehicle: "1100 [2018 Toyota Prius]",
-    entries: [
-      {
-        date: "08/01/2025",
-        occurredAt: "12:27 PM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.462,
-        fuelEconomy: 60.63,
-        cost: 0.041,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 7.01,
-        total: "R17.26",
-      },
-      {
-        date: "07/29/2025",
-        occurredAt: "10:29 AM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.704,
-        fuelEconomy: 44.41,
-        cost: 0.061,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 3.67,
-        total: "R23.44",
-      },
-      {
-        date: "07/24/2025",
-        occurredAt: "9:36 AM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.459,
-        fuelEconomy: 57.08,
-        cost: 0.043,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 568,
-        total: "R18.61",
-      },
-      {
-        date: "07/18/2025",
-        occurredAt: "7:08 AM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.423,
-        fuelEconomy: 47.54,
-        cost: 0.051,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 477,
-        total: "R20.54",
-      },
-      {
-        date: "07/14/2025",
-        occurredAt: "11:49 AM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.499,
-        fuelEconomy: 55.98,
-        cost: 0.045,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 1075,
-        total: "R20.18",
-      },
-      {
-        date: "07/11/2025",
-        occurredAt: "10:43 AM",
-        fuelType: "Petrol",
-        pricePerGallon: 2.499,
-        fuelEconomy: 0,
-        cost: 0,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 884,
-        total: "R22.20",
-      },
-    ],
-  },
-  {
-    vehicle: "2100 [2016 Ford F-150]",
-    entries: [
-      {
-        date: "08/03/2025",
-        occurredAt: "12:27 PM",
-        fuelType: "Diesel",
-        pricePerGallon: 2.419,
-        fuelEconomy: 13.45,
-        cost: 0.18,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 1113,
-        total: "R46.23",
-      },
-      {
-        date: "08/01/2025",
-        occurredAt: "4:48 AM",
-        fuelType: "Diesel",
-        pricePerGallon: 2.494,
-        fuelEconomy: 14.81,
-        cost: 0.168,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 1371,
-        total: "R45.82",
-      },
-      {
-        date: "07/29/2025",
-        occurredAt: "12:27 PM",
-        fuelType: "Diesel",
-        pricePerGallon: 2.426,
-        fuelEconomy: 10.64,
-        cost: 0.228,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 954,
-        total: "R50.83",
-      },
-      {
-        date: "07/26/2025",
-        occurredAt: "3:49 AM",
-        fuelType: "Diesel",
-        pricePerGallon: 2.714,
-        fuelEconomy: 14.62,
-        cost: 0.186,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 1099,
-        total: "R46.41",
-      },
-      {
-        date: "07/24/2025",
-        occurredAt: "11:35 AM",
-        fuelType: "Diesel",
-        pricePerGallon: 2.954,
-        fuelEconomy: 11.47,
-        cost: 0.258,
-        partial: false,
-        reset: false,
-        reference: "",
-        litres: 19096,
-        total: "R56.41",
-      },
-    ],
-  },
-]
-
-const columnOptions = [
-  { id: "date", label: "Date", checked: true },
-  { id: "occurredAt", label: "Occurred at", checked: true },
-  { id: "createdDate", label: "Created Date", checked: false },
-  { id: "updatedAt", label: "Updated At", checked: false },
-  { id: "vendor", label: "Vendor", checked: false },
-  { id: "vendorRegion", label: "Vendor region", checked: false },
-  { id: "odometer", label: "Odometer", checked: false },
-  { id: "void", label: "Void", checked: false },
-  { id: "usage", label: "Usage", checked: false },
-  { id: "fuelType", label: "Fuel Type", checked: true },
-  { id: "pricePerGallon", label: "Price/litre", checked: true },
-  { id: "fuelEconomy", label: "Fuel Economy", checked: true },
-  { id: "cost", label: "Cost", checked: true },
-  { id: "partial", label: "Partial", checked: true },
-  { id: "reset", label: "Reset", checked: true },
-  { id: "reference", label: "Reference", checked: true },
-  { id: "vehicleExceptionAlert", label: "Vehicle Exception Alert", checked: false },
-  { id: "litres", label: "litres", checked: true },
-  { id: "total", label: "Total", checked: true },
-]
-
-export default function ReportDetailPage() {
+export default function VehicleReportDetailPage() {
   const params = useParams()
-  const [userRole, setUserRole] = useState<"call-center" | "fleet-manager" | "cost-center" | "customer" | "admin">(
-    "fleet-manager",
-  )
-  const [showColumnSelector, setShowColumnSelector] = useState(false)
-  const [columns, setColumns] = useState(columnOptions)
+  const [vehicles, setVehicles] = useState<any[]>([])
+  const [maintenance, setMaintenance] = useState<any[]>([])
+  const [filteredData, setFilteredData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(20)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [activeTab, setActiveTab] = useState("fleet")
+  const itemsPerPage = 15
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole") as typeof userRole
-    if (role) setUserRole(role)
+    async function loadData() {
+      try {
+        const [vehicleData, maintenanceData] = await Promise.all([
+          getVehicleReports(),
+          getMaintenanceHistoryReports()
+        ])
+        setVehicles(vehicleData)
+        setMaintenance(maintenanceData)
+        setFilteredData(vehicleData)
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
   }, [])
 
-  const getReportTitle = () => {
-    const slug = params.slug as string
-    return slug
-      .split("-")
-      .map((word) => word.toUpperCase() + word.slice(1))
-      .join(" ")
-  }
+  useEffect(() => {
+    let filtered = activeTab === "fleet" ? vehicles : maintenance
+    
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.registration_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.vin_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.site?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+    
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(item => item.status === statusFilter)
+    }
+    
+    setFilteredData(filtered)
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, vehicles, maintenance, activeTab])
 
-  const handleColumnToggle = (columnId: string) => {
-    setColumns(columns.map((col) => (col.id === columnId ? { ...col, checked: !col.checked } : col)))
-  }
-
-  const visibleColumns = columns.filter((col) => col.checked)
-  const totalEntries = mockFuelData.reduce((total, vehicle) => total + vehicle.entries.length, 0)
   const startItem = (currentPage - 1) * itemsPerPage + 1
-  const endItem = Math.min(currentPage * itemsPerPage, totalEntries)
+  const endItem = Math.min(currentPage * itemsPerPage, filteredData.length)
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handleExportCSV = () => {
+    exportToCSV(filteredData, `vehicles_${activeTab}_report`)
+  }
+
+  const handleExportPDF = () => {
+    exportToPDF(filteredData, `Vehicle ${activeTab.toUpperCase()} Report`)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'active': return 'bg-green-100 text-green-800'
+      case 'maintenance': return 'bg-yellow-100 text-yellow-800'
+      case 'inactive': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const safeParseFloat = (value: any): number => {
+    const parsed = parseFloat(value || '0')
+    return isNaN(parsed) ? 0 : parsed
+  }
+
+  const safeParseInt = (value: any): number => {
+    const parsed = parseInt(value || '0')
+    return isNaN(parsed) ? 0 : parsed
+  }
+
+  const stats = {
+    totalVehicles: vehicles.length,
+    activeVehicles: vehicles.filter(v => v.status === 'active').length,
+    maintenanceRecords: maintenance.length,
+    totalValue: vehicles.reduce((sum, v) => sum + safeParseFloat(v.purchase_price), 0),
+    avgAge: vehicles.length > 0 ? 
+      Math.round(vehicles.reduce((sum, v) => sum + (new Date().getFullYear() - safeParseInt(v.manufactured_year)), 0) / vehicles.length) : 0,
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <div className="flex items-center gap-2 flex-1">
+            <Link href="/reports" className="text-blue-600 hover:underline">Reports</Link>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-medium">Vehicle Fleet Management</span>
+          </div>
+        </header>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-        <div className="flex h-full flex-col">
-          {/* Header */}
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <div className="flex items-center gap-2 flex-1">
-              <Link href="/reports" className="text-blue-600 hover:underline">
-                Reports
-              </Link>
-              <span className="text-muted-foreground">/</span>
-              <span className="font-medium">{getReportTitle()} Report</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </Button>
-              <Button variant="outline" size="sm">
-                <Share className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button variant="outline" size="sm">
-                <Print className="h-4 w-4 mr-2" />
-                Print
-              </Button>
-            </div>
-          </header>
-
-          <div className="flex flex-1 overflow-hidden">
-            {/* Main Content */}
-            <div className="flex-1 p-4">
-              <div className="space-y-4">
-                {/* Filters */}
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
-                  <Badge variant="secondary" className="gap-1">
-                    1 filter applied
-                    <X className="h-3 w-3" />
-                  </Badge>
-                  <Button variant="ghost" size="sm" className="text-blue-600">
-                    Clear all
-                  </Button>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {startItem}-{endItem} of {totalEntries}
-                    </span>
-                    <Button variant="outline" size="sm" disabled={currentPage === 1}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Data Table */}
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left p-3 font-medium">Vehicle ▲</th>
-                          {visibleColumns.map((col) => (
-                            <th key={col.id} className="text-left p-3 font-medium">
-                              {col.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mockFuelData.map((vehicle, vehicleIndex) => (
-                          <>
-                            <tr key={`vehicle-${vehicleIndex}`} className="border-t">
-                              <td colSpan={visibleColumns.length + 1} className="p-3 bg-blue-50">
-                                <span className="font-medium text-blue-600">{vehicle.vehicle}</span>
-                              </td>
-                            </tr>
-                            {vehicle.entries.map((entry, entryIndex) => (
-                              <tr key={`entry-${vehicleIndex}-${entryIndex}`} className="border-t hover:bg-muted/25">
-                                <td className="p-3"></td>
-                                {visibleColumns.map((col) => (
-                                  <td key={col.id} className="p-3 text-sm">
-                                    {col.id === "date" && entry.date}
-                                    {col.id === "occurredAt" && entry.occurredAt}
-                                    {col.id === "fuelType" && entry.fuelType}
-                                    {col.id === "pricePerGallon" && entry.pricePerGallon}
-                                    {col.id === "fuelEconomy" && entry.fuelEconomy}
-                                    {col.id === "cost" && entry.cost}
-                                    {col.id === "partial" && (entry.partial ? "Yes" : "")}
-                                    {col.id === "reset" && (entry.reset ? "Yes" : "")}
-                                    {col.id === "reference" && entry.reference}
-                                    {col.id === "litres" && entry.litres}
-                                    {col.id === "total" && entry.total}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Sidebar - Column Selector */}
-            <div className="w-80 border-l bg-muted/20 p-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Columns</h3>
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Meter Units</div>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="estimated-resale" />
-                      <label htmlFor="estimated-resale" className="text-sm">
-                        Estimated Resale Value
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="out-of-service-date" />
-                      <label htmlFor="out-of-service-date" className="text-sm">
-                        Out-of-Service Date
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="out-of-service-meter" />
-                      <label htmlFor="out-of-service-meter" className="text-sm">
-                        Out-of-Service Meter
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">FUEL ENTRY</div>
-                  <Button variant="ghost" size="sm" className="text-blue-600 p-0 h-auto">
-                    Hide All
-                  </Button>
-                  <ScrollArea className="h-64">
-                    <div className="space-y-2">
-                      {columns.map((column) => (
-                        <div key={column.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={column.id}
-                            checked={column.checked}
-                            onCheckedChange={() => handleColumnToggle(column.id)}
-                          />
-                          <label htmlFor={column.id} className="text-sm">
-                            {column.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="flex h-full flex-col bg-gray-50">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-white px-4 shadow-sm">
+        <div className="flex items-center gap-2 flex-1">
+          <Link href="/reports" className="text-blue-600 hover:underline font-medium">Reports</Link>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-semibold text-gray-900">Vehicle Fleet Management</span>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+            <Download className="h-4 w-4 mr-2" />Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
+            <Print className="h-4 w-4 mr-2" />Print PDF
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex-1 p-6 space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Car className="h-4 w-4 mr-2" />Total Vehicles
+              </CardTitle>
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{stats.totalVehicles}</div></CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center">
+                <TrendingUp className="h-4 w-4 mr-2" />Active
+              </CardTitle>
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{stats.activeVehicles}</div></CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Wrench className="h-4 w-4 mr-2" />Maintenance
+              </CardTitle>
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{stats.maintenanceRecords}</div></CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Settings className="h-4 w-4 mr-2" />Fleet Value
+              </CardTitle>
+            </CardHeader>
+            <CardContent><div className="text-xl font-bold">R{(stats.totalValue/1000000).toFixed(1)}M</div></CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />Avg Age
+              </CardTitle>
+            </CardHeader>
+            <CardContent><div className="text-2xl font-bold">{stats.avgAge}y</div></CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <Card>
+          <CardHeader>
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab("fleet")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "fleet" 
+                    ? "bg-white text-blue-600 shadow-sm" 
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <BarChart3 className="h-4 w-4 inline mr-2" />Fleet Report
+              </button>
+              <button
+                onClick={() => setActiveTab("maintenance")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "maintenance" 
+                    ? "bg-white text-blue-600 shadow-sm" 
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Wrench className="h-4 w-4 inline mr-2" />Maintenance History
+              </button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search by registration, make, model, VIN, or site..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-600 mt-4">
+              <span>Showing {startItem}-{endItem} of {filteredData.length} records</span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded">
+                  {currentPage} / {Math.ceil(filteredData.length / itemsPerPage)}
+                </span>
+                <Button variant="outline" size="sm" disabled={endItem >= filteredData.length} onClick={() => setCurrentPage(currentPage + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Table */}
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  {activeTab === "fleet" ? (
+                    <>
+                      <th className="text-left p-3 font-semibold">Registration</th>
+                      <th className="text-left p-3 font-semibold">Vehicle</th>
+                      <th className="text-left p-3 font-semibold">Year</th>
+                      <th className="text-left p-3 font-semibold">VIN</th>
+                      <th className="text-left p-3 font-semibold">Site</th>
+                      <th className="text-left p-3 font-semibold">Status</th>
+                      <th className="text-left p-3 font-semibold">Purchase Price</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-left p-3 font-semibold">Vehicle</th>
+                      <th className="text-left p-3 font-semibold">Maintenance Type</th>
+                      <th className="text-left p-3 font-semibold">Description</th>
+                      <th className="text-left p-3 font-semibold">Cost</th>
+                      <th className="text-left p-3 font-semibold">Completed Date</th>
+                      <th className="text-left p-3 font-semibold">Job Card ID</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedData.map((item) => (
+                  <tr key={item.id} className="border-t hover:bg-blue-50">
+                    {activeTab === "fleet" ? (
+                      <>
+                        <td className="p-3 font-medium text-blue-600">{item.registration_number || '-'}</td>
+                        <td className="p-3">
+                          <div>
+                            <div className="font-medium">{`${item.make || ''} ${item.model || ''}`.trim() || '-'}</div>
+                            <div className="text-sm text-gray-500">{item.sub_model || ''}</div>
+                          </div>
+                        </td>
+                        <td className="p-3">{item.manufactured_year || '-'}</td>
+                        <td className="p-3 text-sm font-mono">{item.vin_number || '-'}</td>
+                        <td className="p-3">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1 text-gray-400" />
+                            <span className="text-sm">{item.site || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge className={getStatusColor(item.status)}>
+                            {item.status || 'Unknown'}
+                          </Badge>
+                        </td>
+                        <td className="p-3 font-medium text-green-600">
+                          {item.purchase_price ? `R${parseFloat(item.purchase_price).toLocaleString()}` : '-'}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="p-3">
+                          <div>
+                            <div className="font-medium">{item.vehiclesc_workshop?.registration_number || '-'}</div>
+                            <div className="text-sm text-gray-500">
+                              {`${item.vehiclesc_workshop?.make || ''} ${item.vehiclesc_workshop?.model || ''}`.trim() || '-'}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline">{item.maintenance_type || '-'}</Badge>
+                        </td>
+                        <td className="p-3 max-w-xs truncate">{item.description || '-'}</td>
+                        <td className="p-3 font-medium text-green-600">
+                          {item.cost ? `R${parseFloat(item.cost).toLocaleString()}` : '-'}
+                        </td>
+                        <td className="p-3 text-sm">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                            {item.completed_date ? new Date(item.completed_date).toLocaleDateString() : '-'}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">{item.job_card_id || '-'}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {filteredData.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-6xl mb-4">🚗</div>
+              <h3 className="text-lg font-medium mb-2">No data found</h3>
+              <p className="text-muted-foreground">Try adjusting your search criteria or filters.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
   )
 }

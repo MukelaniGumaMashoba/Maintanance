@@ -86,7 +86,7 @@ const roleNavigation: Record<string, NavItem[]> = {
       href: "/reports",
       Icon: DockIcon,
       hasSubMenu: true,
-      subMenu: [], // This is now valid
+      subMenu: [],
     },
   ],
 
