@@ -165,16 +165,40 @@ export default function InventoryPage() {
         console.error('Error fetching workshop job parts:', partsError);
       }
 
+      // const partsByJob = new Map();
+      // (partsData || []).forEach((p) => {
+      //   const jobId = p.job_id;
+      //   if (jobId == null) return;
+      //   const arr = [];
+      //   if (Array.isArray(p.job_parts)) arr.push(...p.job_parts);
+      //   if (Array.isArray(p.given_parts)) arr.push(...p.given_parts);
+      //   if (!partsByJob.has(jobId)) partsByJob.set(jobId, []);
+      //   partsByJob.get(jobId).push(...arr);
+      // });
+
       const partsByJob = new Map();
       (partsData || []).forEach((p) => {
         const jobId = p.job_id;
         if (jobId == null) return;
+
         const arr = [];
-        if (Array.isArray(p.job_parts)) arr.push(...p.job_parts);
-        if (Array.isArray(p.given_parts)) arr.push(...p.given_parts);
+
+        if (Array.isArray(p.job_parts)) {
+          arr.push(
+            ...p.job_parts.map((part) =>
+              typeof part === 'string' ? { description: part, quantity: 1 } : part
+            )
+          );
+        }
+
+        if (Array.isArray(p.given_parts)) {
+          arr.push(...p.given_parts);
+        }
+
         if (!partsByJob.has(jobId)) partsByJob.set(jobId, []);
         partsByJob.get(jobId).push(...arr);
       });
+
 
       const jobsWithParts = (jobsData || []).map((job) => ({
         ...job,
@@ -686,7 +710,6 @@ export default function InventoryPage() {
                           p.description?.toLowerCase().includes(searchValue.toLowerCase()) ||
                           p.item_code?.toLowerCase().includes(searchValue.toLowerCase())
                         );
-                        // Show matching parts dropdown here
                       }
                     }}
                   />

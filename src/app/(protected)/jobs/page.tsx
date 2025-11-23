@@ -45,6 +45,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { stat } from "fs";
 
 interface Job {
   id: number;
@@ -62,6 +63,7 @@ interface Job {
   estimated_cost: number;
   actual_cost: number;
   vehicle_id: number;
+  technician: boolean;
 }
 
 interface CreateJobForm {
@@ -148,10 +150,13 @@ export default function JobsPage() {
       });
     }
 
-    // Apply status filter
-    if (statusFilter && statusFilter !== "all") {
+    // Apply status filter (special cases first)
+    if (statusFilter === "requires-technician") {
+      // treat any job where technician !== true as "needs technician"
+      filtered = filtered.filter((job) => job.technician !== true);
+    } else if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(
-        (job) => job.status?.toLowerCase() === statusFilter.toLowerCase()
+        (job) => (job.status || "").toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
@@ -287,10 +292,21 @@ export default function JobsPage() {
       job_id: selectedJobId,
     });
 
+    // Determine the new status based on the current job status
+    const job = jobs.find((j) => j.id === selectedJobId);
+    const newStatus =
+      job?.status?.toLowerCase() === "awaiting approval"
+        ? "Awaiting Approval"
+        : "Part Ordered";
+
+    const approvedStatus =
+      job?.status.toLocaleLowerCase() === "awaiting approval" ? false : true;
+
     const { data, error: partError } = await supabase
       .from("workshop_job")
       .update({
-        status: "Part Ordered",
+        status: newStatus,
+        approved: approvedStatus,
       })
       .eq("id", selectedJobId);
 
@@ -369,12 +385,14 @@ export default function JobsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="Awaiting Approval">Pending</SelectItem>
+              <SelectItem value="requires-technician">
+                Requires Technicians
+              </SelectItem>
+              <SelectItem value="Awaiting Approval">
+                Pending Approval
+              </SelectItem>
               <SelectItem value="Part Assigned">Part Assigned</SelectItem>
               <SelectItem value="Part Ordered">In Progress</SelectItem>
-              <SelectItem value="awaiting-approval">
-                Awaiting Approval
-              </SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="Rejected">Rejected</SelectItem>
@@ -669,6 +687,16 @@ export default function JobsPage() {
                   <p className="text-sm text-gray-600">Description</p>
                   <p className="text-sm">{job.description}</p>
                 </div>
+
+                {!job.technician && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <p className="text-sm font-medium text-red-700">
+                      Technician needs to be assigned to this job
+                    </p>
+                  </div>
+                )}
+                <div></div>
               </CardContent>
             </Card>
           ))

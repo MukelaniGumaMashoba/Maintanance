@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search } from "lucide-react";
+import { AlertCircle, Plus, Search } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -38,6 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { Alert } from "@/components/ui/alert";
 
 // NOTE: This file is self-contained for convenience. It uploads files to
 // the Supabase storage *bucket* named `files` and places them under:
@@ -271,7 +272,9 @@ export default function Drivers() {
         if (error) throw error;
         toast.success("Driver updated");
       } else {
-        const { error } = await supabase.from("drivers").insert(payload as any);
+        const { error } = await supabase
+          .from("drivers_klaver")
+          .insert(payload as any);
 
         if (error) throw error;
         toast.success("Driver added");
@@ -422,17 +425,20 @@ export default function Drivers() {
                     <Label htmlFor="id_or_passport_document">
                       ID/Passport Document
                     </Label>
-                    <Input
-                      id="id_or_passport_document"
+                    <Select
                       value={formData.id_or_passport_document ?? ""}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "id_or_passport_document",
-                          e.target.value
-                        )
+                      onValueChange={(v: string) =>
+                        handleInputChange("id_or_passport_document", v)
                       }
-                      placeholder="Optional"
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="id">ID</SelectItem>
+                        <SelectItem value="passport">Passport</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -931,6 +937,20 @@ export default function Drivers() {
                           </p>
                           <p className="text-sm text-gray-600">
                             Expires: {formatDate(driver.license_expiry_date)}
+                            {
+                              // show this is about to expire within 30 days
+                              driver.license_expiry_date &&
+                                new Date(driver.license_expiry_date) <=
+                                  new Date(
+                                    new Date().setDate(
+                                      new Date().getDate() + 30
+                                    )
+                                  ) &&
+                                new Date(driver.license_expiry_date) >
+                                  new Date() && (
+                                  <AlertCircle className="inline-block ml-1 text-orange-500 w-4 h-4 animate-bounce" />
+                                )
+                            }
                           </p>
                         </div>
                       </TableCell>

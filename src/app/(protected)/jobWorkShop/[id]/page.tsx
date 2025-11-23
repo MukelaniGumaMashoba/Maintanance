@@ -176,6 +176,7 @@ export default function WorkshopJobDetailPage() {
       .update({
         status: status,
         updated_at: new Date().toISOString(),
+        approved : true,
       })
       .eq("id", jobId);
 

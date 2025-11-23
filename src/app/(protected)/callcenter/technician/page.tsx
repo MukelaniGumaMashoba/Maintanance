@@ -1402,7 +1402,7 @@ export default function TechniciansPage() {
                               Assigned Jobs to {technician.name}
                             </DialogTitle>
                             <DialogDescription>
-                              View all jobs to assigned to this technician
+                              View all jobs assigned to this technician.
                             </DialogDescription>
                           </DialogHeader>
                           {/* Job search input */}

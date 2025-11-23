@@ -429,37 +429,7 @@ export default function WorkshopJobDetailPage() {
             </div>
           )}
 
-          {/* Parts Section */}
-          {/* {parts.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2 text-base">
-                Parts Required
-              </h4>
-              <ul className="space-y-2 max-h-48 overflow-auto border border-gray-200 bg-gray-50 p-3 rounded-lg">
-                {parts.map((part, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
-                  >
-                    <span className="text-sm text-gray-800">
-                      {typeof part.job_parts === "string"
-                        ? part.job_parts
-                        : typeof part.given_parts === "string"
-                        ? part.given_parts
-                        : Array.isArray(part.job_parts)
-                        ? part.job_parts.join(", ")
-                        : Array.isArray(part.given_parts)
-                        ? part.given_parts.join(", ")
-                        : part.part_name || part.description || "Unknown part"}
-                    </span>
-                    <span className="text-xs text-gray-500 italic">
-                      {`Part #${index + 1}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )} */}
+         
           {/* Parts Section */}
           {parts && parts.length > 0 ? (
             (() => {
@@ -572,7 +542,7 @@ export default function WorkshopJobDetailPage() {
                 Change Technician
               </Button>
             </div>
-          ) : job.status !== "Awaiting approval" ? (
+          ) : job.status.toLocaleLowerCase() !== "awaiting approval" ? (
             <Button
               size="sm"
               onClick={() => {

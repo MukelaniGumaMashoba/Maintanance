@@ -261,7 +261,7 @@ export default function CallCenterPage() {
           <TabsList>
             {/* <TabsTrigger value="active">Breakdowns</TabsTrigger> */}
             <TabsTrigger value="technicians">Technicians</TabsTrigger>
-            <TabsTrigger value="map">Map View</TabsTrigger>
+            {/* <TabsTrigger value="map">Map View</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">

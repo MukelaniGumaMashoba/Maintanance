@@ -305,8 +305,14 @@ export default function FleetJobsPage() {
       });
     }
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((job) => job.status === statusFilter);
+    // Apply status filter. Special-case "requires-technician" (not a status column)
+    if (statusFilter === "requires-technician") {
+      // Any job where technician !== true needs a technician (covers false/null/undefined)
+      filtered = filtered.filter((job) => (job as any).technician !== true);
+    } else if (statusFilter && statusFilter !== "all") {
+      filtered = filtered.filter(
+        (job) => (job.status || "").toLowerCase() === statusFilter.toLowerCase()
+      );
     }
 
     // workshop_job may or may not have a priority field; check defensively
@@ -664,13 +670,12 @@ export default function FleetJobsPage() {
                 <SelectItem value="Awaiting Approval">Pending</SelectItem>
                 <SelectItem value="Part Assigned">Part Assigned</SelectItem>
                 <SelectItem value="Part Ordered">In Progress</SelectItem>
-                <SelectItem value="awaiting-approval">
-                  Awaiting Approval
-                </SelectItem>
+                <SelectItem value="awaiting-approval">Awaiting Approval</SelectItem>
                 <SelectItem value="Approved">Approved</SelectItem>
                 <SelectItem value="Completed">Completed</SelectItem>
                 <SelectItem value="Rejected">Rejected</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="requires-technician">Requires Technicians</SelectItem>
               </SelectContent>
             </Select>
           </div>

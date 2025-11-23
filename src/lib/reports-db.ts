@@ -12,13 +12,13 @@ const fallbackData = {
 // Vehicle Reports
 export async function getVehicleReports() {
   const supabase = createClient()
-  
+
   try {
     const { data: vehicles, error } = await supabase
       .from('vehiclesc_workshop')
       .select('*')
       .order('id', { ascending: false })
-    
+
     if (error) {
       console.error('Vehicle reports error:', error)
       return fallbackData.vehicles
@@ -33,15 +33,14 @@ export async function getVehicleReports() {
 // Vehicle Maintenance History
 export async function getMaintenanceHistoryReports() {
   const supabase = createClient()
-  
+
   const { data: maintenance, error } = await supabase
-    .from('vehicle_maintenance_history')
+    .from('workshop_job')
     .select(`
-      *,
-      vehiclesc_workshop!vehicle_maintenance_history_vehicle_id_fkey(registration_number, make, model)
+      *
     `)
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Maintenance history error:', error)
     return []
@@ -52,13 +51,13 @@ export async function getMaintenanceHistoryReports() {
 // Workshop Reports
 export async function getWorkshopReports() {
   const supabase = createClient()
-  
+
   try {
     const { data: workshops, error } = await supabase
       .from('workshop_klaver')
       .select('*')
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       console.error('Workshop reports error:', error)
       return []
@@ -73,12 +72,12 @@ export async function getWorkshopReports() {
 // Workshop Jobs
 export async function getWorkshopJobReports() {
   const supabase = createClient()
-  
+
   const { data: jobs, error } = await supabase
     .from('workshop_job')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Workshop job reports error:', error)
     return []
@@ -89,7 +88,7 @@ export async function getWorkshopJobReports() {
 // Workshop Job Parts with full job card info
 export async function getWorkshopJobParts() {
   const supabase = createClient()
-  
+
   const { data: jobParts, error } = await supabase
     .from('workshop_jobpart')
     .select(`
@@ -100,7 +99,7 @@ export async function getWorkshopJobParts() {
       )
     `)
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Workshop job parts error:', error)
     return []
@@ -111,13 +110,13 @@ export async function getWorkshopJobParts() {
 // Workshop Assignments
 export async function getWorkshopAssignments() {
   const supabase = createClient()
-  
+
   try {
     const { data: assignments, error } = await supabase
       .from('workshop_assignments')
       .select('*')
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       console.error('Workshop assignments error:', error)
       return []
@@ -132,13 +131,13 @@ export async function getWorkshopAssignments() {
 // Workshop Breakdowns
 export async function getWorkshopBreakdowns() {
   const supabase = createClient()
-  
+
   try {
     const { data: breakdowns, error } = await supabase
       .from('workshop_breakdown')
       .select('*')
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       console.error('Workshop breakdowns error:', error)
       return []
@@ -153,12 +152,12 @@ export async function getWorkshopBreakdowns() {
 // Technicians
 export async function getTechnicianReports() {
   const supabase = createClient()
-  
+
   const { data: technicians, error } = await supabase
     .from('technicians_klaver')
     .select('*')
     .order('join_date', { ascending: false })
-  
+
   if (error) {
     console.error('Technician reports error:', error)
     return []
@@ -169,7 +168,7 @@ export async function getTechnicianReports() {
 // Technician Vehicle Assignments
 export async function getTechnicianAssignments() {
   const supabase = createClient()
-  
+
   const { data: assignments, error } = await supabase
     .from('technician_vassign')
     .select(`
@@ -178,7 +177,7 @@ export async function getTechnicianAssignments() {
       vehiclesc_workshop!technician_vassign_vehicle_id_fkey(registration_number, make, model)
     `)
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Technician assignments error:', error)
     return []
@@ -189,12 +188,12 @@ export async function getTechnicianAssignments() {
 // Drivers
 export async function getDriverReports() {
   const supabase = createClient()
-  
+
   const { data: drivers, error } = await supabase
     .from('drivers_klaver')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Driver reports error:', error)
     return []
@@ -205,7 +204,7 @@ export async function getDriverReports() {
 // Parts with enhanced tracking
 export async function getPartsReports() {
   const supabase = createClient()
-  
+
   const { data: parts, error } = await supabase
     .from('parts')
     .select(`
@@ -214,7 +213,7 @@ export async function getPartsReports() {
       vehicle_brands!parts_vehicle_brand_id_fkey(name)
     `)
     .order('id', { ascending: false })
-  
+
   if (error) {
     console.error('Parts reports error:', error)
     return []
@@ -225,7 +224,7 @@ export async function getPartsReports() {
 // Enhanced Parts Usage with Job Card Details
 export async function getPartsUsageWithJobCards() {
   const supabase = createClient()
-  
+
   const { data: usage, error } = await supabase
     .from('inventory_logs')
     .select(`
@@ -233,7 +232,7 @@ export async function getPartsUsageWithJobCards() {
       parts!inventory_logs_part_id_fkey(item_code, description, category_id, vehicle_brand_id)
     `)
     .order('timestamp', { ascending: false })
-  
+
   if (error) {
     console.error('Parts usage error:', error)
     return []
@@ -244,12 +243,12 @@ export async function getPartsUsageWithJobCards() {
 // Stock Reports
 export async function getStockReports() {
   const supabase = createClient()
-  
+
   const { data: stock, error } = await supabase
     .from('stock')
     .select('*')
     .order('id', { ascending: false })
-  
+
   if (error) {
     console.error('Stock reports error:', error)
     return []
@@ -260,12 +259,12 @@ export async function getStockReports() {
 // Stock Orders
 export async function getStockOrderReports() {
   const supabase = createClient()
-  
+
   const { data: orders, error } = await supabase
     .from('stock_orders')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Stock order reports error:', error)
     return []
@@ -276,18 +275,40 @@ export async function getStockOrderReports() {
 // Parts Orders
 export async function getPartsOrderReports() {
   const supabase = createClient()
-  
+
   try {
     const { data: orders, error } = await supabase
       .from('parts_orders')
       .select('*')
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       console.error('Parts order reports error:', error)
       return []
     }
-    return orders || []
+
+    const { data: suppliers, error: suppliersError } = await supabase
+      .from('suppliers')
+      .select('*')
+      .in("id", orders?.map(o => o.supplier_id))
+
+
+    if (suppliersError) {
+      console.error('Suppliers fetch error:', suppliersError)
+      return orders || []
+    }
+
+    const combinedOrders = orders?.map(order => {
+      const supplier = suppliers?.find(s => s.id === order.supplier_id)
+      return {
+        ...order,
+        supplier_name: supplier ? supplier.name : 'Unknown Supplier',
+        supplier_contact: supplier ? supplier.contact_person : 'N/A',
+        supplier_phone: supplier ? supplier.phone : 'N/A'
+      }
+    })
+
+    return combinedOrders || []
   } catch (error) {
     console.error('Parts order reports error:', error)
     return []
@@ -297,12 +318,12 @@ export async function getPartsOrderReports() {
 // Quotations
 export async function getQuotationReports() {
   const supabase = createClient()
-  
+
   const { data: quotations, error } = await supabase
     .from('quotations_klaver')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Quotation reports error:', error)
     return []
@@ -313,12 +334,12 @@ export async function getQuotationReports() {
 // Quote Products
 export async function getQuoteProductReports() {
   const supabase = createClient()
-  
+
   const { data: products, error } = await supabase
     .from('quote_products')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Quote product reports error:', error)
     return []
@@ -329,12 +350,12 @@ export async function getQuoteProductReports() {
 // Suppliers
 export async function getSupplierReports() {
   const supabase = createClient()
-  
+
   const { data: suppliers, error } = await supabase
     .from('suppliers')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Supplier reports error:', error)
     return []
@@ -345,12 +366,12 @@ export async function getSupplierReports() {
 // Job Allocations
 export async function getJobAllocations() {
   const supabase = createClient()
-  
+
   const { data: allocations, error } = await supabase
     .from('job_allocations')
     .select('*')
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Job allocations error:', error)
     return []
@@ -361,7 +382,7 @@ export async function getJobAllocations() {
 // Sublets
 export async function getSubletReports() {
   const supabase = createClient()
-  
+
   const { data: sublets, error } = await supabase
     .from('sublets')
     .select(`
@@ -369,7 +390,7 @@ export async function getSubletReports() {
       suppliers!sublets_supplier_id_fkey(name, contact_person, phone)
     `)
     .order('created_at', { ascending: false })
-  
+
   if (error) {
     console.error('Sublet reports error:', error)
     return []
@@ -380,7 +401,7 @@ export async function getSubletReports() {
 // Enhanced Part Assignment History with Job Card Details
 export async function getPartAssignmentHistory(partId: number) {
   const supabase = createClient()
-  
+
   // Get inventory logs for this part
   const { data: logs, error: logsError } = await supabase
     .from('inventory_logs')
@@ -390,27 +411,50 @@ export async function getPartAssignmentHistory(partId: number) {
     `)
     .eq('part_id', partId)
     .order('timestamp', { ascending: false })
-  
+
   // Get workshop job parts that reference this part in job_parts JSON
-  const { data: jobParts, error: jobPartsError } = await supabase
-    .from('workshop_jobpart')
-    .select(`
-      *,
-      workshop_job!workshop_jobpart_job_id_fkey(
-        id, registration_no, client_name, job_type, status, 
-        estimated_cost, actual_cost, created_at, technician_name,
-        completion_date, description
-      )
-    `)
-    .order('created_at', { ascending: false })
+    const { data: jobParts, error: jobPartsError } = await supabase
+      .from('workshop_jobpart')
+      .select('*')
+      .order('created_at', { ascending: false })
   
+    // Fetch corresponding jobs only if we have job IDs from jobParts
+    let jobs: any[] = []
+    let jobsError: any = null
+  
+    if (jobPartsError) {
+      console.error('Workshop job parts error:', jobPartsError)
+    } else if (jobParts && jobParts.length) {
+      const jobIds = jobParts.map((jp: any) => jp.job_id).filter(Boolean)
+  
+      if (jobIds.length) {
+        const jobsRes = await supabase
+          .from('workshop_job')
+          .select(`
+            id, registration_no, client_name, job_type, status, 
+            estimated_cost, actual_cost, created_at, technician_name
+          `)
+          .order('created_at', { ascending: false })
+          .in('id', jobIds)
+  
+        jobs = jobsRes.data || []
+        jobsError = jobsRes.error
+  
+        if (jobsError) {
+          console.error('Jobs fetch error:', jobsError)
+        }
+      }
+    }
+
+  // Map job details into jobParts    
+
   if (logsError) {
     console.error('Part assignment history error:', logsError)
     return { logs: [], jobParts: [] }
   }
-  
-  return { 
-    logs: logs || [], 
+
+  return {
+    logs: logs || [],
     jobParts: (jobParts || []).filter(jp => {
       // Filter job parts that contain this part ID in their JSON data
       const jobPartsData = jp.job_parts
@@ -425,11 +469,11 @@ export async function getPartAssignmentHistory(partId: number) {
 // Export utilities
 export function exportToCSV(data: any[], filename: string) {
   if (!data.length) return
-  
+
   const headers = Object.keys(data[0])
   const csvContent = [
     headers.join(','),
-    ...data.map(row => 
+    ...data.map(row =>
       headers.map(header => {
         const value = row[header]
         if (value === null || value === undefined) return ''
@@ -438,7 +482,7 @@ export function exportToCSV(data: any[], filename: string) {
       }).join(',')
     )
   ].join('\n')
-  
+
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -451,7 +495,7 @@ export function exportToCSV(data: any[], filename: string) {
 export function exportToPDF(data: any[], title: string) {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
-  
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -480,18 +524,18 @@ export function exportToPDF(data: any[], title: string) {
           </tr>
         </thead>
         <tbody>
-          ${data.map(row => 
-            `<tr>${Object.values(row).map(value => 
-              `<td>${value === null || value === undefined ? '-' : 
-                typeof value === 'object' ? JSON.stringify(value) : value}</td>`
-            ).join('')}</tr>`
-          ).join('')}
+          ${data.map(row =>
+    `<tr>${Object.values(row).map(value =>
+      `<td>${value === null || value === undefined ? '-' :
+        typeof value === 'object' ? JSON.stringify(value) : value}</td>`
+    ).join('')}</tr>`
+  ).join('')}
         </tbody>
       </table>
     </body>
     </html>
   `
-  
+
   printWindow.document.write(html)
   printWindow.document.close()
   printWindow.print()

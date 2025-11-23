@@ -17,6 +17,7 @@ import {
   Star,
   MapPin,
   Car,
+  User2Icon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -333,7 +334,7 @@ export default function PersonnelReportDetailPage() {
                   <tr key={item.id} className="border-t hover:bg-purple-50">
                     {activeTab === "technicians" && (
                       <>
-                        <td className="p-3 font-medium text-purple-600">{item.name || '-'}</td>
+                        <td className="p-3 font-medium text-purple-600"> <User2Icon color="grey" size={16} />  {item.name || '-'}</td>
                         <td className="p-3">
                           <div className="space-y-1">
                             <div className="flex items-center text-sm">
@@ -376,7 +377,7 @@ export default function PersonnelReportDetailPage() {
                     {activeTab === "drivers" && (
                       <>
                         <td className="p-3 font-medium text-purple-600">
-                          {`${item.first_name || ''} ${item.surname || ''}`.trim() || '-'}
+                          <User2Icon color="grey" size={16} /> {`${item.first_name || ''} ${item.surname || ''}`.trim() || '-'}
                         </td>
                         <td className="p-3">
                           <div className="space-y-1">

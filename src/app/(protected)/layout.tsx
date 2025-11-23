@@ -47,7 +47,6 @@ import {
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
-
 interface ProtectedLayoutProps {
   children: React.ReactNode;
   role: "call centre" | "fleet manager" | "cost centre" | "customer";
@@ -117,7 +116,11 @@ const reportCategories = [
   { name: "Personnel", href: "/reports?category=personnel", icon: Users },
   { name: "Inventory", href: "/reports?category=inventory", icon: Package },
   { name: "Financial", href: "/reports?category=financial", icon: DollarSign },
-  { name: "Procurement", href: "/reports?category=procurement", icon: Building2 },
+  {
+    name: "Procurement",
+    href: "/reports?category=procurement",
+    icon: Building2,
+  },
   { name: "Expenditure", href: "/reports/expenditure", icon: DollarSign },
   { name: "Utilization", href: "/reports/utilization", icon: ChartBar },
   { name: "Executive", href: "/reports/executive", icon: Briefcase },
@@ -128,8 +131,6 @@ export default function ProtectedLayout({
 }: ProtectedLayoutProps) {
   const currentNavItems: NavItem[] =
     roleNavigation[role] || roleNavigation["fleet manager"];
-
-
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
@@ -155,21 +156,21 @@ export default function ProtectedLayout({
       setUserRole(role);
       // Set navigation based on role
       const roleNav = roleNavigation[role as keyof typeof roleNavigation] || [];
-      
+
       // Update reports submenu
-      const updatedNav = roleNav.map(item => {
+      const updatedNav = roleNav.map((item) => {
         if (item.name === "Reports") {
           return {
             ...item,
             subMenu: [
               { name: "All Reports", href: "/reports", icon: ScrollText },
-              ...reportCategories
-            ]
+              ...reportCategories,
+            ],
           };
         }
         return item;
       });
-      
+
       setNavigation(updatedNav);
       console.log(
         "Layout - Navigation set for role:",
@@ -227,17 +228,18 @@ export default function ProtectedLayout({
                   <Collapsible
                     key={item.name}
                     defaultOpen={
-                      (pathname.startsWith('/reports') ||
-                      item.subMenu?.some((subItem: any) =>
-                        pathname.startsWith(subItem.href)
-                      )) ?? false
+                      (pathname.startsWith("/reports") ||
+                        item.subMenu?.some((subItem: any) =>
+                          pathname.startsWith(subItem.href)
+                        )) ??
+                      false
                     }
                     className="list-none"
                   >
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton
-                          isActive={isActive || pathname.startsWith('/reports')}
+                          isActive={isActive || pathname.startsWith("/reports")}
                           className="flex items-center justify-between w-full text-sm font-medium text-gray-200 hover:text-white hover:bg-[#F57C00]/30 px-3 py-2 rounded-lg transition"
                         >
                           <span>{item.name}</span>
@@ -248,9 +250,14 @@ export default function ProtectedLayout({
                     <CollapsibleContent>
                       <SidebarMenuSub className="ml-4 mt-1 space-y-1">
                         {item.subMenu?.map((subItem: SubMenuItem) => {
-                          const isSubActive = pathname === subItem.href || 
-                            (subItem.href.includes('?category=') && pathname.startsWith('/reports') && 
-                             typeof window !== 'undefined' && window.location.search.includes(subItem.href.split('?')[1]));
+                          const isSubActive =
+                            pathname === subItem.href ||
+                            (subItem.href.includes("?category=") &&
+                              pathname.startsWith("/reports") &&
+                              typeof window !== "undefined" &&
+                              window.location.search.includes(
+                                subItem.href.split("?")[1]
+                              ));
                           return (
                             <SidebarMenuSubItem key={subItem.name}>
                               <SidebarMenuSubButton
