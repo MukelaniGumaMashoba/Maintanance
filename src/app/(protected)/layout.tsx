@@ -115,15 +115,15 @@ const reportCategories = [
   { name: "Workshop", href: "/reports?category=workshop", icon: Wrench },
   { name: "Personnel", href: "/reports?category=personnel", icon: Users },
   { name: "Inventory", href: "/reports?category=inventory", icon: Package },
-  { name: "Financial", href: "/reports?category=financial", icon: DollarSign },
+  // { name: "Financial", href: "/reports?category=financial", icon: DollarSign },
   {
     name: "Procurement",
     href: "/reports?category=procurement",
     icon: Building2,
   },
   { name: "Expenditure", href: "/reports/expenditure", icon: DollarSign },
-  { name: "Utilization", href: "/reports/utilization", icon: ChartBar },
-  { name: "Executive", href: "/reports/executive", icon: Briefcase },
+  // { name: "Utilization", href: "/reports/utilization", icon: ChartBar },
+  // { name: "Executive", href: "/reports/executive", icon: Briefcase },
 ];
 export default function ProtectedLayout({
   children,

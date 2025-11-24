@@ -117,7 +117,7 @@ export default function SettingsPage() {
                 id: "1",
                 category: "General",
                 name: "Company Name",
-                value: "Fleet Management Solutions",
+                value: "SKYFLEET",
                 description: "The name of your company",
                 type: "text",
             },
@@ -190,7 +190,7 @@ export default function SettingsPage() {
                 <Tabs defaultValue="system" className="space-y-4">
                     <TabsList>
                         <TabsTrigger value="system">System Settings</TabsTrigger>
-                        <TabsTrigger value="locations">Locations</TabsTrigger>
+                        {/* <TabsTrigger value="locations">Locations</TabsTrigger> */}
                     </TabsList>
 
                     <TabsContent value="system" className="space-y-4">
