@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Edit3, Save, X, Trash2, Car } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import RepairHistory from "@/components/RepairHistory";
@@ -72,7 +73,6 @@ export default function VehicleDetailsPage() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Vehicle | null>(null);
 
-  /** Fetch vehicle details */
   const fetchVehicle = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -94,7 +94,6 @@ export default function VehicleDetailsPage() {
     if (params?.id) fetchVehicle();
   }, [params.id, fetchVehicle]);
 
-  /** Soft delete vehicle */
   const handleDelete = async () => {
     if (!vehicle) return;
     setDeleting(true);
@@ -115,7 +114,6 @@ export default function VehicleDetailsPage() {
     }
   };
 
-  // Updating the vehicle details
   const handleUpdate = async () => {
     if (!editData) return;
     const { error } = await supabase
@@ -133,69 +131,57 @@ export default function VehicleDetailsPage() {
     fetchVehicle();
   };
 
-  // Handle input changes
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     if (!editData) return;
     const { name, value } = e.target;
-    setEditData((prev) => {
-      if (!prev) return prev;
-      const newData = { ...prev, [name]: value };
-      return newData;
-    });
+    setEditData({ ...editData, [name]: value });
   };
 
-  useEffect(() => {
-    console.log("Editing mode:", editing);
-  }, [editing]);
-
-  // Start editing
   const startEditing = () => {
     if (!vehicle) return;
-    setEditData({ ...vehicle }); // copy to avoid mutation
+    setEditData(JSON.parse(JSON.stringify(vehicle)));
     setEditing(true);
   };
 
-  // Cancel editing
   const cancelEditing = () => {
     setEditing(false);
-    if (vehicle) {
-      setEditData({ ...vehicle });
-    }
+    setEditData(null);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Skeleton className="w-96 h-96 rounded-xl" />
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-96 w-full rounded-lg" />
+        </div>
       </div>
     );
   }
 
   if (!vehicle) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-center">
-        <p className="text-lg font-semibold text-gray-600">
-          Vehicle not found or has been archived.
-        </p>
-        <Button onClick={() => router.push("/vehicles")} className="mt-4">
-          Back to Vehicles
-        </Button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <Car className="w-16 h-16 mx-auto text-slate-400 mb-4" />
+          <h2 className="text-xl font-semibold text-slate-700 mb-2">Vehicle Not Found</h2>
+          <p className="text-slate-500 mb-6">This vehicle may have been removed or archived.</p>
+          <Button onClick={() => router.push("/vehicles")} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Vehicles
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // Helper for rendering either input or value
   function EditableField({
     label,
     name,
     value,
     type = "text",
     options,
-    multiline = false,
     disabled = false,
   }: {
     label: string;
@@ -203,95 +189,119 @@ export default function VehicleDetailsPage() {
     value: any;
     type?: string;
     options?: string[];
-    multiline?: boolean;
     disabled?: boolean;
   }) {
-    const displayValue =
-      value === null || value === undefined || value === "" ? "N/A" : value;
+    const displayValue = value === null || value === undefined || value === "" ? "—" : value;
 
     return (
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-slate-600">{label}</Label>
         {editing ? (
           options ? (
-            <select
-              name={name}
+            <Select
               value={editData?.[name]?.toString() ?? ""}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              onValueChange={(val) => {
+                if (!editData) return;
+                setEditData({ ...editData, [name]: val });
+              }}
               disabled={disabled}
             >
-              <option value="">Select {label}</option>
-              {options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          ) : multiline ? (
-            <textarea
-              name={name}
-              value={editData?.[name]?.toString() ?? ""}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical"
-              disabled={disabled}
-              rows={3}
-              placeholder={`Enter ${label.toLowerCase()}`}
-            />
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
-            <input
-              name={name}
+            <Input
+              name={name as string}
               type={type}
               value={editData?.[name]?.toString() ?? ""}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               disabled={disabled}
               placeholder={`Enter ${label.toLowerCase()}`}
+              className="h-10"
             />
           )
         ) : (
-          <p className="px-3 py-2 bg-gray-50 rounded-md font-medium text-gray-900">{displayValue}</p>
+          <div className="px-3 py-2 bg-white border border-slate-200 rounded-md text-slate-900 min-h-[40px] flex items-center">
+            {displayValue}
+          </div>
         )}
       </div>
     );
   }
 
   return (
-    <motion.div
-      className="min-h-screen bg-gray-50 p-8"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-5xl mx-auto p-6">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <h1 className="text-3xl font-bold">
-            {vehicle.make} {vehicle.model}
-          </h1>
-          <div className="ml-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => router.back()} className="p-2">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {vehicle.make} {vehicle.model}
+              </h1>
+              <p className="text-slate-500 text-sm">
+                Registration: {vehicle.registration_number}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {editing ? (
+              <>
+                <Button 
+                  onClick={handleUpdate} 
+                  disabled={!editData}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={cancelEditing}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button 
+                onClick={startEditing} 
+                variant="outline"
+                className="border-slate-300"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Details
+              </Button>
+            )}
+            
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   disabled={deleting}
-                  className="flex items-center gap-2"
+                  className="border-red-200 text-red-600 hover:bg-red-50"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  {deleting ? "Deleting..." : "Delete Vehicle"}
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Archive
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                  <AlertDialogTitle>Archive Vehicle</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action will <strong>archive</strong> the vehicle. It
-                    won’t appear in lists anymore but will remain in the
-                    database for record keeping. You can restore it later if
-                    needed.
+                    This will archive the vehicle. It won't appear in active lists but will remain in the database for records.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -301,235 +311,231 @@ export default function VehicleDetailsPage() {
                     disabled={deleting}
                     className="bg-red-600 hover:bg-red-700"
                   >
-                    {deleting ? "Deleting..." : "Confirm"}
+                    {deleting ? "Archiving..." : "Archive Vehicle"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
-
-          <div className="flex gap-2">
-            {editing ? (
-              <>
-                <Button 
-                  onClick={handleUpdate} 
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  disabled={!editData}
-                >
-                  Save Changes
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={cancelEditing}
-                  className="border-gray-300 hover:bg-gray-50"
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button 
-                onClick={startEditing} 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Edit Vehicle
-              </Button>
-            )}
-          </div>
         </div>
 
-        {/* Vehicle Info Card */}
-        <Card className="p-6 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">
-              Vehicle Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Image & Basic Info */}
-            <motion.div
-              className="flex flex-col md:flex-row gap-6"
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {/* Image Placeholder */}
-              <div className="w-full md:w-1/3 flex items-center justify-center bg-gray-200 rounded-xl h-64">
-                <span className="text-gray-500">Vehicle Image</span>
-              </div>
-
-              {/* Key Info */}
-              <div className="flex-1 grid grid-cols-2 gap-4">
+        {/* Main Content */}
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <Car className="w-5 h-5" />
+                Basic Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <EditableField
                   label="Registration Number"
                   name="registration_number"
                   value={vehicle.registration_number}
                 />
                 <EditableField
-                  label="VIN"
-                  name="vin_number"
-                  value={vehicle.vin_number ?? "N/A"}
+                  label="Make"
+                  name="make"
+                  value={vehicle.make}
                 />
                 <EditableField
-                  label="Engine Number"
-                  name="engine_number"
-                  value={vehicle.engine_number ?? "N/A"}
+                  label="Model"
+                  name="model"
+                  value={vehicle.model}
                 />
                 <EditableField
-                  label="Colour"
+                  label="Sub Model"
+                  name="sub_model"
+                  value={vehicle.sub_model}
+                />
+                <EditableField
+                  label="Year"
+                  name="manufactured_year"
+                  value={vehicle.manufactured_year}
+                  type="number"
+                />
+                <EditableField
+                  label="Color"
                   name="colour"
                   value={vehicle.colour}
                 />
               </div>
-            </motion.div>
+            </CardContent>
+          </Card>
 
-            <Separator />
+          {/* Technical Details */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                Technical Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <EditableField
+                  label="VIN Number"
+                  name="vin_number"
+                  value={vehicle.vin_number}
+                />
+                <EditableField
+                  label="Engine Number"
+                  name="engine_number"
+                  value={vehicle.engine_number}
+                />
+                <EditableField
+                  label="Chassis Number"
+                  name="chasis"
+                  value={vehicle.chasis}
+                />
+                <EditableField
+                  label="Vehicle Type"
+                  name="vehicle_type"
+                  value={vehicle.vehicle_type}
+                  options={['vehicle', 'trailer', 'commercial', 'tanker', 'truck', 'specialized']}
+                />
+                <EditableField
+                  label="Fuel Type"
+                  name="fuel_type"
+                  value={vehicle.fuel_type}
+                  options={['petrol', 'diesel', 'electric', 'hybrid']}
+                />
+                <EditableField
+                  label="Transmission"
+                  name="transmission_type"
+                  value={vehicle.transmission_type}
+                  options={['manual', 'automatic', 'cvt']}
+                />
+                <EditableField
+                  label="Tank Capacity (L)"
+                  name="tank_capacity"
+                  value={vehicle.tank_capacity}
+                  type="number"
+                />
+                <EditableField
+                  label="Service Intervals"
+                  name="service_intervals"
+                  value={vehicle.service_intervals}
+                />
+                <EditableField
+                  label="Priority"
+                  name="vehicle_priority"
+                  value={vehicle.vehicle_priority}
+                  options={['low', 'medium', 'high']}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Detailed Info */}
-            <motion.div
-              className="grid grid-cols-2 md:grid-cols-3 gap-4"
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              <EditableField
-                label="Manufactured Year"
-                name="manufactured_year"
-                value={vehicle.manufactured_year}
-              />
-              <EditableField
-                label="Vehicle Type"
-                name="vehicle_type"
-                value={vehicle.vehicle_type}
-                options={['vehicle', 'trailer', 'commercial', 'tanker', 'truck', 'specialized']}
-              />
-              <EditableField
-                label="Fuel Type"
-                name="fuel_type"
-                value={vehicle.fuel_type}
-                options={['petrol', 'diesel', 'electric', 'hybrid']}
-              />
-              <EditableField
-                label="Transmission"
-                name="transmission_type"
-                value={vehicle.transmission_type}
-                options={['manual', 'automatic', 'cvt']}
-              />
-              <EditableField
-                label="Service Intervals"
-                name="service_intervals"
-                value={vehicle.service_intervals}
-              />
-              <EditableField
-                label="Priority"
-                name="vehicle_priority"
-                value={vehicle.vehicle_priority}
-                options={['low', 'medium', 'high']}
-              />
-              <EditableField
-                label="Purchase Price"
-                name="purchase_price"
-                value={`R ${vehicle.purchase_price ?? "N/A"}`}
-                type="number"
-              />
-              <EditableField
-                label="Retail Price"
-                name="retail_price"
-                value={`R ${vehicle.retail_price ?? "N/A"}`}
-                type="number"
-              />
-              <EditableField
-                label="Tank Capacity"
-                name="tank_capacity"
-                value={`${vehicle.tank_capacity ?? "N/A"} L`}
-                type="number"
-              />
-              <EditableField
-                label="Take On KM"
-                name="take_on_kilometers"
-                value={`${vehicle.take_on_kilometers}`}
-                type="number"
-              />
-              <EditableField
-                label="Boarding Hours"
-                name="boarding_km_hours"
-                value={vehicle.boarding_km_hours ?? "N/A"}
-                type="number"
-              />
-              <EditableField
-                label="Cost Centres"
-                name="cost_centres"
-                value={vehicle.cost_centres ?? "N/A"}
-              />
-            </motion.div>
+          {/* Financial & Operational */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                Financial & Operational
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <EditableField
+                  label="Purchase Price (R)"
+                  name="purchase_price"
+                  value={vehicle.purchase_price}
+                  type="number"
+                />
+                <EditableField
+                  label="Retail Price (R)"
+                  name="retail_price"
+                  value={vehicle.retail_price}
+                  type="number"
+                />
+                <EditableField
+                  label="Take On KM"
+                  name="take_on_kilometers"
+                  value={vehicle.take_on_kilometers}
+                  type="number"
+                />
+                <EditableField
+                  label="Boarding Hours"
+                  name="boarding_km_hours"
+                  value={vehicle.boarding_km_hours}
+                  type="number"
+                />
+                <EditableField
+                  label="Cost Centres"
+                  name="cost_centres"
+                  value={vehicle.cost_centres}
+                />
+                <EditableField
+                  label="Status"
+                  name="status"
+                  value={vehicle.status}
+                  options={['active', 'inactive', 'maintenance', 'retired']}
+                />
+                <EditableField
+                  label="Site"
+                  name="site"
+                  value={vehicle.site}
+                />
+                <EditableField
+                  label="Operator Name"
+                  name="operator_name"
+                  value={vehicle.operator_name}
+                />
+                <EditableField
+                  label="Asset Type"
+                  name="asset_type"
+                  value={vehicle.asset_type}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Separator />
+          {/* Important Dates */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                Important Dates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <EditableField
+                  label="Registration Date"
+                  name="registration_date"
+                  value={vehicle.registration_date}
+                  type="date"
+                />
+                <EditableField
+                  label="License Expiry Date"
+                  name="license_expiry_date"
+                  value={vehicle.license_expiry_date}
+                  type="date"
+                />
+                <EditableField
+                  label="Expected Boarding Date"
+                  name="expected_boarding_date"
+                  value={vehicle.expected_boarding_date}
+                  type="date"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Dates */}
-            <motion.div
-              className="grid grid-cols-2 md:grid-cols-3 gap-4"
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              <EditableField
-                label="Registration Date"
-                name="registration_date"
-                value={vehicle.registration_date ?? "N/A"}
-                type="date"
-              />
-              <EditableField
-                label="License Expiry"
-                name="license_expiry_date"
-                value={vehicle.license_expiry_date ?? "N/A"}
-                type="date"
-              />
-              <EditableField
-                label="Expected Boarding Date"
-                name="expected_boarding_date"
-                value={vehicle.expected_boarding_date ?? "N/A"}
-                type="date"
-              />
-              <EditableField
-                label="Status"
-                name="status"
-                value={vehicle.status ?? "N/A"}
-              />
-              <EditableField
-                label="Site"
-                name="site"
-                value={vehicle.site ?? "N/A"}
-              />
-              <EditableField
-                label="Operator Name"
-                name="operator_name"
-                value={vehicle.operator_name ?? "N/A"}
-              />
-              <EditableField
-                label="Chassis"
-                name="chasis"
-                value={vehicle.chasis ?? "N/A"}
-              />
-              <EditableField
-                label="Asset Type"
-                name="asset_type"
-                value={vehicle.asset_type ?? "N/A"}
-              />
-            </motion.div>
-
-            <Separator />
-
-            {/* Repair History */}
-            <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.8 }}
-            >
-              <h3 className="text-lg font-semibold mb-4">Repair History</h3>
+          {/* Repair History */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                Repair History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <RepairHistory vehicleId={vehicle.registration_number} />
-            </motion.div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
