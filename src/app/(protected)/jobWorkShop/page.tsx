@@ -48,6 +48,7 @@ import {
   FileImage,
   Download,
   ThumbsDown,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -93,6 +94,7 @@ interface Job {
   notes: string;
   attachments: string[];
   completed_at: string;
+  technician: boolean;
 }
 
 // Form interface for creating new workshop jobs
@@ -121,6 +123,7 @@ interface WorkshopJob {
   created_at: Date;
   jobId_workshop: string;
   status: string;
+  technician?: boolean;
 }
 
 export default function FleetJobsPage() {
@@ -670,12 +673,16 @@ export default function FleetJobsPage() {
                 <SelectItem value="Awaiting Approval">Pending</SelectItem>
                 <SelectItem value="Part Assigned">Part Assigned</SelectItem>
                 <SelectItem value="Part Ordered">In Progress</SelectItem>
-                <SelectItem value="awaiting-approval">Awaiting Approval</SelectItem>
+                <SelectItem value="awaiting-approval">
+                  Awaiting Approval
+                </SelectItem>
                 <SelectItem value="Approved">Approved</SelectItem>
                 <SelectItem value="Completed">Completed</SelectItem>
                 <SelectItem value="Rejected">Rejected</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="requires-technician">Requires Technicians</SelectItem>
+                <SelectItem value="requires-technician">
+                  Requires Technicians
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -772,6 +779,15 @@ export default function FleetJobsPage() {
                               <strong>Notes:</strong> {job.notes || "-"}
                             </p>
                           </div>
+
+                          {!job.technician && (
+                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                              <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />
+                              <p className="text-sm font-medium text-red-700">
+                                Technician needs to be assigned to this job
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Requested Parts Section */}
