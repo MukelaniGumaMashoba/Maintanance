@@ -24,7 +24,8 @@ import {
   ShoppingCart,
   Mail,
   AlertTriangle,
-  BarChart3
+  BarChart3,
+  X
 } from 'lucide-react';
 import Link from "next/link";
 import DashboardHeader from '@/components/shared/DashboardHeader';
@@ -186,13 +187,18 @@ export default function InventoryPage() {
         if (Array.isArray(p.job_parts)) {
           arr.push(
             ...p.job_parts.map((part) =>
-              typeof part === 'string' ? { description: part, quantity: 1 } : part
-            )
+              (typeof part === 'string'
+                ? { description: part, quantity: 1 }
+                : { ...part }
+              ))
+              .map((partObj) => ({ ...partObj, __parent_row_id: p.id, __parent_field: 'job_parts' }))
           );
         }
 
         if (Array.isArray(p.given_parts)) {
-          arr.push(...p.given_parts);
+          arr.push(
+            ...p.given_parts.map((partObj) => ({ ...partObj, __parent_row_id: p.id, __parent_field: 'given_parts' }))
+          );
         }
 
         if (!partsByJob.has(jobId)) partsByJob.set(jobId, []);
@@ -580,6 +586,7 @@ export default function InventoryPage() {
                       <div key={index} className="flex justify-between text-gray-600 text-xs">
                         <span>• {part.description}</span>
                         <span className="text-green-600">Qty: {part.quantity}</span>
+                        <X className="w-3 h-3 text-red-500 cursor-pointer" onClick={() => handleRemovePart(job, part)} />
                       </div>
                     ))}
                     {job.parts_required?.length > 3 && (
@@ -587,6 +594,12 @@ export default function InventoryPage() {
                         +{job.parts_required.length - 3} more parts
                       </div>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleAssignParts(job)}
+                    >Edit/View</Button>
                   </div>
                 </div>
 
@@ -1322,7 +1335,8 @@ export default function InventoryPage() {
                         </div>
 
                         <div className="text-sm text-gray-600 whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString()}
+                          {new Date(log.timestamp).toLocaleString()
+                          }
                         </div>
                       </div>
                     </div>
