@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
+import { error } from 'console'
+import { number } from 'zod'
 
 // Fallback data for when tables don't exist
 const fallbackData = {
@@ -91,17 +93,30 @@ export async function getWorkshopJobParts() {
 
   const { data: jobParts, error } = await supabase
     .from('workshop_jobpart')
-    .select(`
-      *,
-      workshop_job!workshop_jobpart_job_id_fkey(
-        id, registration_no, client_name, job_type, status, 
-        estimated_cost, actual_cost, created_at, technician_name
-      )
-    `)
+    .select("*")
     .order('created_at', { ascending: false })
 
+  const {data: jobs, error: jobsError} = await supabase
+    .from('workshop_job')
+    .select(`*`)
+    .order('created_at', { ascending: false }) 
+  if (jobsError) {
+    console.error('Workshop jobs error:', jobsError)
+  }
+
+  // Map job details into jobParts — attach the full workshop_job as `workshop_job`
+  if (jobParts && jobs) {
+    jobParts.forEach((jp: any) => { 
+      const job = jobs.find((j: any) => j.id === jp.job_id)
+      if (job) {
+        // keep original jp.job_parts/given_parts intact and attach the full job row
+        jp.workshop_job = job
+      }
+    })
+  }
+
   if (error) {
-    console.error('Workshop job parts error:', error)
+    console.error('Workshop job parts error:', error.message || error)
     return []
   }
   return jobParts || []
@@ -287,10 +302,12 @@ export async function getPartsOrderReports() {
       return []
     }
 
+    const supplierIds = orders?.map(o => o.supplier_id).filter((id): id is number => id != null) ?? []
+
     const { data: suppliers, error: suppliersError } = await supabase
       .from('suppliers')
       .select('*')
-      .in("id", orders?.map(o => o.supplier_id))
+      .in("id", supplierIds)
 
 
     if (suppliersError) {
@@ -413,38 +430,38 @@ export async function getPartAssignmentHistory(partId: number) {
     .order('timestamp', { ascending: false })
 
   // Get workshop job parts that reference this part in job_parts JSON
-    const { data: jobParts, error: jobPartsError } = await supabase
-      .from('workshop_jobpart')
-      .select('*')
-      .order('created_at', { ascending: false })
-  
-    // Fetch corresponding jobs only if we have job IDs from jobParts
-    let jobs: any[] = []
-    let jobsError: any = null
-  
-    if (jobPartsError) {
-      console.error('Workshop job parts error:', jobPartsError)
-    } else if (jobParts && jobParts.length) {
-      const jobIds = jobParts.map((jp: any) => jp.job_id).filter(Boolean)
-  
-      if (jobIds.length) {
-        const jobsRes = await supabase
-          .from('workshop_job')
-          .select(`
+  const { data: jobParts, error: jobPartsError } = await supabase
+    .from('workshop_jobpart')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  // Fetch corresponding jobs only if we have job IDs from jobParts
+  let jobs: any[] = []
+  let jobsError: any = null
+
+  if (jobPartsError) {
+    console.error('Workshop job parts error:', jobPartsError)
+  } else if (jobParts && jobParts.length) {
+    const jobIds = jobParts.map((jp: any) => jp.job_id).filter(Boolean)
+
+    if (jobIds.length) {
+      const jobsRes = await supabase
+        .from('workshop_job')
+        .select(`
             id, registration_no, client_name, job_type, status, 
             estimated_cost, actual_cost, created_at, technician_name
           `)
-          .order('created_at', { ascending: false })
-          .in('id', jobIds)
-  
-        jobs = jobsRes.data || []
-        jobsError = jobsRes.error
-  
-        if (jobsError) {
-          console.error('Jobs fetch error:', jobsError)
-        }
+        .order('created_at', { ascending: false })
+        .in('id', jobIds)
+
+      jobs = jobsRes.data || []
+      jobsError = jobsRes.error
+
+      if (jobsError) {
+        console.error('Jobs fetch error:', jobsError)
       }
     }
+  }
 
   // Map job details into jobParts    
 
