@@ -5,14 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Printer, Car, User, Calendar, Package } from "lucide-react";
+import JobCardPrinter from "./job-card-printer";
+import { useState } from "react";
 
-export default function JobCardViewModal({ 
-  isOpen, 
-  onClose, 
-  jobCard, 
-  onRemovePart 
+export default function JobCardViewModal({
+  isOpen,
+  onClose,
+  jobCard,
+  onRemovePart
 }) {
   if (!jobCard) return null;
+
+
+  const [isOpenCard, setIsOpenCard] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -26,8 +31,19 @@ export default function JobCardViewModal({
             <DialogTitle className="text-xl font-bold">
               Job Card Details - {jobCard.job_number}
             </DialogTitle>
-            <Button onClick={handlePrint} variant="outline" size="sm">
-              <Printer className="w-4 h-4 mr-2" />
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={() => setIsOpenCard(true)}
+            >
+              <JobCardPrinter
+                isOpenCard={isOpenCard}
+                onCloseCard={() => setIsOpenCard(false)}
+                jobCard={jobCard}
+                jobId={jobCard.id}
+              />
+              <Printer className="mr-1 w-3 h-3" />
               Print
             </Button>
           </div>
@@ -121,12 +137,12 @@ export default function JobCardViewModal({
                       </Button>
                     </div>
                   ))}
-                  
+
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold">Total Parts Cost:</span>
                       <span className="font-bold text-lg">
-                        R{(jobCard.parts_required.reduce((sum, part) => 
+                        R{(jobCard.parts_required.reduce((sum, part) =>
                           sum + ((part.price || 0) * (part.quantity || 1)), 0
                         )).toFixed(2)}
                       </span>

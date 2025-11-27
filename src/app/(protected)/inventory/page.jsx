@@ -25,7 +25,8 @@ import {
   Mail,
   AlertTriangle,
   BarChart3,
-  X
+  X,
+  Printer
 } from 'lucide-react';
 import Link from "next/link";
 import DashboardHeader from '@/components/shared/DashboardHeader';
@@ -34,7 +35,6 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewAssignPartsModal from '@/components/ui-personal/new-assign-parts-modal';
 import JobCardViewModal from '@/components/ui-personal/job-card-view-modal';
-import { en } from 'zod/v4/locales';
 import { redirect } from 'next/navigation';
 
 export default function InventoryPage() {
@@ -71,7 +71,6 @@ export default function InventoryPage() {
   const [stockTakeActiveTab, setStockTakeActiveTab] = useState('stock-take');
   const [thresholds, setThresholds] = useState({});
   const [defaultThreshold, setDefaultThreshold] = useState(10);
-
 
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
