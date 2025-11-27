@@ -288,3 +288,18 @@ Todo
 -- Part Assigned missing or requested
 -- Add labour cost (hours x labour amount)
 - Inventory part assigned not showing
+
+
+
+
+-------------- Workshop PREFIX
+Jobs
+
+New system for Toyota
+2 deals kilig
+1 one deal is soltrack
+
+
+
+Aqua trans (Mobile application => routing system)
+Mobile
