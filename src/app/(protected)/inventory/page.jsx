@@ -33,6 +33,7 @@ import DashboardTabs from '@/components/shared/DashboardTabs';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewAssignPartsModal from '@/components/ui-personal/new-assign-parts-modal';
+import JobCardViewModal from '@/components/ui-personal/job-card-view-modal';
 import { en } from 'zod/v4/locales';
 import { redirect } from 'next/navigation';
 
@@ -47,6 +48,7 @@ export default function InventoryPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState(null);
   const [selectedParts, setSelectedParts] = useState([]);
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -187,10 +189,10 @@ export default function InventoryPage() {
         if (Array.isArray(p.job_parts)) {
           arr.push(
             ...p.job_parts.map((part) =>
-              (typeof part === 'string'
-                ? { description: part, quantity: 1 }
-                : { ...part }
-              ))
+            (typeof part === 'string'
+              ? { description: part, quantity: 1 }
+              : { ...part }
+            ))
               .map((partObj) => ({ ...partObj, __parent_row_id: p.id, __parent_field: 'job_parts' }))
           );
         }
@@ -220,6 +222,94 @@ export default function InventoryPage() {
       console.error('Unexpected error fetching job cards:', err);
       toast.error('Failed to load job cards');
       setJobCards([]);
+    }
+  };
+
+  // Remove a single part object from a job (updates or deletes workshop_jobpart row)
+  const deletePartFromJob = async (part) => {
+    if (!part) throw new Error("No part provided");
+
+    const parentId = part.__parent_row_id || part.parent_row_id || part.parentId;
+    const fieldName = part.__parent_field || "job_parts";
+
+    if (!parentId) {
+      throw new Error("Can't determine parent record for this part");
+    }
+
+    // load parent row
+    const { data: parentRow, error: parentError } = await supabase
+      .from("workshop_jobpart")
+      .select("*")
+      .eq("id", parentId)
+      .single();
+
+    alert("Deleting part from parent row ID: " + parentId);
+
+    if (parentError || !parentRow) {
+      throw parentError || new Error("Parent row not found");
+    }
+
+    const arrayField = parentRow[fieldName];
+    const partDesc = (part.description || part.part_name || part.item_code || "").toString().trim();
+
+    // Handle job_parts (array of strings)
+    if (fieldName === "job_parts" && Array.isArray(arrayField)) {
+      const filtered = arrayField.filter(item => {
+        const itemStr = typeof item === 'string' ? item.trim() : (item?.description || item?.part_name || "").toString().trim();
+        return itemStr !== partDesc;
+      });
+
+      if (filtered.length === arrayField.length) {
+        throw new Error("Could not find matching part to remove");
+      }
+
+      if (filtered.length === 0) {
+        const { error: delErr } = await supabase.from("workshop_jobpart").delete().eq("id", parentRow.id);
+        if (delErr) throw delErr;
+      } else {
+        const { error: updErr } = await supabase.from("workshop_jobpart").update({ [fieldName]: filtered }).eq("id", parentRow.id);
+        if (updErr) throw updErr;
+      }
+      return;
+    }
+
+    // Handle given_parts (array of objects)
+    if (fieldName === "given_parts" && Array.isArray(arrayField)) {
+      const filtered = arrayField.filter((p) => {
+        if (part.id && p && p.id && String(p.id) === String(part.id)) return false;
+        if (part.item_code && p && p.item_code && String(p.item_code) === String(part.item_code)) return false;
+        const pName = (p?.description || p?.part_name || "").toString().trim();
+        return pName !== partDesc;
+      });
+
+      if (filtered.length === arrayField.length) {
+        throw new Error("Could not find matching part to remove");
+      }
+
+      if (filtered.length === 0) {
+        const { error: delErr } = await supabase.from("workshop_jobpart").delete().eq("id", parentRow.id);
+        if (delErr) throw delErr;
+      } else {
+        const { error: updErr } = await supabase.from("workshop_jobpart").update({ [fieldName]: filtered }).eq("id", parentRow.id);
+        if (updErr) throw updErr;
+      }
+      return;
+    }
+
+    throw new Error("Unsupported field type or structure");
+  };
+
+  // Handler used by UI X icon to remove a part from a job
+  const handleRemovePart = async (job, part) => {
+    const label = (part.description || part.part_name || part.item_code || "this part").toString();
+    if (!confirm(`Remove ${label} from job ${job.job_number || job.jobId_workshop || job.id}?`)) return;
+    try {
+      await deletePartFromJob(part);
+      toast.success("Part removed from job");
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to remove part:", err.message);
+      toast.error("Failed to remove part: " + err.message);
     }
   };
 
@@ -311,7 +401,11 @@ export default function InventoryPage() {
   const handleAssignParts = (jobCard) => {
     setSelectedJobCard(jobCard);
     setShowAssignModal(true);
+  };
 
+  const handleViewJobCard = (jobCard) => {
+    setSelectedJobCard(jobCard);
+    setShowViewModal(true);
   };
 
   const handlePartsAssigned = () => {
@@ -595,11 +689,22 @@ export default function InventoryPage() {
                       </div>
                     )}
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleAssignParts(job)}
-                    >Edit/View</Button>
+                    {/* <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewJobCard(job)}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAssignParts(job)}
+                      >
+                        Edit Parts
+                      </Button>
+                    </div> */}
                   </div>
                 </div>
 
@@ -633,6 +738,15 @@ export default function InventoryPage() {
 
 
                 <div className="flex justify-between items-center pt-2">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewJobCard(job)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -1347,6 +1461,14 @@ export default function InventoryPage() {
             </div>)}
         </DialogContent>
       </Dialog>
+
+      {/* Job Card View Modal */}
+      <JobCardViewModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        jobCard={selectedJobCard}
+        onRemovePart={handleRemovePart}
+      />
     </div>
   );
 }
