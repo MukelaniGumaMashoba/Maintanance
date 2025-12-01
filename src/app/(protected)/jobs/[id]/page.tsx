@@ -552,6 +552,7 @@ export default function WorkshopJobDetailPage() {
                   setIsTechDialogOpen(true);
                   setSelectedJobForTech(job);
                 }}
+                disabled={job.status?.toLowerCase() === 'completed'}
               >
                 Change Technician
               </Button>
@@ -564,6 +565,7 @@ export default function WorkshopJobDetailPage() {
                 setSelectedJobForTech(job);
               }}
               className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition rounded-md shadow-sm"
+              disabled={job.status?.toLowerCase() === 'completed'}
             >
               <User2 className="h-4 w-4" />
               Assign Technician

@@ -45,6 +45,9 @@ export default function JobCardViewModal({
               <Printer className="mr-1 w-3 h-3" />
               Print
             </Button>
+            {jobCard.status?.toLowerCase() === 'completed' && (
+              <Badge variant="secondary" className="ml-2">View Only</Badge>
+            )}
           </div>
         </DialogHeader>
 
@@ -126,14 +129,16 @@ export default function JobCardViewModal({
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onRemovePart(jobCard, part)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 print:hidden"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                      {jobCard.status?.toLowerCase() !== 'completed' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemovePart(jobCard, part)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 print:hidden"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   ))}
 

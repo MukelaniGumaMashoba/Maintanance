@@ -122,7 +122,8 @@ export default function JobsPage() {
     const { data, error } = await supabase
       .from("workshop_job")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("status", { ascending: true }); // Sort by status to put completed last
+    // .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching jobs:", error);
@@ -132,7 +133,7 @@ export default function JobsPage() {
         String(j.status || "").toLowerCase() === "completed";
       const notCompleted = (data || []).filter((j: any) => !isCompleted(j));
       const completed = (data || []).filter((j: any) => isCompleted(j));
-      setJobs([...notCompleted, ...completed] as unknown as []);
+      setJobs([...notCompleted, ...completed] as unknown as Job[]);
     }
   };
 

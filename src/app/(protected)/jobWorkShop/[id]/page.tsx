@@ -531,6 +531,7 @@ export default function WorkshopJobDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
+                      disabled={job.status?.toLowerCase() === 'completed'}
                     >
                       Edit Labour
                     </Button>
@@ -544,7 +545,7 @@ export default function WorkshopJobDetailPage() {
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     onClick={() => updateWorkshopJobStatus(job.id, "Approved")}
-                    disabled={updating}
+                    disabled={updating || job.status?.toLowerCase() === 'completed'}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {updating ? "Processing..." : "Approve Job"}
@@ -554,7 +555,7 @@ export default function WorkshopJobDetailPage() {
                   variant="destructive"
                   className="w-full"
                   onClick={() => updateWorkshopJobStatus(job.id, "Rejected")}
-                  disabled={updating}
+                  disabled={updating || job.status?.toLowerCase() === 'completed'}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   {updating ? "Processing..." : "Reject Job"}
@@ -582,6 +583,7 @@ export default function WorkshopJobDetailPage() {
                           );
                           setTimeout(() => router.push("/jobWorkShop"), 1500);
                         }}
+                        disabled={job.status?.toLowerCase() === 'completed'}
                       >
                         Close/Complete
                       </Button>
