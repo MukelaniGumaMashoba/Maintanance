@@ -80,9 +80,8 @@ export default function SubletsPage() {
         .select("*")
         .order("created_at", { ascending: false }),
     ]);
-
-    setSublets(subletsRes.data || []);
     setJobCards(jobCardsRes.data || []);
+    setSublets(subletsRes.data || []);
     setLoading(false);
   };
 
@@ -106,7 +105,7 @@ export default function SubletsPage() {
     fetchData();
   };
 
-  const handleEditSublet = (sublet:any) => {
+  const handleEditSublet = (sublet: any) => {
     setEditingSublet(sublet);
     setSubletForm({
       name: sublet.name || "",
@@ -119,13 +118,12 @@ export default function SubletsPage() {
     setIsEditDialogOpen(true);
   };
 
-
   const handleUpdateSublet = async () => {
     const { error } = await supabase
       .from("sublets")
       .update(subletForm)
       .eq("id", editingSublet?.id);
-    
+
     if (error) {
       toast.error("Error updating sublet", { description: error.message });
       return;
@@ -137,14 +135,14 @@ export default function SubletsPage() {
     fetchData();
   };
 
-  const handleDeleteSublet = async (subletId:any) => {
+  const handleDeleteSublet = async (subletId: any) => {
     if (!confirm("Are you sure you want to delete this sublet?")) return;
-    
+
     const { error } = await supabase
       .from("sublets")
       .delete()
       .eq("id", subletId);
-    
+
     if (error) {
       toast.error("Error deleting sublet", { description: error.message });
       return;
@@ -302,7 +300,8 @@ export default function SubletsPage() {
                     <SelectContent>
                       {jobCards.map((j) => (
                         <SelectItem key={j.id} value={String(j.id)}>
-                          {j.jobid_workshop} - {j.client_name}
+                          {j.jobId_workshop} - {j.registration_no} -{" "}
+                          {j.client_name}
                         </SelectItem>
                       ))}
                     </SelectContent>

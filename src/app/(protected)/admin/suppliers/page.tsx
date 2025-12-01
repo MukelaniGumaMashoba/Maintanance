@@ -307,21 +307,21 @@ export default function SubletsAndSuppliersPage() {
       {/* SUBLETS SECTION */}
       <section className="space-y-6">
         <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          {/* <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             <span className="w-2 h-6 bg-[#F57C00] rounded-sm" />
             Sublets
-          </h2>
+          </h2> */}
           <Dialog
             open={isSubletDialogOpen}
             onOpenChange={setIsSubletDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button
+              {/* <Button
                 size="sm"
                 className="bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg shadow-md"
               >
                 <Plus className="mr-1 h-4 w-4" /> Add Sublet
-              </Button>
+              </Button> */}
             </DialogTrigger>
             <DialogContent className="max-w-md rounded-xl">
               <DialogHeader>
@@ -409,7 +409,7 @@ export default function SubletsAndSuppliersPage() {
           </Dialog>
         </div>
 
-        {filteredSublets.length === 0 ? (
+        {/* {filteredSublets.length === 0 ? (
           <p className="text-gray-500 text-center py-6">No sublets found.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -449,7 +449,7 @@ export default function SubletsAndSuppliersPage() {
               </Card>
             ))}
           </div>
-        )}
+        )} */}
       </section>
 
       {/* Edit Supplier Dialog */}
