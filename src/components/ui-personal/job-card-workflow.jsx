@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,15 +13,16 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const [parts, setParts] = useState(null);
 
   const handleApproval = async (status) => {
     setLoading(true);
     try {
       const newStatus = status === 'approved' ? 'Approved - Ready for Parts Assignment' : 'Rejected';
-      
+
       const { error } = await supabase
         .from('workshop_job')
-        .update({ 
+        .update({
           status: newStatus,
           notes: notes.trim() || null
         })
@@ -66,6 +67,27 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
     return jobCard?.status?.includes('Awaiting');
   };
 
+  useEffect(() => {
+    if (!jobCard?.id) return; // Exit early if jobCard or jobCard.id is null
+
+    const getPartAssignments = async () => {
+      const { data, error } = await supabase
+        .from("workshop_jobpart")
+        .select("given_parts")
+        .eq("job_id", jobCard.id);
+      if (error) {
+        toast.error('Failed to fetch part assignments');
+      } else {
+        const hasAssignedParts = data.some(part =>
+          part.given_parts && Array.isArray(part.given_parts) && part.given_parts.length > 0
+        );
+        setParts(hasAssignedParts);
+      }
+    };
+    getPartAssignments();
+  }, [jobCard?.id]); // Depend on jobCard.id so it updates when jobCard changes
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -98,7 +120,7 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
           {/* Workflow Steps */}
           <div className="space-y-4">
             <h4 className="font-medium">Workflow Progress</h4>
-            
+
             <div className="space-y-3">
               {/* Step 1: Job Creation */}
               <div className="flex items-center gap-4 p-3 rounded-lg border border-gray-200">
@@ -134,7 +156,7 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
                   </div>
                 </div>
                 <Badge variant="outline">
-                  {jobCard?.status?.includes('Part assigned' || "Part Assigned") ? 'Ready' : 'Pending'}
+                  {parts === true ? 'Assigned' : 'Pending'}
                 </Badge>
               </div>
 
@@ -169,7 +191,7 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
                   rows={3}
                 />
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button
                   variant="destructive"

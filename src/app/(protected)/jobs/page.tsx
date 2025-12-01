@@ -127,7 +127,12 @@ export default function JobsPage() {
     if (error) {
       console.error("Error fetching jobs:", error);
     } else {
-      setJobs(data as any);
+      // move completed jobs to the end while preserving the relative order
+      const isCompleted = (j: any) =>
+        String(j.status || "").toLowerCase() === "completed";
+      const notCompleted = (data || []).filter((j: any) => !isCompleted(j));
+      const completed = (data || []).filter((j: any) => isCompleted(j));
+      setJobs([...notCompleted, ...completed] as unknown as []);
     }
   };
 
@@ -706,7 +711,7 @@ export default function JobsPage() {
                         View
                       </Button>
                     </Link>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
@@ -716,7 +721,7 @@ export default function JobsPage() {
                       className="flex-1 sm:flex-none"
                     >
                       Add Parts
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardHeader>
@@ -737,7 +742,11 @@ export default function JobsPage() {
                   <div>
                     <p className="text-sm text-gray-600">Cost</p>
                     <p className="font-medium">
-                      R{((job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0)).toLocaleString() || "0"}
+                      R
+                      {(
+                        (job.total_labor_cost ?? 0) +
+                        (job.total_parts_cost ?? 0)
+                      ).toLocaleString() || "0"}
                     </p>
                     <p className="text-sm text-gray-600 mt-2">Created</p>
                     <p className="font-medium">

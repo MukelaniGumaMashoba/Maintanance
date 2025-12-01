@@ -22,7 +22,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Edit3, Trash2 } from "lucide-react";
 
 export default function SubletsAndSuppliersPage() {
   const supabase = createClient();
@@ -34,6 +34,8 @@ export default function SubletsAndSuppliersPage() {
   // Dialog state
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [isSubletDialogOpen, setIsSubletDialogOpen] = useState(false);
+  const [isEditSupplierDialogOpen, setIsEditSupplierDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
 
   // Form states
   const [supplierForm, setSupplierForm] = useState({
@@ -84,6 +86,50 @@ export default function SubletsAndSuppliersPage() {
       address: "",
     });
     setIsSupplierDialogOpen(false);
+    fetchData();
+  };
+
+  const handleEditSupplier = (supplier:any) => {
+    setEditingSupplier(supplier);
+    setSupplierForm({
+      name: supplier.name || "",
+      contact_person: supplier.contact_person || "",
+      email: supplier.email || "",
+      phone: supplier.phone || "",
+      address: supplier.address || "",
+    });
+    setIsEditSupplierDialogOpen(true);
+  };
+
+  const handleUpdateSupplier = async () => {
+    const { error } = await supabase
+      .from("suppliers")
+      .update(supplierForm)
+      .eq("id", editingSupplier?.id);
+    
+    if (error) {
+      console.error("Error updating supplier:", error);
+      return;
+    }
+
+    setIsEditSupplierDialogOpen(false);
+    setEditingSupplier(null);
+    fetchData();
+  };
+
+  const handleDeleteSupplier = async (supplierId:any) => {
+    if (!confirm("Are you sure you want to delete this supplier?")) return;
+    
+    const { error } = await supabase
+      .from("suppliers")
+      .delete()
+      .eq("id", supplierId);
+    
+    if (error) {
+      console.error("Error deleting supplier:", error);
+      return;
+    }
+
     fetchData();
   };
 
@@ -216,19 +262,41 @@ export default function SubletsAndSuppliersPage() {
                     {s.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-gray-700 space-y-1 pt-3">
-                  <p>
-                    <strong>Contact:</strong> {s.contact_person || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {s.email || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {s.phone || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {s.address || "N/A"}
-                  </p>
+                <CardContent className="text-sm text-gray-700 space-y-3 pt-3">
+                  <div className="space-y-1">
+                    <p>
+                      <strong>Contact:</strong> {s.contact_person || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Email:</strong> {s.email || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Phone:</strong> {s.phone || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Address:</strong> {s.address || "N/A"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditSupplier(s)}
+                      className="flex-1"
+                    >
+                      <Edit3 className="mr-1 w-3 h-3" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeleteSupplier(s.id)}
+                      className="flex-1 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="mr-1 w-3 h-3" />
+                      Delete
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -383,6 +451,45 @@ export default function SubletsAndSuppliersPage() {
           </div>
         )}
       </section>
+
+      {/* Edit Supplier Dialog */}
+      <Dialog open={isEditSupplierDialogOpen} onOpenChange={setIsEditSupplierDialogOpen}>
+        <DialogContent className="max-w-md rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-gray-800">
+              Edit Supplier
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {["name", "contact_person", "email", "phone", "address"].map(
+              (field) => (
+                <div key={field} className="space-y-1">
+                  <Label className="capitalize text-gray-700">
+                    {field.replace("_", " ")}
+                  </Label>
+                  <Input
+                    value={(supplierForm as any)[field]}
+                    onChange={(e) =>
+                      setSupplierForm({
+                        ...supplierForm,
+                        [field]: e.target.value,
+                      })
+                    }
+                    placeholder={`Enter ${field.replace("_", " ")}`}
+                    className="rounded-lg border-gray-300 focus:border-[#F57C00] focus:ring-[#F57C00]"
+                  />
+                </div>
+              )
+            )}
+            <Button
+              className="w-full mt-2 bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg"
+              onClick={handleUpdateSupplier}
+            >
+              Update Supplier
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 

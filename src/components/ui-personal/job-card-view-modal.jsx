@@ -23,6 +23,11 @@ export default function JobCardViewModal({
     window.print();
   };
 
+  const handleCloseCard = () => {
+    setIsOpenCard(false);
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:shadow-none">
@@ -37,12 +42,6 @@ export default function JobCardViewModal({
               className="mt-2"
               onClick={() => setIsOpenCard(true)}
             >
-              <JobCardPrinter
-                isOpenCard={isOpenCard}
-                onCloseCard={() => setIsOpenCard(false)}
-                jobCard={jobCard}
-                jobId={jobCard.id}
-              />
               <Printer className="mr-1 w-3 h-3" />
               Print
             </Button>
@@ -159,6 +158,13 @@ export default function JobCardViewModal({
           </div>
         </div>
       </DialogContent>
+      
+      <JobCardPrinter
+        isOpenCard={isOpenCard}
+        onCloseCard={handleCloseCard}
+        jobCard={jobCard}
+        jobId={jobCard.id}
+      />
     </Dialog>
   );
 }

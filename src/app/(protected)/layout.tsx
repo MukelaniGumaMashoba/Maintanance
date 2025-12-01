@@ -85,7 +85,7 @@ const roleNavigation: Record<string, NavItem[]> = {
     // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
-    
+
     // SET TO BE DISCUSSED AT LATER STAGE
     // {
     //   name: "Reports",
@@ -332,7 +332,8 @@ export default function ProtectedLayout({
         </div>
 
         {/* Main content area */}
-        <div className="lg:ml-64 h-screen overflow-y-auto flex flex-col">
+        {/* <div className="lg:ml-64 h-screen overflow-y-auto flex flex-col"> */}
+        <div className="lg:ml-64 h-screen flex flex-col">
           {/* Top Bar */}
           <div className="sticky top-0 z-30 bg-white border-b shadow-sm px-4 py-3 flex items-center justify-between">
             <Button
@@ -349,7 +350,7 @@ export default function ProtectedLayout({
           </div>
 
           {/* Page content */}
-          <main className="p-6 flex-1 w-full">
+          <main className="p-6 flex-1 w-full h-fit">
             <Card className="p-6">{children}</Card>
             <Toaster />
           </main>

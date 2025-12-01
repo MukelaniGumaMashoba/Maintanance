@@ -4,18 +4,18 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  QrCode, 
-  Printer, 
+import {
+  QrCode,
+  Printer,
   Download,
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
-export default function JobCardPrinter({ 
-  isOpenCard, 
-  onCloseCard, 
+export default function JobCardPrinter({
+  isOpenCard,
+  onCloseCard,
   jobCard, // optional preloaded object
   jobId,   // optional id to fetch from DB
 }) {
@@ -187,7 +187,7 @@ export default function JobCardPrinter({
       const qty = p.quantity ?? p.qty ?? 1;
       const price = p.price ?? p.unit_price ?? p.total_cost ?? '';
       return `<tr>
-        <td style="padding:6px;border:1px solid #ddd">${i+1}</td>
+        <td style="padding:6px;border:1px solid #ddd">${i + 1}</td>
         <td style="padding:6px;border:1px solid #ddd">${escapeHtml(name)}</td>
         <td style="padding:6px;border:1px solid #ddd;text-align:center">${qty}</td>
         <td style="padding:6px;border:1px solid #ddd;text-align:right">${price !== '' ? 'R' + Number(price).toFixed(2) : '-'}</td>
@@ -196,7 +196,7 @@ export default function JobCardPrinter({
 
     const workshopInfo = jobData.workshop ? `
       <div><strong>Workshop:</strong> ${escapeHtml(jobData.workshop.work_name || jobData.workshop.trading_name || '')}</div>
-      <div><strong>Workshop Address:</strong> ${escapeHtml((jobData.workshop.street || '') + ' ' + (jobData.workshop.town || '') )}</div>
+      <div><strong>Workshop Address:</strong> ${escapeHtml((jobData.workshop.street || '') + ' ' + (jobData.workshop.town || ''))}</div>
     ` : '';
 
     const technicianInfo = jobData.technician ? `

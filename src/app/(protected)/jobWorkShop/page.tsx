@@ -246,7 +246,7 @@ export default function FleetJobsPage() {
       .channel("custom-all-channel")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "assignements" },
+        { event: "*", schema: "public", table: "workshop_job" },
         (payload) => {
           console.log("Change received!", payload);
         }
@@ -257,7 +257,7 @@ export default function FleetJobsPage() {
       .channel("custom-all-channel")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "job_assignments" },
+        { event: "*", schema: "public", table: "workshop_job" },
         (payload) => {
           console.log("Change received!", payload);
         }
@@ -288,6 +288,30 @@ export default function FleetJobsPage() {
       assignements.unsubscribe();
       // jobAssignments.unsubscribe()
     };
+  }, []);
+
+  useEffect(() => {
+    const getWorkshopJob = async () => {
+      const { data: WorkJ, error: workError } = await supabase
+        .from("workshop_job")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!workError && WorkJ) {
+        // move completed jobs to the end while preserving the relative order
+        const isCompleted = (j: any) =>
+          String(j.status || "").toLowerCase() === "completed";
+        const notCompleted = (WorkJ || []).filter((j: any) => !isCompleted(j));
+        const completed = (WorkJ || []).filter((j: any) => isCompleted(j));
+        setWorkshopsJob([
+          ...notCompleted,
+          ...completed,
+        ] as unknown as WorkshopJob[]);
+      } else {
+        console.error("Error fetching workshop jobs:", workError);
+      }
+    };
+    getWorkshopJob();
   }, []);
 
   useEffect(() => {
@@ -334,8 +358,17 @@ export default function FleetJobsPage() {
       );
     }
 
+    // Ensure completed jobs are shown at the end of the list
+    const isCompletedFlag = (j: any) =>
+      String(j.status || "").toLowerCase() === "completed";
+    const notCompletedFiltered = filtered.filter(
+      (j: any) => !isCompletedFlag(j)
+    );
+    const completedFiltered = filtered.filter((j: any) => isCompletedFlag(j));
+    const finalSorted = [...notCompletedFiltered, ...completedFiltered];
+
     // cast to the component's expected filteredJobs shape
-    setFilteredJobs(filtered as unknown as WorkshopJob[]);
+    setFilteredJobs(finalSorted as unknown as WorkshopJob[]);
   }, [workshopJob, searchTerm, statusFilter, priorityFilter]);
 
   const getStatusColor = (status: string) => {
@@ -380,7 +413,15 @@ export default function FleetJobsPage() {
         .order("created_at", { ascending: false });
 
       if (!workError && WorkJ) {
-        setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
+        // move completed jobs to the end while preserving the relative order
+        const isCompleted = (j: any) =>
+          String(j.status || "").toLowerCase() === "completed";
+        const notCompleted = (WorkJ || []).filter((j: any) => !isCompleted(j));
+        const completed = (WorkJ || []).filter((j: any) => isCompleted(j));
+        setWorkshopsJob([
+          ...notCompleted,
+          ...completed,
+        ] as unknown as WorkshopJob[]);
       } else {
         console.error("Error fetching workshop jobs:", workError);
       }
@@ -676,517 +717,517 @@ export default function FleetJobsPage() {
   }, [availableWorkshops, lastAssigned]);
 
   return (
-    <>
-      <div className="flex-1 space-y-4 p-4 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">All Jobs</h2>
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search jobs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-64"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Awaiting Approval">Pending</SelectItem>
-                <SelectItem value="Part Assigned">Part Assigned</SelectItem>
-                <SelectItem value="Part Ordered">In Progress</SelectItem>
-                <SelectItem value="awaiting-approval">
-                  Awaiting Approval
-                </SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="requires-technician">
-                  Requires Technicians
-                </SelectItem>
-              </SelectContent>
-            </Select>
+    // <div className="flex-1 space-y-4 p-4 pt-6 bg-amber-500">
+    <div className="flex-1 space-y-4 p-4 pt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">All Jobs</h2>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 w-64"
+            />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Awaiting Approval">Pending</SelectItem>
+              <SelectItem value="Part Assigned">Part Assigned</SelectItem>
+              <SelectItem value="Part Ordered">In Progress</SelectItem>
+              <SelectItem value="awaiting-approval">
+                Awaiting Approval
+              </SelectItem>
+              <SelectItem value="Approved">Approved</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="Rejected">Rejected</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="requires-technician">
+                Requires Technicians
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+      </div>
 
-        <Tabs defaultValue="workshopJobs" className="space-y-6">
-          <TabsList className="bg-white shadow rounded-lg border flex">
-            {["workshopJobs", "kanban", "analytics"].map((tab) => (
-              <TabsTrigger
-                key={tab}
-                value={tab}
-                className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
-              >
-                {tab === "workshopJobs"
-                  ? "Workshop Jobs"
-                  : tab === "kanban"
-                  ? "Kanban Board"
-                  : "Analytics"}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <TabsContent
-            value="workshopJobs"
-            className="space-y-6 p-6 bg-gray-50 min-h-screen"
-          >
-            <div className="flex flex-col space-y-4">
-              {/* Section Header */}
-              <div className="flex items-center justify-between border-b border-gray-300 pb-3">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                  Workshop Jobs
-                </h2>
-                <FileText className="h-5 w-5 text-gray-500" />
-              </div>
+      <Tabs defaultValue="workshopJobs" className="space-y-6">
+        <TabsList className="bg-white shadow rounded-lg border flex">
+          {["workshopJobs", "kanban", "analytics"].map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white rounded-md text-sm px-4 py-2"
+            >
+              {tab === "workshopJobs"
+                ? "Workshop Jobs"
+                : tab === "kanban"
+                ? "Kanban Board"
+                : "Analytics"}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent
+          value="workshopJobs"
+          className="space-y-6 p-6 bg-gray-50 min-h-screen"
+        >
+          <div className="flex flex-col space-y-4">
+            {/* Section Header */}
+            <div className="flex items-center justify-between border-b border-gray-300 pb-3">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Workshop Jobs
+              </h2>
+              <FileText className="h-5 w-5 text-gray-500" />
+            </div>
 
-              {/* Jobs List */}
-              {filteredJobs.length === 0 ? (
-                <p className="text-center text-gray-500 mt-6">
-                  No workshop jobs found.
-                </p>
-              ) : (
-                <div className="grid gap-4">
-                  {filteredJobs.map((job) => (
-                    <Card
-                      key={job.id || job.jobId_workshop}
-                      className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
-                    >
-                      <CardHeader className="pb-3 flex justify-between items-center">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                          <CardTitle className="text-lg">
-                            {job.jobId_workshop}
-                          </CardTitle>
-                          <div className="flex items-center gap-2">
-                            <Badge className={getStatusColor(job.status)}>
-                              {formatStatusDisplay(job.status)}
-                              {job.status?.toLowerCase() ===
-                                "awaiting approval" && (
-                                <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
-                              )}
-                              {job.status?.toLowerCase() === "completed" && (
-                                <>
-                                  <span className="sr-only">Job Completed</span>
-                                  <CheckCircle className="h-4 w-4 text-green-500 animate-none" />
-                                </>
-                              )}
-                              {/* {job.status?.toLowerCase() === "part ordered" && (
+            {/* Jobs List */}
+            {filteredJobs.length === 0 ? (
+              <p className="text-center text-gray-500 mt-6">
+                No workshop jobs found.
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                {filteredJobs.map((job) => (
+                  <Card
+                    key={job.id || job.jobId_workshop}
+                    className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
+                  >
+                    <CardHeader className="pb-3 flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <CardTitle className="text-lg">
+                          {job.jobId_workshop}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(job.status)}>
+                            {formatStatusDisplay(job.status)}
+                            {job.status?.toLowerCase() ===
+                              "awaiting approval" && (
+                              <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                            )}
+                            {job.status?.toLowerCase() === "completed" && (
+                              <>
+                                <span className="sr-only">Job Completed</span>
+                                <CheckCircle className="h-4 w-4 text-green-500 animate-none" />
+                              </>
+                            )}
+                            {/* {job.status?.toLowerCase() === "part ordered" && (
                                 <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
                               )} */}
-                            </Badge>
-                            <Badge className={getPriorityColor(job.priority)}>
-                              {job.priority}
-                            </Badge>
-                          </div>
+                          </Badge>
+                          <Badge className={getPriorityColor(job.priority)}>
+                            {job.priority}
+                          </Badge>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                          <div>
-                            <p>
-                              <strong>Vehicle Reg:</strong>{" "}
-                              {job.registration_no || "N/A"}
-                            </p>
-                            <p className="truncate">
-                              <strong>Description:</strong>{" "}
-                              {job.description || "No description"}
-                            </p>
-                            <p>
-                              <strong>Cost:</strong>{" "}
-                              {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) > 0
-                                ? `R ${((job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0)).toFixed(2)}`
-                                : "Pending"}
-                            </p>
-                          </div>
-                          <div>
-                            <p>
-                              <strong>Client Name:</strong>{" "}
-                              {job.client_name || "N/A"}
-                            </p>
-                            <p>
-                              <strong>Client Phone:</strong>{" "}
-                              {job.client_phone || "N/A"}
-                            </p>
-                            <p className="truncate">
-                              <strong>Location:</strong>{" "}
-                              {job.location || "Unknown"}
-                            </p>
-                            <p className="truncate">
-                              <strong>Notes:</strong> {job.notes || "-"}
-                            </p>
-                          </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                        <div>
+                          <p>
+                            <strong>Vehicle Reg:</strong>{" "}
+                            {job.registration_no || "N/A"}
+                          </p>
+                          <p className="truncate">
+                            <strong>Description:</strong>{" "}
+                            {job.description || "No description"}
+                          </p>
+                          <p>
+                            <strong>Cost:</strong>{" "}
+                            {(job.total_labor_cost ?? 0) +
+                              (job.total_parts_cost ?? 0) >
+                            0
+                              ? `R ${(
+                                  (job.total_labor_cost ?? 0) +
+                                  (job.total_parts_cost ?? 0)
+                                ).toFixed(2)}`
+                              : "Pending"}
+                          </p>
+                        </div>
+                        <div>
+                          <p>
+                            <strong>Client Name:</strong>{" "}
+                            {job.client_name || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Client Phone:</strong>{" "}
+                            {job.client_phone || "N/A"}
+                          </p>
+                          <p className="truncate">
+                            <strong>Location:</strong>{" "}
+                            {job.location || "Unknown"}
+                          </p>
+                          <p className="truncate">
+                            <strong>Notes:</strong> {job.notes || "-"}
+                          </p>
+                        </div>
 
-                          <div>
-                            <p>
-                              <strong>Created At:</strong>{" "}
-                              {new Date(job.created_at).toLocaleDateString()}
-                            </p>
-                            <p>
-                              <span className="text-sm text-gray-600">
-                                Due Date:{" "}
-                              </span>
-                              <span className="font-medium">
-                                {job.due_date
-                                  ? new Date(job.due_date).toLocaleDateString()
-                                  : "NOT SET"}
-                              </span>
-                            </p>
+                        <div>
+                          <p>
+                            <strong>Created At:</strong>{" "}
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </p>
+                          <p>
+                            <span className="text-sm text-gray-600">
+                              Due Date:{" "}
+                            </span>
+                            <span className="font-medium">
+                              {job.due_date
+                                ? new Date(job.due_date).toLocaleDateString()
+                                : "NOT SET"}
+                            </span>
+                          </p>
 
-                            {job.completed_at ? (
-                              <div>
-                                <p className="text-sm text-gray-600 mt-2">
-                                  Completed
-                                </p>
+                          {job.completed_at ? (
+                            <div>
+                              <p className="text-sm text-gray-600 mt-2">
+                                Completed
+                              </p>
 
-                                <p className="font-medium">
-                                  {new Date(
-                                    job.completed_at
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          {!job.technician && (
-                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
-                              <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />
-                              <p className="text-sm font-medium text-red-700">
-                                Technician needs to be assigned to this job
+                              <p className="font-medium">
+                                {new Date(
+                                  job.completed_at
+                                ).toLocaleDateString()}
                               </p>
                             </div>
-                          )}
+                          ) : null}
                         </div>
 
-                        {/* Requested Parts Section */}
-                        <RequestedParts jobId={job.id} />
-                      </CardContent>
-                      <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedJobForWorkflow(job);
-                            setIsWorkflowOpen(true);
-                          }}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          {job.status?.includes("Awaiting")
-                            ? "Approve/Reject"
-                            : "View Workflow"}
+                        {!job.technician && (
+                          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />
+                            <p className="text-sm font-medium text-red-700">
+                              Technician needs to be assigned to this job
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Requested Parts Section */}
+                      <RequestedParts jobId={job.id} />
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedJobForWorkflow(job);
+                          setIsWorkflowOpen(true);
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {job.status?.includes("Awaiting")
+                          ? "Approve/Reject"
+                          : "View Workflow"}
+                      </Button>
+                      <Link href={`/jobWorkShop/${job.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
                         </Button>
-                        <Link href={`/jobWorkShop/${job.id}`}>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          <TabsContent value="kanban" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {[
-                "Awaiting Approval",
-                "Part Ordered",
-                "Part Assigned",
-                "Approved",
-                "Completed",
-                "Rejected",
-                "assigned",
-                "Approved - Ready For Parts Assignment",
-              ].map((status) => (
-                <Card key={status}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">
-                      {status}
-                      <Badge className="ml-2" variant="secondary">
-                        {
-                          workshopJob.filter((job) => job.status === status)
-                            .length
-                        }
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {workshopJob
-                      .filter((job) => job.status === status)
-                      .map((job) => (
-                        <Card
-                          key={job.id}
-                          className="p-3 hover:shadow-sm transition-shadow cursor-pointer"
-                        >
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">
-                                {job.jobId_workshop}
-                              </p>
-                              <Badge className={getStatusColor(job.status)}>
-                                {job.status}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              {job.registration_no}
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="kanban" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[
+              "Awaiting Approval",
+              "Part Ordered",
+              "Part Assigned",
+              "Approved",
+              "Completed",
+              "Rejected",
+              "assigned",
+              "Approved - Ready For Parts Assignment",
+            ].map((status) => (
+              <Card key={status}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">
+                    {status}
+                    <Badge className="ml-2" variant="secondary">
+                      {
+                        workshopJob.filter((job) => job.status === status)
+                          .length
+                      }
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {workshopJob
+                    .filter((job) => job.status === status)
+                    .map((job) => (
+                      <Card
+                        key={job.id}
+                        className="p-3 hover:shadow-sm transition-shadow cursor-pointer"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">
+                              {job.jobId_workshop}
                             </p>
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {job.description}
-                            </p>
-                            {/* <div className="flex items-center justify-between text-xs text-gray-500">
+                            <Badge className={getStatusColor(job.status)}>
+                              {job.status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            {job.registration_no}
+                          </p>
+                          <p className="text-xs text-gray-600 line-clamp-2">
+                            {job.description}
+                          </p>
+                          {/* <div className="flex items-center justify-between text-xs text-gray-500">
                               {job.estimated_cost && (
                                 <span>R {job.estimated_cost}</span>
                               )}
                             </div> */}
-                          </div>
-                        </Card>
-                      ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+                        </div>
+                      </Card>
+                    ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Jobs
-                  </CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{workshopJob.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Workshop jobs created
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    In Progress
-                  </CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {
-                      workshopJob.filter((job) => job.status === "assigned")
-                        .length
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Active jobs being worked on
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Completed
-                  </CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {
-                      workshopJob.filter((job) => job.status === "Completed")
-                        .length
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Successfully completed jobs
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Rejected
-                  </CardTitle>
-                  <ThumbsDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {
-                      workshopJob.filter((job) => job.status === "Rejected")
-                        .length
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">Rejected Jobs</p>
-                </CardContent>
-              </Card>
-            </div>
-
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Job Status Distribution</CardTitle>
-                <CardDescription>
-                  Overview of workshop job statuses
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Jobs
+                </CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    "Awaiting Approval",
-                    "Part Ordered",
-                    "Approved",
-                    "Completed",
-                    "Rejected",
-                    "Part Assigned",
-                    "assigned",
-                    "Approved - Ready For Parts Assignment",
-                  ].map((status) => {
-                    const count = workshopJob.filter(
-                      (job) => job.status === status
-                    ).length;
-                    const percentage =
-                      workshopJob.length > 0
-                        ? (count / workshopJob.length) * 100
-                        : 0;
-                    return (
-                      <div
-                        key={status}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge className={getStatusColor(status)}>
-                            {status}
-                          </Badge>
-                          <span className="text-sm">{count} jobs</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {percentage.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <div className="text-2xl font-bold">{workshopJob.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Workshop jobs created
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  In Progress
+                </CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {
+                    workshopJob.filter((job) => job.status === "assigned")
+                      .length
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Active jobs being worked on
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {
+                    workshopJob.filter((job) => job.status === "Completed")
+                      .length
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Successfully completed jobs
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+                <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {
+                    workshopJob.filter((job) => job.status === "Rejected")
+                      .length
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">Rejected Jobs</p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Dialog
-            open={isWorkshopDialogOpen}
-            onOpenChange={setIsWorkshopDialogOpen}
-          >
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  Assign Workshop to Job: {selectedJobForWorkshop?.job_id}
-                </DialogTitle>
-                <DialogDescription>
-                  Search and select a workshop based on location, type, or
-                  capability.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="mb-3">
-                <Input
-                  placeholder="Search by name, location, type, capability..."
-                  value={searchWorkshop}
-                  onChange={(e) => setSearchWorkshop(e.target.value)}
-                />
-              </div>
-
-              <div className="max-h-[300px] overflow-y-auto space-y-2">
-                {workshops
-                  .filter(
-                    (w) =>
-                      w.name
-                        ?.toLowerCase()
-                        .includes(searchWorkshop.toLowerCase()) ||
-                      w.type
-                        ?.toLowerCase()
-                        .includes(searchWorkshop.toLowerCase()) ||
-                      w.location
-                        ?.toLowerCase()
-                        .includes(searchWorkshop.toLowerCase()) ||
-                      w.capabilities
-                        ?.toLowerCase()
-                        .includes(searchWorkshop.toLowerCase())
-                  )
-                  .map((workshop) => (
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Status Distribution</CardTitle>
+              <CardDescription>
+                Overview of workshop job statuses
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  "Awaiting Approval",
+                  "Part Ordered",
+                  "Approved",
+                  "Completed",
+                  "Rejected",
+                  "Part Assigned",
+                  "assigned",
+                  "Approved - Ready For Parts Assignment",
+                ].map((status) => {
+                  const count = workshopJob.filter(
+                    (job) => job.status === status
+                  ).length;
+                  const percentage =
+                    workshopJob.length > 0
+                      ? (count / workshopJob.length) * 100
+                      : 0;
+                  return (
                     <div
-                      key={workshop.id}
-                      className="p-3 border rounded hover:bg-gray-100 flex justify-between items-start"
+                      key={status}
+                      className="flex items-center justify-between"
                     >
-                      <div>
-                        <p className="font-bold">{workshop.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Type:</strong> {workshop.type}
-                          <br />
-                          <strong>Location:</strong> {workshop.location}
-                          <br />
-                          <strong>Capabilities:</strong> {workshop.capabilities}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(status)}>
+                          {status}
+                        </Badge>
+                        <span className="text-sm">{count} jobs</span>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          if (!selectedJobForWorkshop) return;
-
-                          const { error } = await supabase
-                            .from("job_assignments")
-                            .update({
-                              workshop_id: workshop.id,
-                              updated_at: new Date().toISOString(),
-                            })
-                            .eq("id", selectedJobForWorkshop.id);
-
-                          if (error) {
-                            toast.error("Failed to assign workshop.");
-                            console.error(error);
-                          } else {
-                            toast.success(`Assigned ${workshop.name} to job.`);
-                            setIsWorkshopDialogOpen(false);
-                          }
-                        }}
-                      >
-                        Assign
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
-            </DialogContent>
-          </Dialog>
-        </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Job Card Workflow Modal */}
-        <JobCardWorkflow
-          isOpen={isWorkflowOpen}
-          onClose={() => setIsWorkflowOpen(false)}
-          jobCard={selectedJobForWorkflow}
-          onStatusUpdate={() => {
-            // Refresh jobs list
-            const getWorkshopJob = async () => {
-              const { data: WorkJ, error: workError } = await supabase
-                .from("workshop_job")
-                .select("*")
-                .order("created_at", { ascending: false });
+        <Dialog
+          open={isWorkshopDialogOpen}
+          onOpenChange={setIsWorkshopDialogOpen}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Assign Workshop to Job: {selectedJobForWorkshop?.job_id}
+              </DialogTitle>
+              <DialogDescription>
+                Search and select a workshop based on location, type, or
+                capability.
+              </DialogDescription>
+            </DialogHeader>
 
-              if (!workError && WorkJ) {
-                setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
-              }
-            };
-            getWorkshopJob();
-          }}
-        />
-      </div>
-    </>
+            <div className="mb-3">
+              <Input
+                placeholder="Search by name, location, type, capability..."
+                value={searchWorkshop}
+                onChange={(e) => setSearchWorkshop(e.target.value)}
+              />
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-2">
+              {workshops
+                .filter(
+                  (w) =>
+                    w.name
+                      ?.toLowerCase()
+                      .includes(searchWorkshop.toLowerCase()) ||
+                    w.type
+                      ?.toLowerCase()
+                      .includes(searchWorkshop.toLowerCase()) ||
+                    w.location
+                      ?.toLowerCase()
+                      .includes(searchWorkshop.toLowerCase()) ||
+                    w.capabilities
+                      ?.toLowerCase()
+                      .includes(searchWorkshop.toLowerCase())
+                )
+                .map((workshop) => (
+                  <div
+                    key={workshop.id}
+                    className="p-3 border rounded hover:bg-gray-100 flex justify-between items-start"
+                  >
+                    <div>
+                      <p className="font-bold">{workshop.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Type:</strong> {workshop.type}
+                        <br />
+                        <strong>Location:</strong> {workshop.location}
+                        <br />
+                        <strong>Capabilities:</strong> {workshop.capabilities}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!selectedJobForWorkshop) return;
+
+                        const { error } = await supabase
+                          .from("job_assignments")
+                          .update({
+                            workshop_id: workshop.id,
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq("id", selectedJobForWorkshop.id);
+
+                        if (error) {
+                          toast.error("Failed to assign workshop.");
+                          console.error(error);
+                        } else {
+                          toast.success(`Assigned ${workshop.name} to job.`);
+                          setIsWorkshopDialogOpen(false);
+                        }
+                      }}
+                    >
+                      Assign
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </Tabs>
+
+      {/* Job Card Workflow Modal */}
+      <JobCardWorkflow
+        isOpen={isWorkflowOpen}
+        onClose={() => setIsWorkflowOpen(false)}
+        jobCard={selectedJobForWorkflow}
+        onStatusUpdate={() => {
+          // Refresh jobs list
+          const getWorkshopJob = async () => {
+            const { data: WorkJ, error: workError } = await supabase
+              .from("workshop_job")
+              .select("*")
+              .order("created_at", { ascending: false });
+
+            if (!workError && WorkJ) {
+              setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
+            }
+          };
+          getWorkshopJob();
+        }}
+      />
+    </div>
   );
 }

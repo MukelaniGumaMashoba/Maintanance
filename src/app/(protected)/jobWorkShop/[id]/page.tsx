@@ -540,14 +540,16 @@ export default function WorkshopJobDetailPage() {
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                <Button
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                  onClick={() => updateWorkshopJobStatus(job.id, "Approved")}
-                  disabled={updating}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {updating ? "Processing..." : "Approve Job"}
-                </Button>
+                {job.status === "Awaiting Approval" && (
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    onClick={() => updateWorkshopJobStatus(job.id, "Approved")}
+                    disabled={updating}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {updating ? "Processing..." : "Approve Job"}
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   className="w-full"
@@ -581,7 +583,7 @@ export default function WorkshopJobDetailPage() {
                           setTimeout(() => router.push("/jobWorkShop"), 1500);
                         }}
                       >
-                        Close
+                        Close/Complete
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

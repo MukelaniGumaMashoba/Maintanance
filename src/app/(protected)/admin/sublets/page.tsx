@@ -31,6 +31,8 @@ import {
   Mail,
   Send,
   Building2,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +53,9 @@ export default function SubletsPage() {
     description: "",
     status: "active",
   });
+
+  const [editingSublet, setEditingSublet] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const [allocateForm, setAllocateForm] = useState({
     sublet_id: "",
@@ -101,6 +106,54 @@ export default function SubletsPage() {
     fetchData();
   };
 
+  const handleEditSublet = (sublet:any) => {
+    setEditingSublet(sublet);
+    setSubletForm({
+      name: sublet.name || "",
+      email: sublet.email || "",
+      phone: sublet.phone || "",
+      address: sublet.address || "",
+      description: sublet.description || "",
+      status: sublet.status || "active",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+
+  const handleUpdateSublet = async () => {
+    const { error } = await supabase
+      .from("sublets")
+      .update(subletForm)
+      .eq("id", editingSublet?.id);
+    
+    if (error) {
+      toast.error("Error updating sublet", { description: error.message });
+      return;
+    }
+
+    toast.success("Sublet updated successfully");
+    setIsEditDialogOpen(false);
+    setEditingSublet(null);
+    fetchData();
+  };
+
+  const handleDeleteSublet = async (subletId:any) => {
+    if (!confirm("Are you sure you want to delete this sublet?")) return;
+    
+    const { error } = await supabase
+      .from("sublets")
+      .delete()
+      .eq("id", subletId);
+    
+    if (error) {
+      toast.error("Error deleting sublet", { description: error.message });
+      return;
+    }
+
+    toast.success("Sublet deleted successfully");
+    fetchData();
+  };
+
   const handleAllocateJob = async () => {
     try {
       const response = await fetch("/api/allocate-job", {
@@ -138,7 +191,7 @@ export default function SubletsPage() {
       .eq("id", subletId);
 
     if (error) {
-      console.error("Error updating sublet status:", error);
+      console.error("Error updating sublet status:", error.message);
       return;
     }
 
@@ -364,6 +417,83 @@ export default function SubletsPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Sublet Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Sublet Workshop</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label>Workshop Name *</Label>
+                  <Input
+                    value={subletForm.name}
+                    onChange={(e) =>
+                      setSubletForm({ ...subletForm, name: e.target.value })
+                    }
+                    placeholder="Workshop name"
+                  />
+                </div>
+
+                <div>
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={subletForm.email}
+                    onChange={(e) =>
+                      setSubletForm({ ...subletForm, email: e.target.value })
+                    }
+                    placeholder="workshop@example.com"
+                  />
+                </div>
+
+                <div>
+                  <Label>Phone</Label>
+                  <Input
+                    value={subletForm.phone}
+                    onChange={(e) =>
+                      setSubletForm({ ...subletForm, phone: e.target.value })
+                    }
+                    placeholder="Phone number"
+                  />
+                </div>
+
+                <div>
+                  <Label>Address</Label>
+                  <Textarea
+                    value={subletForm.address}
+                    onChange={(e) =>
+                      setSubletForm({ ...subletForm, address: e.target.value })
+                    }
+                    placeholder="Workshop address"
+                  />
+                </div>
+
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={subletForm.description}
+                    onChange={(e) =>
+                      setSubletForm({
+                        ...subletForm,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder="Workshop specialties and capabilities"
+                  />
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={handleUpdateSublet}
+                  disabled={!subletForm.name || !subletForm.email}
+                >
+                  Update Workshop
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -427,34 +557,56 @@ export default function SubletsPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setAllocateForm({
-                        ...allocateForm,
-                        sublet_id: sublet.id.toString(),
-                      });
-                      setIsAllocateDialogOpen(true);
-                    }}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Send className="mr-1 w-3 h-3" />
-                    Allocate Job
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      updateSubletStatus(
-                        sublet.id,
-                        sublet.status === "active" ? "inactive" : "active"
-                      )
-                    }
-                    className="flex-1"
-                  >
-                    {sublet.status === "active" ? "Deactivate" : "Activate"}
-                  </Button>
+                <div className="space-y-2 pt-2">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAllocateForm({
+                          ...allocateForm,
+                          sublet_id: sublet.id.toString(),
+                        });
+                        setIsAllocateDialogOpen(true);
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Send className="mr-1 w-3 h-3" />
+                      Allocate Job
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditSublet(sublet)}
+                      className="flex-1"
+                    >
+                      <Edit3 className="mr-1 w-3 h-3" />
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        updateSubletStatus(
+                          sublet.id,
+                          sublet.status === "active" ? "inactive" : "active"
+                        )
+                      }
+                      className="flex-1"
+                    >
+                      {sublet.status === "active" ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeleteSublet(sublet.id)}
+                      className="flex-1 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="mr-1 w-3 h-3" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

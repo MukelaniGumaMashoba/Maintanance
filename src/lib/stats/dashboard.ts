@@ -16,9 +16,9 @@ export async function getActiveBreakdowns() {
 export async function getPendingApprovals() {
     const supabase = createClient();
     const { count, error } = await (await supabase)
-        .from('approvals')
+        .from('workshop_job')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .eq('status', 'Awaiting Approval');
     if (error) throw error;
     return count || 0;
 }
