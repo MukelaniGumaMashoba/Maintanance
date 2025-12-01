@@ -46,7 +46,7 @@ interface DashboardStats {
   monthlyRevenue: number;
   completedJobs: number;
   tows: number;
-  activeBreakdowns: number;
+  activeJobCards: number;
   pendingApprovals: number;
   availableTechnicians: number;
   driverStats: number;
@@ -78,7 +78,7 @@ export default function Dashboard() {
     monthlyRevenue: 0,
     completedJobs: 0,
     tows: 0,
-    activeBreakdowns: 0,
+    activeJobCards: 0,
     pendingApprovals: 0,
     availableTechnicians: 0,
     driverStats: 0,
@@ -709,7 +709,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/20 hover:bg-muted/30 transition">
                         <div>
                           <p className="font-medium">
-                            Job Card Reported Breakdowns
+                            Job Card Reported
                           </p>
                           <p className="text-sm text-gray-600">
                             Waiting for technician assignment
@@ -718,7 +718,7 @@ export default function Dashboard() {
                         <Link
                           href={{
                             pathname: "/jobs",
-                            query: { statusFilter: "All Status" },
+                            query: { statusFilter: "requires-technician"},
                           }}
                         >
                           <Button size="sm">Assign</Button>
@@ -777,15 +777,15 @@ export default function Dashboard() {
               <Card className="rounded-2xl shadow-md hover:shadow-lg transition">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
-                    Breakdowns Logged
+                    Job Cards Logged
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-primary">
-                    {stats.activeBreakdowns}
+                    {stats.activeJobCards}
                   </div>
                   <p className="text-sm text-gray-600">
-                    Total Breakdowns Reported
+                    Total JoCards Reported
                   </p>
                 </CardContent>
               </Card>

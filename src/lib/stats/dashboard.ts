@@ -7,7 +7,7 @@ export async function getActiveBreakdowns() {
     const supabase = createClient();
     const { count, error } = await (await supabase).from('workshop_job')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'available');
+        // .eq('status', 'Awaiting approval');
     if (error) throw error;
     return count || 0;
 }
@@ -127,7 +127,7 @@ export async function getDashboardStats() {
         getWorkshopStats(),
     ]);
     return {
-        activeBreakdowns,
+        activeJobCards: activeBreakdowns, // Using activeBreakdowns as activeJobCards for now
         pendingApprovals,
         availableTechnicians,
         totalVehicles,
