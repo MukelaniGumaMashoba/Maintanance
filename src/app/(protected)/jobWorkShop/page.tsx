@@ -108,6 +108,8 @@ interface CreateWorkshopJobForm {
   location?: string;
   notes?: string;
   selected_workshop_id?: string;
+  due_date?: string;
+  priority: "low" | "medium" | "high" | "emergency";
 }
 interface WorkshopJob {
   id: number;
@@ -124,6 +126,11 @@ interface WorkshopJob {
   jobId_workshop: string;
   status: string;
   technician?: boolean;
+  priority: "low" | "medium" | "high" | "emergency";
+  completed_at?: Date;
+  due_date?: string;
+  total_labor_cost?: number;
+  total_parts_cost?: number;
 }
 
 export default function FleetJobsPage() {
@@ -161,6 +168,8 @@ export default function FleetJobsPage() {
     location: "",
     notes: "",
     selected_workshop_id: "",
+    due_date: "",
+    priority: "medium",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicleExists, setVehicleExists] = useState<boolean | null>(null);
@@ -426,6 +435,19 @@ export default function FleetJobsPage() {
     return data;
   }
 
+  const getPriorityBadge = (priority: string) => {
+    const colors = {
+      high: "bg-red-100 text-red-800",
+      medium: "bg-yellow-100 text-yellow-800",
+      low: "bg-green-100 text-green-800",
+    };
+    return (
+      <Badge className={colors[priority as keyof typeof colors]}>
+        {priority}
+      </Badge>
+    );
+  };
+
   // Create new workshop job and assign to workshop
   const createWorkshopJob = async () => {
     if (
@@ -483,6 +505,8 @@ export default function FleetJobsPage() {
           client_name: createJobForm.client_name,
           client_phone: createJobForm.client_phone,
           status: "Awaiting Approval",
+          due_date: createJobForm.due_date,
+          priority: createJobForm.priority || "medium",
         })
         .select()
         .single();
@@ -530,6 +554,8 @@ export default function FleetJobsPage() {
         client_name: "",
         client_phone: "",
         selected_workshop_id: "",
+        due_date: "",
+        priority: "medium",
       });
 
       // Empty jobs after creating a new one
@@ -737,9 +763,22 @@ export default function FleetJobsPage() {
                           <div className="flex items-center gap-2">
                             <Badge className={getStatusColor(job.status)}>
                               {formatStatusDisplay(job.status)}
+                              {job.status?.toLowerCase() ===
+                                "awaiting approval" && (
+                                <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                              )}
+                              {job.status?.toLowerCase() === "completed" && (
+                                <>
+                                  <span className="sr-only">Job Completed</span>
+                                  <CheckCircle className="h-4 w-4 text-green-500 animate-none" />
+                                </>
+                              )}
+                              {/* {job.status?.toLowerCase() === "part ordered" && (
+                                <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                              )} */}
                             </Badge>
-                            <Badge className={getPriorityColor(job.job_type)}>
-                              {job.job_type}
+                            <Badge className={getPriorityColor(job.priority)}>
+                              {job.priority}
                             </Badge>
                           </div>
                         </div>
@@ -756,10 +795,10 @@ export default function FleetJobsPage() {
                               {job.description || "No description"}
                             </p>
                             <p>
-                              <strong>Estimated Cost:</strong>{" "}
-                              {job.estimated_cost
-                                ? `R ${job.estimated_cost.toFixed(2)}`
-                                : "N/A"}
+                              <strong>Cost:</strong>{" "}
+                              {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) > 0
+                                ? `R ${((job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0)).toFixed(2)}`
+                                : "Pending"}
                             </p>
                           </div>
                           <div>
@@ -778,6 +817,37 @@ export default function FleetJobsPage() {
                             <p className="truncate">
                               <strong>Notes:</strong> {job.notes || "-"}
                             </p>
+                          </div>
+
+                          <div>
+                            <p>
+                              <strong>Created At:</strong>{" "}
+                              {new Date(job.created_at).toLocaleDateString()}
+                            </p>
+                            <p>
+                              <span className="text-sm text-gray-600">
+                                Due Date:{" "}
+                              </span>
+                              <span className="font-medium">
+                                {job.due_date
+                                  ? new Date(job.due_date).toLocaleDateString()
+                                  : "NOT SET"}
+                              </span>
+                            </p>
+
+                            {job.completed_at ? (
+                              <div>
+                                <p className="text-sm text-gray-600 mt-2">
+                                  Completed
+                                </p>
+
+                                <p className="font-medium">
+                                  {new Date(
+                                    job.completed_at
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                            ) : null}
                           </div>
 
                           {!job.technician && (

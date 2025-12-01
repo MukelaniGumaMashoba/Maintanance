@@ -40,6 +40,9 @@ import { redirect } from 'next/navigation';
 export default function InventoryPage() {
   const supabase = createClient();
   const [parts, setParts] = useState([]);
+  const [stockLevels, setStockLevels] = useState([]);
+  const [stockSource, setStockSource] = useState('parts'); // 'parts' or 'stock'
+  const [selectedStockStatus, setSelectedStockStatus] = useState('all');
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [jobCards, setJobCards] = useState([]);
@@ -53,6 +56,7 @@ export default function InventoryPage() {
   const [selectedParts, setSelectedParts] = useState([]);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [selectedPartLogs, setSelectedPartLogs] = useState([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [activeTab, setActiveTab] = useState('job-cards');
   const [orderForm, setOrderForm] = useState({
     supplier_id: '',
@@ -72,8 +76,6 @@ export default function InventoryPage() {
   const [thresholds, setThresholds] = useState({});
   const [defaultThreshold, setDefaultThreshold] = useState(10);
 
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-
   useEffect(() => {
     fetchData();
     checkLowStock();
@@ -81,7 +83,8 @@ export default function InventoryPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchParts(), fetchCategories(), fetchSuppliers(), fetchJobCards()]);
+    // await Promise.all([fetchParts(), fetchCategories(), fetchSuppliers(), fetchJobCards(), fetchStockLevels()]);
+    await Promise.all([fetchParts(), fetchCategories(), fetchSuppliers(), fetchJobCards(), fetchStockLevels()]);
     setLoading(false);
   };
 
@@ -224,6 +227,33 @@ export default function InventoryPage() {
     }
   };
 
+  const fetchStockLevels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stock')
+        .select('*')
+        .order('id', { ascending: false });
+      if (error) {
+        console.error('Failed to fetch stock levels', error);
+        setStockLevels([]);
+        return;
+      }
+      setStockLevels(data || []);
+    } catch (err) {
+      console.error('Unexpected error fetching stock levels', err);
+      setStockLevels([]);
+    }
+  };
+
+  // checking stock status 
+  const getStockStatus = (quantity) => {
+    if (quantity === 0)
+      return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
+    if (quantity <= 5)
+      return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" };
+    return { label: "In Stock", color: "bg-green-100 text-green-800" };
+  };
+
   // Remove a single part object from a job (updates or deletes workshop_jobpart row)
   const deletePartFromJob = async (part) => {
     if (!part) throw new Error("No part provided");
@@ -242,25 +272,78 @@ export default function InventoryPage() {
       .eq("id", parentId)
       .single();
 
-    alert("Deleting part from parent row ID: " + parentId);
-
     if (parentError || !parentRow) {
       throw parentError || new Error("Parent row not found");
     }
 
     const arrayField = parentRow[fieldName];
-    const partDesc = (part.description || part.part_name || part.item_code || "").toString().trim();
 
-    // Handle job_parts (array of strings)
-    if (fieldName === "job_parts" && Array.isArray(arrayField)) {
-      const filtered = arrayField.filter(item => {
-        const itemStr = typeof item === 'string' ? item.trim() : (item?.description || item?.part_name || "").toString().trim();
-        return itemStr !== partDesc;
-      });
+    // normalize helper to compute removed items and update parts stock
+    const applyStockReturn = async (removedItems) => {
+      for (const removed of removedItems) {
+        try {
+          const qty = Number(removed.quantity ?? removed.qty ?? 1) || 1;
 
-      if (filtered.length === arrayField.length) {
+          // Prefer numeric id present on removed item
+          const candidateId = removed.id ?? removed.part_id ?? removed.partId;
+          let partRow = null;
+
+          if (candidateId) {
+            const { data: p, error: pe } = await supabase.from('parts').select('id, quantity').eq('id', candidateId).single();
+            if (!pe && p) partRow = p;
+          }
+
+          // try match by item_code
+          if (!partRow && removed.item_code) {
+            const { data: p, error: pe } = await supabase.from('parts').select('id, quantity').eq('item_code', removed.item_code).limit(1).single();
+            if (!pe && p) partRow = p;
+          }
+
+          // try match by description (exact)
+          if (!partRow && removed.description) {
+            const { data: p, error: pe } = await supabase.from('parts').select('id, quantity').ilike('description', removed.description).limit(1).single();
+            if (!pe && p) partRow = p;
+          }
+
+          if (partRow && typeof partRow.id !== 'undefined') {
+            // increment stock quantity
+            const newQty = (Number(partRow.quantity) || 0) + qty;
+            const { error: updErr } = await supabase.from('parts').update({ quantity: newQty }).eq('id', partRow.id);
+            if (updErr) console.error('Failed to return quantity to stock for part id', partRow.id, updErr);
+          } else {
+            // no part match found, skip but log
+            console.warn('No matching part row found to return stock for removed item', removed);
+          }
+        } catch (err) {
+          console.error('Error returning stock for removed item', removed, err);
+        }
+      }
+    };
+
+    // Handle job_parts: array of strings or simple objects
+    if (Array.isArray(arrayField)) {
+      // Build filtered array by removing matching element(s)
+      const matchedFilter = (candidate) => {
+        // compare using the passed "part" argument
+        const candidateStr = typeof candidate === 'string' ? candidate.trim() : (candidate?.description || candidate?.part_name || candidate?.item_code || '').toString().trim();
+        const targetStr = typeof part === 'string' ? part.trim() : (part?.description || part?.part_name || part?.item_code || '').toString().trim();
+        // also match by id/item_code when objects
+        if (part?.id && candidate?.id && String(candidate.id) === String(part.id)) return true;
+        if (part?.item_code && candidateStr && String(candidateStr) === String(part.item_code)) return true;
+        if (candidateStr && targetStr && candidateStr === targetStr) return true;
+        return false;
+      };
+
+      const filtered = arrayField.filter((item) => !matchedFilter(item));
+      // determine removed items (those not in filtered)
+      const removedItems = arrayField.filter((item) => matchedFilter(item));
+
+      if (removedItems.length === 0) {
         throw new Error("Could not find matching part to remove");
       }
+
+      // Return quantities to stock for removedItems BEFORE updating/deleting parent row
+      await applyStockReturn(removedItems.map((x) => (typeof x === 'string' ? { description: x, quantity: 1 } : x)));
 
       if (filtered.length === 0) {
         const { error: delErr } = await supabase.from("workshop_jobpart").delete().eq("id", parentRow.id);
@@ -272,26 +355,25 @@ export default function InventoryPage() {
       return;
     }
 
-    // Handle given_parts (array of objects)
-    if (fieldName === "given_parts" && Array.isArray(arrayField)) {
-      const filtered = arrayField.filter((p) => {
-        if (part.id && p && p.id && String(p.id) === String(part.id)) return false;
-        if (part.item_code && p && p.item_code && String(p.item_code) === String(part.item_code)) return false;
-        const pName = (p?.description || p?.part_name || "").toString().trim();
-        return pName !== partDesc;
-      });
-
-      if (filtered.length === arrayField.length) {
-        throw new Error("Could not find matching part to remove");
-      }
-
-      if (filtered.length === 0) {
+    // If arrayField is not array — fallback to string/object handling
+    const targetDesc = (part.description || part.part_name || part.item_code || '').toString().trim();
+    if (typeof arrayField === 'string') {
+      if (arrayField.trim() === targetDesc) {
+        // no quantity info, return 1 to best-effort matched part
+        await applyStockReturn([{ description: arrayField, quantity: 1 }]);
         const { error: delErr } = await supabase.from("workshop_jobpart").delete().eq("id", parentRow.id);
         if (delErr) throw delErr;
-      } else {
-        const { error: updErr } = await supabase.from("workshop_jobpart").update({ [fieldName]: filtered }).eq("id", parentRow.id);
-        if (updErr) throw updErr;
+        return;
       }
+      throw new Error("Could not find matching part to remove in parent row");
+    }
+
+    if (typeof arrayField === 'object' && arrayField !== null) {
+      // treat as single object
+      const removed = arrayField;
+      await applyStockReturn([removed]);
+      const { error: delErr } = await supabase.from("workshop_jobpart").delete().eq("id", parentRow.id);
+      if (delErr) throw delErr;
       return;
     }
 
@@ -307,16 +389,42 @@ export default function InventoryPage() {
       toast.success("Part removed from job");
       await fetchData();
     } catch (err) {
-      console.error("Failed to remove part:", err.message);
-      toast.error("Failed to remove part: " + err.message);
+      console.error("Failed to remove part:", err);
+      toast.error("Failed to remove part: " + (err?.message || err));
     }
   };
 
   const filteredParts = parts.filter(part => {
-    const matchesSearch = part.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      part.item_code?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || part.category_id?.toString() === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSearch = (part.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (part.item_code || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || (part.category_id?.toString() === selectedCategory);
+
+    const qty = Number(part.quantity ?? 0);
+    const stockLabel = getStockStatus(qty).label; // "In Stock" / "Low Stock" / "Out of Stock"
+    const matchesStockFilter =
+      selectedStockStatus === 'all' ||
+      (selectedStockStatus === 'in' && stockLabel === 'In Stock') ||
+      (selectedStockStatus === 'low' && stockLabel === 'Low Stock') ||
+      (selectedStockStatus === 'out' && stockLabel === 'Out of Stock');
+
+    return matchesSearch && matchesCategory && matchesStockFilter;
+  });
+
+  // filter stock-level rows (when user selects Stock Levels)
+  const filteredStockLevels = stockLevels.filter(s => {
+    const desc = (s.description || s.code || '').toString().toLowerCase();
+    const matchesSearch = desc.includes(searchTerm.toLowerCase());
+    // category/type filter - try stock_type field
+    const matchesCategory = selectedCategory === 'all' || (s.stock_type && s.stock_type.toString() === selectedCategory);
+    const qty = Number(s.quantity ?? 0);
+    const stockLabel = getStockStatus(qty).label;
+    const matchesStockFilter =
+      selectedStockStatus === 'all' ||
+      (selectedStockStatus === 'in' && stockLabel === 'In Stock') ||
+      (selectedStockStatus === 'low' && stockLabel === 'Low Stock') ||
+      (selectedStockStatus === 'out' && stockLabel === 'Out of Stock');
+
+    return matchesSearch && matchesCategory && matchesStockFilter;
   });
 
   const filteredJobCards = jobCards.filter(job => {
@@ -770,6 +878,20 @@ export default function InventoryPage() {
   const partsInventoryContent = (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label>Source</Label>
+          <Select value={stockSource} onValueChange={setStockSource}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="parts">Parts (inventory)</SelectItem>
+              <SelectItem value="stock">Stock Levels</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
@@ -790,6 +912,20 @@ export default function InventoryPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* All stock status filter */}
+        <Select value={selectedStockStatus} onValueChange={setSelectedStockStatus}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Stock" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Stock</SelectItem>
+            <SelectItem value="in">In Stock</SelectItem>
+            <SelectItem value="low">Low Stock</SelectItem>
+            <SelectItem value="out">Out of Stock</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
           <DialogTrigger asChild>
             <Button className="bg-green-600 hover:bg-green-700">
@@ -1067,8 +1203,8 @@ export default function InventoryPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Details</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part / Item</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category / Type</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
@@ -1077,65 +1213,66 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredParts.map(part => {
-                const isLowStock = part.quantity <= 5;
-                const isOutOfStock = part.quantity === 0;
+              {(stockSource === 'parts' ? filteredParts : filteredStockLevels).map((partOrStock) => {
+                 // Normalize row for display
+                 const row = stockSource === 'parts'
+                   ? partOrStock
+                   : {
+                     id: partOrStock.id,
+                     description: partOrStock.description,
+                     item_code: partOrStock.code,
+                     quantity: Number(partOrStock.quantity || 0),
+                     price: Number(partOrStock.cost_excl_vat_zar || 0),
+                     categories: { name: partOrStock.stock_type || 'Stock' },
+                   };
+
+                const isLowStock = Number(row.quantity) <= 5 && Number(row.quantity) > 0;
+                const isOutOfStock = Number(row.quantity) === 0;
+
+
                 return (
-                  <tr key={part.id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50' : ''}`}>
+                  <tr key={row.id || row.item_code} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{part.description}</div>
-                        <div className="text-sm text-gray-500">{part.item_code}</div>
+                        <div className="text-sm font-medium text-gray-900">{row.description || row.item_code}</div>
+                        <div className="text-sm text-gray-500">{row.item_code}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge variant="outline" className="text-xs">
-                        {part.categories?.name || 'N/A'}
+                        {row.categories?.name || 'N/A'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`text-sm font-medium ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'
-                        }`}>
-                        {part.quantity}
+                      <span className={`text-sm font-medium ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'}`}>
+                        {row.quantity}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      R{(part.price || 0).toFixed(2)}
+                      R{(row.price || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                      R{(part.quantity * (part.price || 0)).toFixed(2)}
+                      R{(Number(row.quantity) * (row.price || 0)).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <Badge className={
-                        isOutOfStock ? 'bg-red-100 text-red-800' :
-                          isLowStock ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                      }>
+                      <Badge className={isOutOfStock ? 'bg-red-100 text-red-800' : isLowStock ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}>
                         {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewLogs(part.id)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleViewLogs(row.id)}>
                           <History className="w-4 h-4" />
                         </Button>
                         {isLowStock && (
-                          <Button
-                            size="sm"
-                            className="bg-orange-600 hover:bg-orange-700"
-                            onClick={() => {
-                              setOrderForm({
-                                supplier_id: '',
-                                parts: [{ id: part.id, quantity: 10, description: part.description }],
-                                notes: `Reorder for ${part.description} - Current stock: ${part.quantity}`
-                              });
-                              setShowOrderModal(true);
-                            }}
-                          >
+                          <Button size="sm" className="bg-orange-600 hover:bg-orange-700" onClick={() => {
+                            setOrderForm({
+                              supplier_id: '',
+                              parts: [{ id: row.id, quantity: 10, description: row.description }],
+                              notes: `Reorder for ${row.description} - Current stock: ${row.quantity}`
+                            });
+                            setShowOrderModal(true);
+                          }}>
                             <ShoppingCart className="w-4 h-4" />
                           </Button>
                         )}

@@ -280,7 +280,7 @@ export default function JobCardPrinter({
             <h3 style="margin:6px 0 4px 0">Costs & Notes</h3>
             <div class="small">
               <div><strong>Estimated Cost:</strong> ${jobData.estimated_cost ? 'R' + Number(jobData.estimated_cost).toFixed(2) : 'N/A'}</div>
-              <div><strong>Actual Cost:</strong> ${jobData.actual_cost ? 'R' + Number(jobData.actual_cost).toFixed(2) : 'N/A'}</div>
+              <div><strong>Total Cost:</strong> ${jobData.grand_total ? 'R' + Number(jobData.grand_total).toFixed(2) : 'N/A'}</div>
               <div><strong>Work Notes:</strong> ${escapeHtml(jobData.work_notes || jobData.notes || '')}</div>
             </div>
           </div>

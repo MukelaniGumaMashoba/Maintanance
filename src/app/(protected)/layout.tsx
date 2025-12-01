@@ -77,16 +77,23 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Job Cards", href: "/jobWorkShop", Icon: Briefcase },
     { name: "Drivers", href: "/drivers", Icon: Users },
     { name: "Vehicles", href: "/vehicles", Icon: Car },
+    {
+      name: "Stock Levels",
+      href: "/inventory/stock-levels",
+      Icon: ClipboardList,
+    },
     // { name: "Repair Management", href: "/ccenter", Icon: Building2 },
     { name: "System Settings", href: "/settings", Icon: Settings },
     { name: "User Management", href: "/userManagement", Icon: Users },
-    {
-      name: "Reports",
-      href: "/reports",
-      Icon: DockIcon,
-      hasSubMenu: true,
-      subMenu: [],
-    },
+    
+    // SET TO BE DISCUSSED AT LATER STAGE
+    // {
+    //   name: "Reports",
+    //   href: "/reports",
+    //   Icon: DockIcon,
+    //   hasSubMenu: true,
+    //   subMenu: [],
+    // },
   ],
 
   // Is the Admin and Part manager

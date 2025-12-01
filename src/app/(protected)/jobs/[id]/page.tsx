@@ -53,6 +53,11 @@ interface WorkshopJob {
   labour_hours?: number;
   labour_rate?: number;
   labour_total?: number;
+  total_labor_cost?: number;
+
+  // parts fields (optional)
+  total_parts_cost?: number;
+  grand_total?: number;
 }
 
 interface Technician {
@@ -396,25 +401,35 @@ export default function WorkshopJobDetailPage() {
               </p>
               <p>
                 <span className="font-medium text-gray-900">
-                  Estimated Cost:
+                  Total Labour Cost:
                 </span>{" "}
-                {job.estimated_cost ? (
+                {job.total_labor_cost ? (
                   <span className="text-green-600 font-semibold">
-                    R {job.estimated_cost.toFixed(2)}
+                    R {job.total_labor_cost.toFixed(2)}
                   </span>
                 ) : (
                   "N/A"
                 )}
               </p>
               <p>
-                <span className="font-medium text-gray-900">Actual Cost:</span>{" "}
-                {job.actual_cost ? (
+                <span className="font-medium text-gray-900">
+                  Total Parts Cost:
+                </span>{" "}
+                {job.total_parts_cost ? (
                   <span className="text-blue-600 font-semibold">
-                    R {job.actual_cost.toFixed(2)}
+                    R {job.total_parts_cost.toFixed(2)}
                   </span>
                 ) : (
                   "N/A"
                 )}
+              </p>
+              <p>
+                <span className="font-medium text-gray-900">Total Cost:</span>{" "}
+                {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) > 0
+                  ? `R ${(
+                      (job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0)
+                    ).toFixed(2)}`
+                  : "Pending"}
               </p>
             </div>
           </div>
@@ -429,7 +444,6 @@ export default function WorkshopJobDetailPage() {
             </div>
           )}
 
-         
           {/* Parts Section */}
           {parts && parts.length > 0 ? (
             (() => {

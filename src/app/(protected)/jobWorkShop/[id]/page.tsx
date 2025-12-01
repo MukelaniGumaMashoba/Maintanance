@@ -70,6 +70,7 @@ interface WorkshopJob {
   labor_cost?: number;
   total_labor_cost?: number;
   grand_total?: number;
+  total_parts_cost?: number;
 }
 
 interface Vehicle {
@@ -176,7 +177,7 @@ export default function WorkshopJobDetailPage() {
       .update({
         status: status,
         updated_at: new Date().toISOString(),
-        approved : true,
+        approved: true,
       })
       .eq("id", jobId);
 
@@ -477,18 +478,30 @@ export default function WorkshopJobDetailPage() {
             <CardContent className="p-6">
               <div className="space-y-4 mb-6">
                 <div className="bg-green-50 p-3 rounded border border-green-200">
-                  <p className="text-sm text-green-700">Estimated Cost</p>
+                  <p className="text-sm text-green-700">Labour Cost</p>
                   <p className="text-xl font-bold text-green-800">
-                    {job.labor_cost
-                      ? `R ${job.labor_cost.toFixed(2)}`
+                    {job.total_labor_cost
+                      ? `R ${job.total_labor_cost.toFixed(2)}`
                       : "TBD"}
                   </p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">Actual Cost</p>
+                  <p className="text-sm text-blue-700">Total Parts Cost</p>
                   <p className="text-xl font-bold text-blue-800">
-                    {job.grand_total
-                      ? `R ${job.grand_total.toFixed(2)}`
+                    {job.total_parts_cost
+                      ? `R ${job.total_parts_cost.toFixed(2)}`
+                      : "Pending"}
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                  <p className="text-sm text-blue-700">Total Cost</p>
+                  <p className="text-xl font-bold text-blue-800">
+                    {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) >
+                    0
+                      ? `R ${(
+                          (job.total_labor_cost ?? 0) +
+                          (job.total_parts_cost ?? 0)
+                        ).toFixed(2)}`
                       : "Pending"}
                   </p>
                 </div>
@@ -557,6 +570,7 @@ export default function WorkshopJobDetailPage() {
                             .update({
                               status: "Completed",
                               updated_at: new Date().toISOString(),
+                              completed_at: new Date().toISOString(),
                             })
                             .eq("id", job.id);
 

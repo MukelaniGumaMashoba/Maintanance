@@ -3491,10 +3491,12 @@ export type Database = {
           actual_duration_hours: number | null
           after_photos: Json | null
           approval_status: string | null
+          approved: boolean | null
           assigned_technician_id: string | null
           before_photos: Json | null
           client_name: string | null
           client_phone: string | null
+          completed_at: string | null
           completion_date: string | null
           completion_notes: string | null
           created_at: string
@@ -3543,10 +3545,12 @@ export type Database = {
           actual_duration_hours?: number | null
           after_photos?: Json | null
           approval_status?: string | null
+          approved?: boolean | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           client_name?: string | null
           client_phone?: string | null
+          completed_at?: string | null
           completion_date?: string | null
           completion_notes?: string | null
           created_at?: string
@@ -3595,10 +3599,12 @@ export type Database = {
           actual_duration_hours?: number | null
           after_photos?: Json | null
           approval_status?: string | null
+          approved?: boolean | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           client_name?: string | null
           client_phone?: string | null
+          completed_at?: string | null
           completion_date?: string | null
           completion_notes?: string | null
           created_at?: string

@@ -277,7 +277,7 @@ export default function AssignPartsModal({
                   <p><strong>Updated:</strong> ${jobCard.updated_at ? new Date(jobCard.updated_at).toLocaleDateString() : 'N/A'}</p>
                   <p><strong>Job Location:</strong> ${jobCard.job_location || 'N/A'}</p>
                   <p><strong>Estimated Duration:</strong> ${jobCard.estimated_duration_hours || 'N/A'} hours</p>
-                  <p><strong>Estimated Cost:</strong> ${jobCard.estimated_cost ? `R${jobCard.estimated_cost}` : 'N/A'}</p>
+                  <p><strong>Grand Cost:</strong> ${jobCard.grand_total ? `R${jobCard.grand_total.toFixed(2)}` : 'N/A'}</p>
                 </div>
               </div>
             </div>

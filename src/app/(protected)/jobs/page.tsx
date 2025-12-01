@@ -54,7 +54,6 @@ interface Job {
   job_type: string;
   description: string;
   status: string;
-  priority: string;
   created_at: string;
   client_name: string;
   client_phone: string;
@@ -64,6 +63,11 @@ interface Job {
   actual_cost: number;
   vehicle_id: number;
   technician: boolean;
+  due_date?: string;
+  priority: "low" | "medium" | "high" | "emergency";
+  completed_at?: string;
+  total_labor_cost?: number;
+  total_parts_cost?: number;
 }
 
 interface CreateJobForm {
@@ -75,6 +79,8 @@ interface CreateJobForm {
   client_phone?: string;
   location?: string;
   notes?: string;
+  due_date?: string;
+  priority: "low" | "medium" | "high" | "emergency";
 }
 
 export default function JobsPage() {
@@ -96,6 +102,8 @@ export default function JobsPage() {
     client_phone: "",
     location: "",
     notes: "",
+    due_date: "",
+    priority: "medium",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicleExists, setVehicleExists] = useState<boolean | null>(null);
@@ -246,7 +254,8 @@ export default function JobsPage() {
           client_phone: createJobForm.client_phone,
           status: "Awaiting Approval",
           estimated_cost: createJobForm.estimated_cost || 0,
-          priority: "medium",
+          priority: createJobForm.priority || "medium",
+          due_date: createJobForm.due_date || "",
         })
         .select()
         .single();
@@ -270,6 +279,8 @@ export default function JobsPage() {
         client_phone: "",
         location: "",
         notes: "",
+        due_date: "",
+        priority: "medium",
       });
 
       fetchJobs();
@@ -353,9 +364,9 @@ export default function JobsPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case "emergency":
-        return "bg-red-500 text-white";
-      case "high":
         return "bg-orange-500 text-white";
+      case "high":
+        return "bg-red-500 text-white";
       case "medium":
         return "bg-yellow-500 text-white";
       case "low":
@@ -394,7 +405,7 @@ export default function JobsPage() {
               <SelectItem value="Part Assigned">Part Assigned</SelectItem>
               <SelectItem value="Part Ordered">In Progress</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="completed">Job Completed</SelectItem>
               <SelectItem value="Rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
@@ -555,6 +566,49 @@ export default function JobsPage() {
               </div>
 
               <div>
+                <Label htmlFor="due_date">Due Date</Label>
+                <Input
+                  type="date"
+                  id="due_date"
+                  value={createJobForm.due_date}
+                  onChange={(e) =>
+                    setCreateJobForm({
+                      ...createJobForm,
+                      due_date: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="priority">Priority</Label>
+                <Select
+                  // id="priority"
+                  value={createJobForm.priority}
+                  onValueChange={(value) =>
+                    setCreateJobForm({
+                      ...createJobForm,
+                      priority: value as
+                        | "low"
+                        | "medium"
+                        | "high"
+                        | "emergency",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Job Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="emergency">Emergency</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="notes">Job Notes</Label>
                 <Textarea
                   id="notes"
@@ -620,10 +674,18 @@ export default function JobsPage() {
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(job.status)}>
                         {formatStatusDisplay(job.status)}
-                        {job.status === "Awaiting approval" &&
-                          -(
-                            <AlertCircle className="h-4 w-4 bg-red-500 animate-ping" />
-                          )}
+                        {job.status?.toLowerCase() === "awaiting approval" && (
+                          <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                        )}
+                        {job.status?.toLowerCase() === "completed" && (
+                          <>
+                            <span className="sr-only">Job Completed</span>
+                            <CheckCircle className="h-4 w-4 text-green-500 animate-ping" />
+                          </>
+                        )}
+                        {/* {job.status?.toLowerCase() === "part ordered" && (
+                          <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                        )} */}
                       </Badge>
                       <Badge className={getPriorityColor(job.priority)}>
                         {job.priority}
@@ -673,14 +735,34 @@ export default function JobsPage() {
                     <p className="font-medium">{job.location || "N/A"}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Estimated Cost</p>
+                    <p className="text-sm text-gray-600">Cost</p>
                     <p className="font-medium">
-                      R{job.estimated_cost?.toLocaleString() || "0"}
+                      R{((job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0)).toLocaleString() || "0"}
                     </p>
                     <p className="text-sm text-gray-600 mt-2">Created</p>
                     <p className="font-medium">
                       {new Date(job.created_at).toLocaleDateString()}
                     </p>
+                    <p>
+                      <span className="text-sm text-gray-600">Due Date: </span>
+                      <span className="font-medium">
+                        {job.due_date
+                          ? new Date(job.due_date).toLocaleDateString()
+                          : "NOT SET"}
+                      </span>
+                    </p>
+
+                    {job.completed_at ? (
+                      <div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          Job Completed
+                        </p>
+
+                        <p className="font-medium">
+                          {new Date(job.completed_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-4">
