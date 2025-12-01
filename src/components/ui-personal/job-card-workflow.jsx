@@ -134,7 +134,7 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
                   </div>
                 </div>
                 <Badge variant="outline">
-                  {jobCard?.status?.includes('Part Assigned') ? 'Ready' : 'Pending'}
+                  {jobCard?.status?.includes('Part assigned' || "Part Assigned") ? 'Ready' : 'Pending'}
                 </Badge>
               </div>
 
