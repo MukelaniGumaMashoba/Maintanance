@@ -46,6 +46,12 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { stat } from "fs";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { TooltipContent } from "@radix-ui/react-tooltip";
 
 interface Job {
   id: number;
@@ -712,17 +718,29 @@ export default function JobsPage() {
                         View
                       </Button>
                     </Link>
-                    {/* <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedJobId(job.id);
-                        setIsEditOpen(true);
-                      }}
-                      className="flex-1 sm:flex-none"
-                    >
-                      Add Parts
-                    </Button> */}
+                    <TooltipProvider>
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedJobId(job.id);
+                              setIsEditOpen(true);
+                            }}
+                            className="flex-1 sm:flex-none"
+                          >
+                            once-off parts
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            Allow to add once-off parts for this job if for
+                            external work to be closed!
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </CardHeader>

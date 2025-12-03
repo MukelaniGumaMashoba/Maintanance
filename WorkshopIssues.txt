@@ -1,3 +1,104 @@
+Stock thresholds must be set per part.
+The system should allow loading of non-stock items for external workshops or once-off parts purchased for a specific job.
+It must also be possible to capture the cost of non-stock parts used by external workshops/sublets.
+On the job card, remove the client section (name, location, etc.) and add a Driver field that pulls from the driver list (optional).
+
+Workflow sequence to be updated as follows:
+
+1.      Admin: Create job card, assign parts, and assign a technician or external sublet.
+2.      Manager: Approve or reject the job.
+3.      Admin: Print the job card (must include a notes section and a technician signature section), to be given to tech.
+4.      Admin: Once the technician submits the signed job card, admin to update parts if needed, add labour costs, then complete and close the job card on the system.
+
+Remove the “Close Job” permission from the Manager user role.
+If a job is rejected by the Manager, it must be stored in a “Rejected Jobs” section, with the ability to reopen a previously rejected job.
+They require a report showing all completed jobs, with a one-line summary/overview per job.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 3. No location for mobile
 4. Technician is not added in authitication just in table only
 5. Need to change the RSL for tables Updates for all tables to USING (created_by = auth.uid())

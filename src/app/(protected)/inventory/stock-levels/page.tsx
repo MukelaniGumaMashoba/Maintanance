@@ -28,10 +28,10 @@ import {
   RefreshCw,
   AlertTriangle,
   TrendingDown,
-  TrendingUp,
   BarChart3,
   Download,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function StockLevelsPage() {
   const supabase = createClient();
@@ -41,6 +41,7 @@ export default function StockLevelsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
+  const [vehicleBrands, setVehicleBrands] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -49,13 +50,16 @@ export default function StockLevelsPage() {
   const fetchData = async () => {
     setLoading(true);
 
-    const [partsRes, categoriesRes] = await Promise.all([
+    const [partsRes, categoriesRes, vehicleBrandsRes] = await Promise.all([
       supabase.from("parts").select(`*, categories(name)`).order("description"),
       supabase.from("categories").select("*").order("name"),
+      supabase.from("vehicle_brands").select("*").order("name"),
     ]);
 
     setParts(partsRes.data || []);
     setCategories(categoriesRes.data || []);
+    const vehicleBrands = vehicleBrandsRes.data || [];
+    setVehicleBrands(vehicleBrands);
     setLoading(false);
   };
 
@@ -65,7 +69,10 @@ export default function StockLevelsPage() {
     item_code: "",
     quantity: "",
     supplier: "",
-    invoice_number: "",
+    description: "",
+    vehicle_brand: "",
+    category: "",
+    once: false,
   });
 
   // Add function to handle stock entry
@@ -95,21 +102,29 @@ export default function StockLevelsPage() {
 
       if (error) throw error;
 
-      // Log stock entry
-      await supabase.from("stock_entries").insert({
-        part_id: part.id,
-        quantity: parseInt(newStock.quantity),
-        supplier: newStock.supplier,
-        invoice_number: newStock.invoice_number,
-        entry_date: new Date().toISOString(),
-      });
+      // Log stock entry in once_off_parts if needed
+      if (newStock.description) {
+        await supabase.from("once_offparts").insert({
+          part_name: part.description,
+          part_number: part.item_code,
+          quantity: parseInt(newStock.quantity),
+          unit_cost: part.price,
+          supplier: newStock.supplier,
+          description: newStock.description,
+          is_external_workshop: false,
+          once: newStock.once,
+        });
+      }
 
       // Reset form and refresh data
       setNewStock({
         item_code: "",
         quantity: "",
         supplier: "",
-        invoice_number: "",
+        description: "",
+        vehicle_brand: "",
+        category: "",
+        once: false,
       });
       setIsStockEntryOpen(false);
       fetchData();
@@ -168,16 +183,66 @@ export default function StockLevelsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="invoice">Invoice Number</Label>
+            <Label htmlFor="invoice">Description</Label>
             <Input
               id="invoice"
-              value={newStock.invoice_number}
+              value={newStock.description}
               onChange={(e) =>
-                setNewStock({ ...newStock, invoice_number: e.target.value })
+                setNewStock({ ...newStock, description: e.target.value })
               }
-              placeholder="Enter invoice number"
+              placeholder="Enter description"
             />
           </div>
+          <div>
+            <Label htmlFor="vehicle_brand">Vehicle Brand</Label>
+            <Select
+              value={newStock.vehicle_brand}
+              onValueChange={(value) =>
+                setNewStock({ ...newStock, vehicle_brand: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select vehicle brand" />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicleBrands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.name}>
+                    {brand.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={newStock.category}
+              onValueChange={(value) =>
+                setNewStock({ ...newStock, category: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-4">
+            <Label>Once Off Stock</Label>
+            <Checkbox
+              value="once_off"
+              checked={newStock.once}
+              onCheckedChange={(checked) =>
+                setNewStock({ ...newStock, once: checked === true })
+              }
+            />
+          </div>
+
           <Button onClick={handleStockEntry} className="w-full">
             Submit Stock Entry
           </Button>
@@ -198,25 +263,26 @@ export default function StockLevelsPage() {
     const quantity = parseInt(part.quantity || "0");
     let matchesStock = true;
 
+    const threshold = part.stock_threshold || 10;
     switch (stockFilter) {
       case "low":
-        matchesStock = quantity <= 5;
+        matchesStock = quantity <= threshold;
         break;
       case "out":
         matchesStock = quantity === 0;
         break;
       case "normal":
-        matchesStock = quantity > 5;
+        matchesStock = quantity > threshold;
         break;
     }
 
     return matchesSearch && matchesCategory && matchesStock;
   });
 
-  const getStockStatus = (quantity: number) => {
+  const getStockStatus = (quantity: number, threshold: number = 5) => {
     if (quantity === 0)
       return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
-    if (quantity <= 5)
+    if (quantity <= threshold)
       return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" };
     return { label: "In Stock", color: "bg-green-100 text-green-800" };
   };
@@ -227,7 +293,7 @@ export default function StockLevelsPage() {
   );
 
   const lowStockCount = parts.filter(
-    (p) => parseInt(p.quantity || "0") <= 5
+    (p) => parseInt(p.quantity || "0") <= (p.stock_threshold || 5)
   ).length;
   const outOfStockCount = parts.filter(
     (p) => parseInt(p.quantity || "0") === 0
@@ -242,6 +308,10 @@ export default function StockLevelsPage() {
       "Price",
       "Total Value",
       "Status",
+      "Stock Threshold",
+      "Vehicle Brand",
+      "Once Off",
+      "Supplier",
     ];
     const csvData = filteredParts.map((part) => [
       part.item_code || "",
@@ -250,7 +320,12 @@ export default function StockLevelsPage() {
       part.quantity || "0",
       part.price || "0",
       (parseInt(part.quantity || "0") * (part.price || 0)).toFixed(2),
-      getStockStatus(parseInt(part.quantity || "0")).label,
+      getStockStatus(parseInt(part.quantity || "0"), part.stock_threshold || 5)
+        .label,
+      part.stock_threshold || "0",
+      part.vehicle_brands?.name || "",
+      part.once_off ? "Yes" : "No",
+      part.suppliers?.name || "",
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -286,7 +361,7 @@ export default function StockLevelsPage() {
           </p>
         </div>
         <div className="space-x-2">
-          {/* <StockEntryDialog /> */}
+          <StockEntryDialog />
           <Button onClick={exportToCSV} variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export CSV
@@ -414,7 +489,8 @@ export default function StockLevelsPage() {
               <tbody>
                 {filteredParts.map((part) => {
                   const quantity = parseInt(part.quantity || "0");
-                  const status = getStockStatus(quantity);
+                  const threshold = part.stock_threshold || 5;
+                  const status = getStockStatus(quantity, threshold);
                   const totalValue = quantity * (part.price || 0);
 
                   return (
@@ -431,10 +507,10 @@ export default function StockLevelsPage() {
                       <td className="p-3 text-center">
                         <span
                           className={`font-medium ${
-                            quantity <= 5 ? "text-red-600" : ""
+                            quantity <= threshold ? "text-red-600" : ""
                           }`}
                         >
-                          {quantity}
+                          {quantity}/{threshold}
                         </span>
                       </td>
                       <td className="p-3 text-right">
