@@ -57,6 +57,8 @@ export default function RejectedJobs() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isPrintOpen, setIsPrintOpen] = useState(false)
   const [editingJob, setEditingJob] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string>("")
   const [editForm, setEditForm] = useState({
     registration_no: '',
     job_type: '',
@@ -73,7 +75,30 @@ export default function RejectedJobs() {
 
   useEffect(() => {
     fetchRejectedJobs()
+    fetchUserRole()
   }, [])
+
+  const fetchUserRole = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        
+        if (profile) {
+          setUserRole(profile.role || "")
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error)
+      // Fallback to localStorage if available
+      const role = localStorage.getItem("userRole") || ""
+      setUserRole(role)
+    }
+  }
 
   const fetchRejectedJobs = async () => {
     try {
@@ -107,10 +132,11 @@ export default function RejectedJobs() {
               try {
                 const { data: profile } = await supabase
                   .from('profiles')
-                  .select('full_name')
+                  .select('*')
                   .eq('id', job.reopened_by)
                   .single()
                 if (profile) reopenedByName = profile.full_name || 'Unknown'
+                setProfile(profile)
               } catch (err) {
                 console.error('Error fetching reopened_by profile:', err)
               }
@@ -346,7 +372,7 @@ export default function RejectedJobs() {
                         Print
                       </Button>
                       
-                      {rejectedJob.can_reopen && !rejectedJob.reopened_at && (
+                      {rejectedJob.can_reopen && !rejectedJob.reopened_at && userRole.toLowerCase() !== "fleet manager" && (
                         <>
                           <Button
                             size="sm"
@@ -451,7 +477,8 @@ export default function RejectedJobs() {
                   <Printer className="h-4 w-4 mr-1" />
                   Print
                 </Button>
-                {selectedJob.can_reopen && !selectedJob.reopened_at && (
+
+                {selectedJob.can_reopen && !selectedJob.reopened_at && userRole.toLowerCase() !== "fleet manager" && (
                   <>
                     <Button
                       variant="outline"
@@ -464,6 +491,7 @@ export default function RejectedJobs() {
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
+
                     <Button
                       onClick={() => reopenJob(selectedJob)}
                       disabled={isReopening}
@@ -563,7 +591,22 @@ export default function RejectedJobs() {
                 rows={2}
               />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* driver name and phone number */}
+              <Label>Driver Name</Label>
+              <Input
+                value={editForm.client_name}
+                onChange={(e) => setEditForm({ ...editForm, client_name: e.target.value })}
+              />
+              <Label>Driver Phone Number</Label>
+              <Input
+                value={editForm.client_phone}
+                onChange={(e) => setEditForm({ ...editForm, client_phone: e.target.value })}
+              />
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel

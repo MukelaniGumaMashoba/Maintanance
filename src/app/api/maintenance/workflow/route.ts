@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/client'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Get current job card
     const { data: jobCard, error: jobError } = await supabase
-      .from('job_cards')
+      .from('workshop_job')
       .select('*')
       .eq('id', job_card_id)
       .single()
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job card not found' }, { status: 404 })
     }
 
-    let newStatus = jobCard.workflow_status
-    let newJobStatus = jobCard.status
+    let newStatus = jobCard.approval_status
+    let newJobStatus = jobCard.approval_status
 
     // Process workflow action
     switch (action) {
@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    // Update job card
+    // Update job card (workshop_job table)
     const { error: updateError } = await supabase
-      .from('job_cards')
+      .from('workshop_job')
       .update({
         workflow_status: newStatus,
         status: newJobStatus,

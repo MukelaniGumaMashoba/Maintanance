@@ -67,16 +67,16 @@ export default function MaintenanceDashboard() {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, can_approve_jobs, can_reject_jobs, can_close_jobs')
+        .select('*')
         .eq('id', user.id)
         .single()
-      
+      console.log(profile)
       if (profile) {
-        setUserRole(profile.role)
+        setUserRole(profile.role || "")
         setUserPermissions({
-          can_approve_jobs: profile.can_approve_jobs,
-          can_reject_jobs: profile.can_reject_jobs,
-          can_close_jobs: profile.can_close_jobs
+          can_approve_jobs: profile.can_approve_jobs || false,
+          can_reject_jobs: profile.can_reject_jobs || false,
+          can_close_jobs: profile.can_close_jobs || false
         })
       }
     }
@@ -86,8 +86,8 @@ export default function MaintenanceDashboard() {
     try {
       // Fetch job statistics
       const { data: jobs } = await supabase
-        .from('job_cards')
-        .select('workflow_status, grand_total')
+        .from('workshop_job')
+        .select('status, grand_total')
 
       // Fetch parts with low stock
       const { data: parts } = await supabase
@@ -101,14 +101,14 @@ export default function MaintenanceDashboard() {
 
       if (jobs) {
         const totalJobs = jobs.length
-        const pendingApproval = jobs.filter(j => j.workflow_status === 'pending_approval').length
-        const approved = jobs.filter(j => j.workflow_status === 'approved').length
-        const completed = jobs.filter(j => j.workflow_status === 'completed').length
+        const pendingApproval = jobs.filter(j => j.status === 'awaiting approval').length
+        const approved = jobs.filter(j => j.status === 'approved').length
+        const completed = jobs.filter(j => j.status === 'completed').length
         const totalRevenue = jobs
-          .filter(j => j.workflow_status === 'completed')
+          .filter(j => j.status === 'completed' || j.status === 'Completed')
           .reduce((sum, j) => sum + (j.grand_total || 0), 0)
 
-        const lowStockParts = parts?.filter(p => p.quantity <= p.stock_threshold).length || 0
+        const lowStockParts = parts?.filter(p => p?.quantity && p?.stock_threshold && p.quantity <= p.stock_threshold).length || 0
 
         setStats({
           totalJobs,

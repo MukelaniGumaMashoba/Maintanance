@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+// import { getUser, getUserId } from './lib/action/auth'
 
 const roles = [
   {
@@ -17,6 +18,12 @@ const publicRoutes = ['/login', '/signup', '/', '/logout', '/register',
   '/register/workshop/jobCard', '/register/onboarding',
   '/register/success', '/register/workshop/success',
   '/register/workshop/fileUpload']
+
+// const userId = await getUserId()
+// const user = await getUser()
+    // console.log("The user id is", user.user?.id)
+    // console.log("The user role is", user.user?.user_metadata.role)
+    // console.log("The user is", user.user)
 
 // Ensure paths are normalized (leading slash) to avoid mismatches like 'ccenter' vs '/ccenter'
 function ensureLeadingSlash(p: string) {
@@ -65,15 +72,20 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/login', req.url))
       }
       console.log("The user id is", user?.id)
-      console.log("The user role is", user?.user_metadata.role)
+
+      const { data: userData, error: userError } = await supabase.from("profiles").select("*").eq("id", user?.id).single()
+      if (userError) {
+        return NextResponse.redirect(new URL('/login', req.url))
+      }
+      console.log("The user data is", userData)
+      console.log("The user role is", userData.role)
 
       if (user) {
-        const role = decodeURIComponent(user.user_metadata.role)
-        if (role) {
-          const allowedPaths = getAllowedPaths(role)
+        if (userData.role !== null) {
+          const allowedPaths = getAllowedPaths(decodeURIComponent(userData.role))
           const isAllowed = allowedPaths.some(p => path.startsWith(p))
           if (!isAllowed) {
-            console.log(`Role "${role}" is not allowed to access "${path}" — redirecting to /dashboard`)
+            console.log(`Role "${decodeURIComponent(userData.role)}" is not allowed to access "${path}" — redirecting to /dashboard`)
             return NextResponse.redirect(new URL('/login', req.url))
           }
           // switch (role) {

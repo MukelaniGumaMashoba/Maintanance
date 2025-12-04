@@ -31,6 +31,8 @@ interface CreateJobForm {
   selected_technician_id: string
   selected_external_sublet: string
   driver_id: string
+  client_name: string
+  client_phone: string
 }
 
 interface Driver {
@@ -62,7 +64,9 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
     work_notes: "",
     selected_technician_id: "",
     selected_external_sublet: "",
-    driver_id: ""
+    driver_id: "",
+    client_name: "",
+    client_phone: ""
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -85,7 +89,7 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
       .order('first_name')
     
     if (!error && data) {
-      setDrivers(data)
+      setDrivers(data as any)
     }
   }
 
@@ -143,7 +147,7 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
     await supabase
       .from('job_card_workflow_history')
       .insert({
-        job_card_id: jobCardId,
+        workshop_job_id: jobCardId,
         from_status: 'draft',
         to_status: toStatus,
         notes: notes
@@ -177,24 +181,24 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
       const jobNumber = generateJobId()
       
       const { data: newJob, error: jobError } = await supabase
-        .from('job_cards')
+        .from('workshop_job')
         .insert({
-          job_number: jobNumber,
-          vehicle_registration: formData.registration_no.toUpperCase(),
-          vehicle_id: vehicleData.id,
+          registration_no: formData.registration_no.toUpperCase(),
           job_type: formData.job_type,
-          job_description: formData.description,
-          job_location: formData.location,
-          work_notes: formData.work_notes,
+          description: formData.description,
+          type_of_work: formData.type_of_work,
+          vehicle_id: vehicleData.id,
+          client_name: formData.client_name,
+          client_phone: formData.client_phone,
+          location: formData.location,
           notes: formData.notes,
+          status: 'Awaiting Approval',
           estimated_cost: formData.estimated_cost || 0,
           priority: formData.priority,
           due_date: formData.due_date || null,
           estimated_duration_hours: formData.estimated_duration_hours || null,
-          assigned_technician_id: formData.selected_technician_id || null,
-          workflow_status: 'pending_approval',
-          driver_id: formData.driver_id ? parseInt(formData.driver_id) : null,
-          status: 'pending'
+          work_notes: formData.work_notes,
+          approval_status: 'draft'
         })
         .select()
         .single()
@@ -206,18 +210,15 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
       }
 
       // Log workflow history
-      await logWorkflowHistory(newJob.id, 'pending_approval', 'Job card created and submitted for approval')
+      await logWorkflowHistory('pending_approval', 'Job card created and submitted for approval')
 
       // If external sublet is selected, create assignment
       if (formData.selected_external_sublet) {
         await supabase
-          .from('job_assignments')
+          .from('workshop_assignments')
           .insert({
-            description: formData.description,
-            subcontractor_id: parseInt(formData.selected_external_sublet),
-            vehicle_id: vehicleData.id,
-            driver_id: formData.driver_id ? parseInt(formData.driver_id) : null,
-            status: 'assigned_external'
+            job_id: newJob.id,
+            workshop_id: parseInt(formData.selected_external_sublet)
           })
       }
 
@@ -240,7 +241,9 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
         work_notes: "",
         selected_technician_id: "",
         selected_external_sublet: "",
-        driver_id: ""
+        driver_id: "",
+        client_name: "",
+        client_phone: ""
       })
       setVehicleExists(null)
 
@@ -265,7 +268,7 @@ export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormP
               <Label htmlFor="registration_no">Vehicle Registration *</Label>
               <Input
                 id="registration_no"
-                placeholder="DD80MKGP"
+                placeholder="DD82MKP777"
                 value={formData.registration_no}
                 onChange={(e) => {
                   const value = e.target.value.toUpperCase()

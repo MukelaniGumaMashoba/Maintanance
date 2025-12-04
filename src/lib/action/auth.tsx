@@ -17,11 +17,16 @@ export async function login(formData: FormData) {
     redirect(`/login?message=${error.message}`);
   }
 
-  console.log(resData.user.user_metadata.role);
+  const roleProfile = await supabase.from("profiles").select("role").eq("id", resData.user.id).single()
+  if (roleProfile.error) {
+    console.log(roleProfile.error);
+    redirect(`/login?message=${roleProfile.error.message}`);
+  }
+  console.log(roleProfile.data.role);
   const cookieStore = await cookies()
   cookieStore.set('access_token', resData.session.access_token)
   cookieStore.set('refresh_token', resData.session.refresh_token)
-  cookieStore.set('role', resData.user.user_metadata.role)
+  cookieStore.set('role', roleProfile.data.role)
 
   revalidatePath("/", "layout");
   redirect("/");
@@ -58,7 +63,6 @@ export async function signup(formData: FormData) {
 
   const { error: inserterror, data: profile } = await supabase.from("profiles").insert(
     {
-      // @ts-expect-error
       id: signs.session?.user.id,
       full_name: fullName,
       role,

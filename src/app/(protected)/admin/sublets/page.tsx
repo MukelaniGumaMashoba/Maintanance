@@ -78,6 +78,7 @@ export default function SubletsPage() {
       supabase
         .from("workshop_job")
         .select("*")
+        .not("status", "in", ["Awaiting Approval", "Completed"])
         .order("created_at", { ascending: false }),
     ]);
     setJobCards(jobCardsRes.data || []);

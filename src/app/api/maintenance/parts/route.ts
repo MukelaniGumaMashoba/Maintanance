@@ -37,9 +37,15 @@ export async function GET(request: NextRequest) {
           (typeof part?.quantity === 'number' && typeof part?.stock_threshold === 'number')
             ? part.quantity <= part.stock_threshold
             : false
-      ) || [];
-      return NextResponse.json({ parts: filteredParts });
+      ) || []
     }
+
+    return NextResponse.json({ parts: filteredParts })
+  } catch (error) {
+    console.error('Fetch parts error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,15 +57,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
-      item_code, 
-      description, 
-      price, 
-      quantity, 
-      stock_threshold, 
-      is_stock_item, 
-      supplier, 
-      location 
+    const {
+      item_code,
+      description,
+      price,
+      quantity,
+      stock_threshold,
+      is_stock_item,
+      supplier,
+      location
     } = body
 
     const { data: part, error } = await supabase
@@ -99,16 +105,16 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
+    const {
       id,
-      item_code, 
-      description, 
-      price, 
-      quantity, 
-      stock_threshold, 
-      is_stock_item, 
-      supplier, 
-      location 
+      item_code,
+      description,
+      price,
+      quantity,
+      stock_threshold,
+      is_stock_item,
+      supplier,
+      location
     } = body
 
     const { data: part, error } = await supabase

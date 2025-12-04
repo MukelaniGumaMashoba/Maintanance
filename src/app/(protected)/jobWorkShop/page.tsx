@@ -311,6 +311,29 @@ export default function FleetJobsPage() {
           ...notCompleted,
           ...completed,
         ] as unknown as WorkshopJob[]);
+
+        // Check which jobs have parts assigned
+        const jobIds = WorkJ.map((j: any) => j.id);
+        if (jobIds.length > 0) {
+          const { data: partsData } = await supabase
+            .from("workshop_jobpart")
+            .select("job_id, given_parts")
+            .in("job_id", jobIds);
+
+          if (partsData) {
+            const jobsWithAssignedParts = new Set<number>();
+            partsData.forEach((part: any) => {
+              if (
+                part.given_parts &&
+                Array.isArray(part.given_parts) &&
+                part.given_parts.length > 0
+              ) {
+                jobsWithAssignedParts.add(part.job_id);
+              }
+            });
+            setJobsWithParts(jobsWithAssignedParts);
+          }
+        }
       } else {
         console.error("Error fetching workshop jobs:", workError);
       }
@@ -412,30 +435,6 @@ export default function FleetJobsPage() {
         return "bg-gray-500 text-white";
     }
   };
-
-  useEffect(() => {
-    const getWorkshopJob = async () => {
-      const { data: WorkJ, error: workError } = await supabase
-        .from("workshop_job")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!workError && WorkJ) {
-        // move completed jobs to the end while preserving the relative order
-        const isCompleted = (j: any) =>
-          String(j.status || "").toLowerCase() === "completed";
-        const notCompleted = (WorkJ || []).filter((j: any) => !isCompleted(j));
-        const completed = (WorkJ || []).filter((j: any) => isCompleted(j));
-        setWorkshopsJob([
-          ...notCompleted,
-          ...completed,
-        ] as unknown as WorkshopJob[]);
-      } else {
-        console.error("Error fetching workshop jobs:", workError);
-      }
-    };
-    getWorkshopJob();
-  }, []);
 
   // Update job status
   const handleUpdateJobStatus = async (
@@ -674,6 +673,7 @@ export default function FleetJobsPage() {
   );
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [selectedJobForPrint, setSelectedJobForPrint] = useState<WorkshopJob | null>(null);
+  const [jobsWithParts, setJobsWithParts] = useState<Set<number>>(new Set());
   const normalizedSearch = searchWorkshop?.toLowerCase() || "";
 
   const availableWorkshops = useMemo(() => {
@@ -927,10 +927,24 @@ export default function FleetJobsPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={
+                          job.status?.includes("Awaiting") &&
+                          (!job.technician || !jobsWithParts.has(job.id))
+                        }
                         onClick={() => {
                           setSelectedJobForWorkflow(job);
                           setIsWorkflowOpen(true);
                         }}
+                        title={
+                          job.status?.includes("Awaiting") &&
+                          (!job.technician || !jobsWithParts.has(job.id))
+                            ? !job.technician && !jobsWithParts.has(job.id)
+                              ? "Technician and parts must be assigned before approval"
+                              : !job.technician
+                                ? "Technician must be assigned before approval"
+                                : "Parts must be assigned before approval"
+                            : undefined
+                        }
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         {job.status?.includes("Awaiting")
@@ -1236,7 +1250,7 @@ export default function FleetJobsPage() {
         onClose={() => setIsWorkflowOpen(false)}
         jobCard={selectedJobForWorkflow}
         onStatusUpdate={() => {
-          // Refresh jobs list
+          // Refresh jobs list and parts data
           const getWorkshopJob = async () => {
             const { data: WorkJ, error: workError } = await supabase
               .from("workshop_job")
@@ -1244,7 +1258,37 @@ export default function FleetJobsPage() {
               .order("created_at", { ascending: false });
 
             if (!workError && WorkJ) {
-              setWorkshopsJob(WorkJ as unknown as WorkshopJob[]);
+              const isCompleted = (j: any) =>
+                String(j.status || "").toLowerCase() === "completed";
+              const notCompleted = (WorkJ || []).filter((j: any) => !isCompleted(j));
+              const completed = (WorkJ || []).filter((j: any) => isCompleted(j));
+              setWorkshopsJob([
+                ...notCompleted,
+                ...completed,
+              ] as unknown as WorkshopJob[]);
+
+              // Refresh parts data
+              const jobIds = WorkJ.map((j: any) => j.id);
+              if (jobIds.length > 0) {
+                const { data: partsData } = await supabase
+                  .from("workshop_jobpart")
+                  .select("job_id, given_parts")
+                  .in("job_id", jobIds);
+
+                if (partsData) {
+                  const jobsWithAssignedParts = new Set<number>();
+                  partsData.forEach((part: any) => {
+                    if (
+                      part.given_parts &&
+                      Array.isArray(part.given_parts) &&
+                      part.given_parts.length > 0
+                    ) {
+                      jobsWithAssignedParts.add(part.job_id);
+                    }
+                  });
+                  setJobsWithParts(jobsWithAssignedParts);
+                }
+              }
             }
           };
           getWorkshopJob();

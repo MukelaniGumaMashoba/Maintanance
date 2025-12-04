@@ -1,14 +1,5 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +21,9 @@ import {
   TrendingDown,
   BarChart3,
   Download,
+  Plus,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import StockEntryModal from "@/components/inventory/StockEntryModal";
 
 export default function StockLevelsPage() {
   const supabase = createClient();
@@ -42,6 +34,7 @@ export default function StockLevelsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
   const [vehicleBrands, setVehicleBrands] = useState<any[]>([]);
+  const [isStockEntryOpen, setIsStockEntryOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -62,194 +55,6 @@ export default function StockLevelsPage() {
     setVehicleBrands(vehicleBrands);
     setLoading(false);
   };
-
-  // Add new state and function for stock entry dialog
-  const [isStockEntryOpen, setIsStockEntryOpen] = useState(false);
-  const [newStock, setNewStock] = useState({
-    item_code: "",
-    quantity: "",
-    supplier: "",
-    description: "",
-    vehicle_brand: "",
-    category: "",
-    once: false,
-  });
-
-  // Add function to handle stock entry
-  const handleStockEntry = async () => {
-    try {
-      // Validate input
-      if (!newStock.item_code || !newStock.quantity || !newStock.supplier) {
-        alert("Please fill in all required fields");
-        return;
-      }
-
-      // Find existing part
-      const part = parts.find((p) => p.item_code === newStock.item_code);
-      if (!part) {
-        alert("Item code not found");
-        return;
-      }
-
-      // Update stock quantity
-      const { error } = await supabase
-        .from("parts")
-        .update({
-          quantity:
-            parseInt(part.quantity || "0") + parseInt(newStock.quantity),
-        })
-        .eq("item_code", newStock.item_code);
-
-      if (error) throw error;
-
-      // Log stock entry in once_off_parts if needed
-      if (newStock.description) {
-        await supabase.from("once_offparts").insert({
-          part_name: part.description,
-          part_number: part.item_code,
-          quantity: parseInt(newStock.quantity),
-          unit_cost: part.price,
-          supplier: newStock.supplier,
-          description: newStock.description,
-          is_external_workshop: false,
-          once: newStock.once,
-        });
-      }
-
-      // Reset form and refresh data
-      setNewStock({
-        item_code: "",
-        quantity: "",
-        supplier: "",
-        description: "",
-        vehicle_brand: "",
-        category: "",
-        once: false,
-      });
-      setIsStockEntryOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error entering stock:", error);
-      alert("Error entering stock");
-    }
-  };
-
-  // Add stock entry dialog component
-  const StockEntryDialog = () => (
-    <Dialog open={isStockEntryOpen} onOpenChange={setIsStockEntryOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Enter Stock
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Enter New Stock</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="item_code">Item Code</Label>
-            <Input
-              id="item_code"
-              value={newStock.item_code}
-              onChange={(e) =>
-                setNewStock({ ...newStock, item_code: e.target.value })
-              }
-              placeholder="Enter item code"
-            />
-          </div>
-          <div>
-            <Label htmlFor="quantity">Quantity</Label>
-            <Input
-              id="quantity"
-              type="number"
-              value={newStock.quantity}
-              onChange={(e) =>
-                setNewStock({ ...newStock, quantity: e.target.value })
-              }
-              placeholder="Enter quantity"
-            />
-          </div>
-          <div>
-            <Label htmlFor="supplier">Supplier</Label>
-            <Input
-              id="supplier"
-              value={newStock.supplier}
-              onChange={(e) =>
-                setNewStock({ ...newStock, supplier: e.target.value })
-              }
-              placeholder="Enter supplier name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="invoice">Description</Label>
-            <Input
-              id="invoice"
-              value={newStock.description}
-              onChange={(e) =>
-                setNewStock({ ...newStock, description: e.target.value })
-              }
-              placeholder="Enter description"
-            />
-          </div>
-          <div>
-            <Label htmlFor="vehicle_brand">Vehicle Brand</Label>
-            <Select
-              value={newStock.vehicle_brand}
-              onValueChange={(value) =>
-                setNewStock({ ...newStock, vehicle_brand: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select vehicle brand" />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicleBrands.map((brand) => (
-                  <SelectItem key={brand.id} value={brand.name}>
-                    {brand.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={newStock.category}
-              onValueChange={(value) =>
-                setNewStock({ ...newStock, category: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.name}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="mt-4">
-            <Label>Once Off Stock</Label>
-            <Checkbox
-              value="once_off"
-              checked={newStock.once}
-              onCheckedChange={(checked) =>
-                setNewStock({ ...newStock, once: checked === true })
-              }
-            />
-          </div>
-
-          <Button onClick={handleStockEntry} className="w-full">
-            Submit Stock Entry
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 
   const filteredParts = parts.filter((part) => {
     const matchesSearch =
@@ -361,7 +166,18 @@ export default function StockLevelsPage() {
           </p>
         </div>
         <div className="space-x-2">
-          <StockEntryDialog />
+          <StockEntryModal
+            isOpen={isStockEntryOpen}
+            onOpenChange={setIsStockEntryOpen}
+            onSuccess={fetchData}
+            mode="stock"
+            trigger={
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Enter Stock
+              </Button>
+            }
+          />
           <Button onClick={exportToCSV} variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export CSV

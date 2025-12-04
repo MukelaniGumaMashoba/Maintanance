@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { 
-  Plus, 
-  Package, 
-  AlertTriangle, 
+import {
+  Plus,
+  Package,
+  AlertTriangle,
   ExternalLink,
   Trash2,
   Edit
@@ -76,7 +76,7 @@ export default function PartsManagement() {
   const [showAddNonStock, setShowAddNonStock] = useState(false)
   const [editingPart, setEditingPart] = useState<Part | null>(null)
   const [activeTab, setActiveTab] = useState<'stock' | 'non-stock'>('stock')
-  
+
   const [partsForm, setPartsForm] = useState<PartsFormData>({
     item_code: "",
     description: "",
@@ -120,10 +120,11 @@ export default function PartsManagement() {
 
   const fetchNonStockParts = async () => {
     const { data, error } = await supabase
-      .from('once_offparts')
+      .from('parts')
       .select(`
         *      `)
-      .order('created_at', { ascending: false })
+      .eq('is_stock_item', false)
+      .order('description', { ascending: false })
 
     if (!error && data) {
       setNonStockParts(data as any)
@@ -206,7 +207,7 @@ export default function PartsManagement() {
 
     try {
       const { error } = await supabase
-        .from('once_offparts')
+        .from('parts')
         .insert([nonStockForm])
 
       if (error) throw error
@@ -323,22 +324,20 @@ export default function PartsManagement() {
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
         <button
-          className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            activeTab === 'stock' 
-              ? 'bg-white shadow-sm text-blue-600' 
+          className={`flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'stock'
+              ? 'bg-white shadow-sm text-blue-600'
               : 'text-gray-600 hover:text-gray-800'
-          }`}
+            }`}
           onClick={() => setActiveTab('stock')}
         >
           <Package className="h-4 w-4 inline mr-2" />
           Stock Parts
         </button>
         <button
-          className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            activeTab === 'non-stock' 
-              ? 'bg-white shadow-sm text-blue-600' 
+          className={`flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'non-stock'
+              ? 'bg-white shadow-sm text-blue-600'
               : 'text-gray-600 hover:text-gray-800'
-          }`}
+            }`}
           onClick={() => setActiveTab('non-stock')}
         >
           <ExternalLink className="h-4 w-4 inline mr-2" />
@@ -376,7 +375,7 @@ export default function PartsManagement() {
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p><strong>Code:</strong> {part.item_code}</p>
@@ -395,7 +394,7 @@ export default function PartsManagement() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
@@ -444,11 +443,11 @@ export default function PartsManagement() {
                           {part.is_external_workshop ? "External Workshop" : "One-off Purchase"}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p><strong>Part Number:</strong> {part.part_number}</p>
-                          <p><strong>Job Card:</strong> {part.job_cards?.job_number}</p>
+                          <p><strong>Job Card:</strong> {part.description || part.part_number}</p>
                         </div>
                         <div>
                           <p><strong>Quantity:</strong> {part.quantity}</p>
@@ -459,18 +458,17 @@ export default function PartsManagement() {
                           <p><strong>Supplier:</strong> {part.supplier}</p>
                         </div>
                         <div>
-                          <p><strong>Vehicle:</strong> {part.job_cards?.vehicle_registration}</p>
                           <p><strong>Added:</strong> {new Date(part.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      
+
                       {part.description && (
                         <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
                           <strong>Description:</strong> {part.description}
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
@@ -611,8 +609,8 @@ export default function PartsManagement() {
               <form onSubmit={handleAddNonStockPart} className="space-y-4">
                 <div>
                   <Label htmlFor="job_card_id">Job Card *</Label>
-                  <Select 
-                    value={nonStockForm.job_card_id} 
+                  <Select
+                    value={nonStockForm.job_card_id}
                     onValueChange={(value) => setNonStockForm({ ...nonStockForm, job_card_id: value })}
                   >
                     <SelectTrigger>

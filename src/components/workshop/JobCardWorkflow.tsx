@@ -66,11 +66,11 @@ export default function JobCardWorkflow() {
         .single()
       
       if (profile) {
-        setUserRole(profile.role)
+        setUserRole(profile.role || "")
         setUserPermissions({
-          can_approve_jobs: profile.can_approve_jobs,
-          can_reject_jobs: profile.can_reject_jobs,
-          can_close_jobs: profile.can_close_jobs
+          can_approve_jobs: profile.can_approve_jobs || false,
+          can_reject_jobs: profile.can_reject_jobs || false,
+          can_close_jobs: profile.can_close_jobs || false
         })
       }
     }
@@ -78,25 +78,24 @@ export default function JobCardWorkflow() {
 
   const fetchJobs = async () => {
     const { data, error } = await supabase
-      .from('job_cards')
+      .from('workshop_job')
       .select(`
         id,
-        job_number,
-        job_description,
-        vehicle_registration,
-        workflow_status,
+        registration_no,
+        description,
+        vehicle_id,
+        approval_status,
         status,
-        created_at,
-        assigned_technician_id,
-        technician_name,
-        driver_id,
         estimated_cost,
-        priority
+        priority,
+        due_date,
+        estimated_duration_hours,
+        work_notes
       `)
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      setJobs(data)
+      setJobs(data as any)
     }
   }
 
@@ -104,7 +103,7 @@ export default function JobCardWorkflow() {
     await supabase
       .from('job_card_workflow_history')
       .insert({
-        job_card_id: jobCardId,
+        workshop_job_id: parseInt(jobCardId),
         from_status: fromStatus,
         to_status: toStatus,
         notes: notes
@@ -130,8 +129,8 @@ export default function JobCardWorkflow() {
           await supabase
             .from('rejected_jobs')
             .insert({
-              original_job_card_id: job.id,
-              job_data: job,
+              original_job_card_id: parseInt(job.id),
+              job_data: JSON.stringify(job) as any,
               rejection_reason: action.notes
             })
           break

@@ -445,7 +445,7 @@ export default function WorkshopJobDetailPage() {
         .from("workshop_job")
         .update({
           updated_at: new Date().toISOString(),
-          status: "Part Assigned",
+          status: "Assigned",
           technician: true,
         })
         .eq("id", selectedJobForTech.id);
@@ -898,43 +898,43 @@ export default function WorkshopJobDetailPage() {
                     {updating ? "Processing..." : "Submit Job for Approval"}
                   </Button>
                 )}
-                {job.status?.toLowerCase() === "approved" 
-                || job.status?.toLowerCase() === "approved - ready for parts assignment" 
-                || job.status?.toLowerCase() === "awaiting approval" 
-                || job.status?.toLowerCase() !== "completed" && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full border-gray-300"
-                          onClick={async () => {
-                            await supabase
-                              .from("workshop_job")
-                              .update({
-                                status: "Completed",
-                                updated_at: new Date().toISOString(),
-                                completion_date: new Date().toISOString(),
-                              })
-                              .eq("id", job.id);
+                {job.status?.toLowerCase() === "approved"
+                  || job.status?.toLowerCase() === "approved - ready for parts assignment"
+                  || job.status?.toLowerCase() === "awaiting approval"
+                  || job.status?.toLowerCase() !== "completed" && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full border-gray-300"
+                            onClick={async () => {
+                              await supabase
+                                .from("workshop_job")
+                                .update({
+                                  status: "Completed",
+                                  updated_at: new Date().toISOString(),
+                                  completion_date: new Date().toISOString(),
+                                })
+                                .eq("id", job.id);
 
-                            toast.success("Job closed successfully");
-                            setJob((prev) =>
-                              prev ? { ...prev, status: "Completed" } : null
-                            );
-                            setTimeout(() => router.push("/jobs"), 1500);
-                          }}
-                          disabled={job.status?.toLowerCase() === 'completed'}
-                        >
-                          Close/Complete
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>This for completed job to be closed!</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+                              toast.success("Job closed successfully");
+                              setJob((prev) =>
+                                prev ? { ...prev, status: "Completed" } : null
+                              );
+                              setTimeout(() => router.push("/jobs"), 1500);
+                            }}
+                            disabled={job.status?.toLowerCase() === 'completed'}
+                          >
+                            Close/Complete
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>This for completed job to be closed!</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
               </div>
             </CardContent>
           </Card>

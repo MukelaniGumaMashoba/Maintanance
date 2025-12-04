@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     // Calculate total cost
     const totalCost = (quantity || 1) * (unit_cost || 0)
 
-    // Insert into once_offparts (should not type-hint as once_off_parts since that's not the table name)
+    // Insert into once_off_parts (matches migration table name)
     const { data: part, error } = await supabase
-      .from('once_offparts')
+      .from('once_off_parts')
       .insert([{
         job_card_id: job_card_id?.toString() ?? undefined,
         part_name,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         supplier,
         is_external_workshop: is_external_workshop || false,
         created_by: user.id
-      })
+      }])
       .select()
       .single()
 
@@ -140,7 +140,7 @@ export async function DELETE(request: NextRequest) {
     const { data: part, error: fetchError } = await supabase
       .from('once_off_parts')
       .select('created_by')
-      .eq('id', partId)
+      .eq('id', parseInt(partId as string))
       .single()
 
     if (fetchError || !part) {
@@ -160,7 +160,7 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase
       .from('once_off_parts')
       .delete()
-      .eq('id', partId)
+      .eq('id', parseInt(partId as string))
 
     if (error) {
       return NextResponse.json({ error: 'Failed to delete part' }, { status: 500 })

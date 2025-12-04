@@ -349,11 +349,18 @@ export default function JobsPage() {
     if (error) {
       console.error(error);
       toast.error("Failed to save parts.");
-    } else {
-      toast.success("Parts saved successfully.");
-      setParts([]);
-      setIsEditOpen(false);
+      return;
     }
+
+    if (partError) {
+      console.error(partError);
+      toast.error("Failed to update job status after adding parts.");
+      return;
+    }
+
+    toast.success("Parts saved successfully.");
+    setParts([]);
+    setIsEditOpen(false);
   };
 
   const getStatusColor = (status: string) => {
