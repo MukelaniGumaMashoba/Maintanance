@@ -52,6 +52,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TooltipContent } from "@radix-ui/react-tooltip";
+import RejectedJobs from "@/components/workshop/RejectedJobs";
+import CompletedJobsReport from "@/components/workshop/CompletedJobsReport";
+import JobCardPrinter from "@/components/ui-personal/job-card-printer";
 
 interface Job {
   id: number;
@@ -117,6 +120,9 @@ export default function JobsPage() {
   const [partName, setPartName] = useState("");
   const [parts, setParts] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [selectedJobForPrint, setSelectedJobForPrint] = useState<Job | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
 
   const supabase = createClient();
 
@@ -145,6 +151,13 @@ export default function JobsPage() {
 
   const filterJobs = () => {
     let filtered = [...jobs];
+
+    // Filter out completed and rejected jobs from "all jobs" tab
+    filtered = filtered.filter(
+      (job) => 
+        (job.status || "").toLowerCase() !== "completed" &&
+        (job.status || "").toLowerCase() !== "rejected"
+    );
 
     // Apply search filter
     if (searchTerm && searchTerm.trim()) {
@@ -392,539 +405,584 @@ export default function JobsPage() {
     <div className="flex-1 space-y-4 p-4 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Job Cards</h2>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 w-64"
-            />
+        {activeTab === "all" && (
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search jobs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-64"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="requires-technician">
+                  Requires Technicians
+                </SelectItem>
+                <SelectItem value="Awaiting Approval">
+                  Pending Approval
+                </SelectItem>
+                <SelectItem value="Part Assigned">Part Assigned</SelectItem>
+                <SelectItem value="Part Ordered">In Progress</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="completed">Job Completed</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="requires-technician">
-                Requires Technicians
-              </SelectItem>
-              <SelectItem value="Awaiting Approval">
-                Pending Approval
-              </SelectItem>
-              <SelectItem value="Part Assigned">Part Assigned</SelectItem>
-              <SelectItem value="Part Ordered">In Progress</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="completed">Job Completed</SelectItem>
-              <SelectItem value="Rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Dialog
-          open={isCreateJobDialogOpen}
-          onOpenChange={setIsCreateJobDialogOpen}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Job Card
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Job Card</DialogTitle>
-              <DialogDescription>
-                Create a new job card. All fields marked with * are required.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                createJob();
-              }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="registration_number">
-                    Registration Number *
-                  </Label>
-                  <Input
-                    id="registration_number"
-                    placeholder="DD80MKGP"
-                    value={createJobForm.registration_number}
-                    onChange={(e) => {
-                      const value = e.target.value.toUpperCase();
-                      setCreateJobForm({
-                        ...createJobForm,
-                        registration_number: value,
-                      });
-                      checkVehicleExists(value);
-                    }}
-                    className={
-                      vehicleExists === false
-                        ? "border-red-500"
-                        : vehicleExists === true
-                        ? "border-green-500"
-                        : ""
-                    }
-                  />
-                  {vehicleExists === false && (
-                    <p className="text-sm text-red-500 mt-1">
-                      Vehicle not found in database
-                    </p>
-                  )}
-                  {vehicleExists === true && (
-                    <p className="text-sm text-green-500 mt-1">
-                      Vehicle found ✓
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="job_type">Type of Work *</Label>
-                  <Select
-                    value={createJobForm.job_type}
-                    onValueChange={(value) =>
-                      setCreateJobForm({ ...createJobForm, job_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type of work" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="repair">Repair</SelectItem>
-                      <SelectItem value="inspection">Inspection</SelectItem>
-                      <SelectItem value="breakdown">Breakdown</SelectItem>
-                      <SelectItem value="accident">Accident Repair</SelectItem>
-                      <SelectItem value="service">Service</SelectItem>
-                      <SelectItem value="mechanical">Mechanical</SelectItem>
-                      <SelectItem value="electrical">Electrical</SelectItem>
-                      <SelectItem value="panel-beating">
-                        Panel Beating
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Problem Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the problem..."
-                  value={createJobForm.description}
-                  onChange={(e) =>
-                    setCreateJobForm({
-                      ...createJobForm,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="client_name">Client Name</Label>
-                  <Input
-                    id="client_name"
-                    placeholder="Client name"
-                    value={createJobForm.client_name}
-                    onChange={(e) =>
-                      setCreateJobForm({
-                        ...createJobForm,
-                        client_name: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="client_phone">Client Phone</Label>
-                  <Input
-                    id="client_phone"
-                    placeholder="Phone number"
-                    value={createJobForm.client_phone}
-                    onChange={(e) =>
-                      setCreateJobForm({
-                        ...createJobForm,
-                        client_phone: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="location">Job Location</Label>
-                <Input
-                  id="location"
-                  placeholder="Enter job location"
-                  value={createJobForm.location}
-                  onChange={(e) =>
-                    setCreateJobForm({
-                      ...createJobForm,
-                      location: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="due_date">Due Date</Label>
-                <Input
-                  type="date"
-                  id="due_date"
-                  value={createJobForm.due_date}
-                  onChange={(e) =>
-                    setCreateJobForm({
-                      ...createJobForm,
-                      due_date: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="priority">Priority</Label>
-                <Select
-                  // id="priority"
-                  value={createJobForm.priority}
-                  onValueChange={(value) =>
-                    setCreateJobForm({
-                      ...createJobForm,
-                      priority: value as
-                        | "low"
-                        | "medium"
-                        | "high"
-                        | "emergency",
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Job Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="emergency">Emergency</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Job Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Additional notes..."
-                  value={createJobForm.notes}
-                  onChange={(e) =>
-                    setCreateJobForm({
-                      ...createJobForm,
-                      notes: e.target.value,
-                    })
-                  }
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreateJobDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    isSubmitting ||
-                    !createJobForm.registration_number ||
-                    !createJobForm.job_type ||
-                    !createJobForm.description
-                  }
-                >
-                  {isSubmitting ? "Creating..." : "Create Job Card"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="space-y-4">
-        {filteredJobs.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No job cards found
-              </h3>
-              <p className="text-gray-500">
-                Create your first job card to get started
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredJobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <CardTitle className="text-lg">
-                      {job.jobId_workshop}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(job.status)}>
-                        {formatStatusDisplay(job.status)}
-                        {job.status?.toLowerCase() === "awaiting approval" && (
-                          <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
-                        )}
-                        {job.status?.toLowerCase() === "completed" && (
-                          <>
-                            <span className="sr-only">Job Completed</span>
-                            <CheckCircle className="h-4 w-4 text-green-500 animate-ping" />
-                          </>
-                        )}
-                        {/* {job.status?.toLowerCase() === "part ordered" && (
-                          <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
-                        )} */}
-                      </Badge>
-                      <Badge className={getPriorityColor(job.priority)}>
-                        {job.priority}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    </Link>
-                    <TooltipProvider>
-                      <Tooltip delayDuration={200}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedJobId(job.id);
-                              setIsEditOpen(true);
-                            }}
-                            className="flex-1 sm:flex-none"
-                          >
-                            once-off parts
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            Allow to add once-off parts for this job if for
-                            external work to be closed!
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Vehicle</p>
-                    <p className="font-medium">{job.registration_no}</p>
-                    <p className="text-sm text-gray-600 mt-2">Work Type</p>
-                    <p className="font-medium">{job.job_type}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Client</p>
-                    <p className="font-medium">{job.client_name || "N/A"}</p>
-                    <p className="text-sm text-gray-600 mt-2">Location</p>
-                    <p className="font-medium">{job.location || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Cost</p>
-                    <p className="font-medium">
-                      R
-                      {(
-                        (job.total_labor_cost ?? 0) +
-                        (job.total_parts_cost ?? 0)
-                      ).toLocaleString() || "0"}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-2">Created</p>
-                    <p className="font-medium">
-                      {new Date(job.created_at).toLocaleDateString()}
-                    </p>
-                    <p>
-                      <span className="text-sm text-gray-600">Due Date: </span>
-                      <span className="font-medium">
-                        {job.due_date
-                          ? new Date(job.due_date).toLocaleDateString()
-                          : "NOT SET"}
-                      </span>
-                    </p>
-
-                    {job.completed_at ? (
-                      <div>
-                        <p className="text-sm text-gray-600 mt-2">
-                          Job Completed
-                        </p>
-
-                        <p className="font-medium">
-                          {new Date(job.completed_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600">Description</p>
-                  <p className="text-sm">{job.description}</p>
-                </div>
-
-                {!job.technician && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                    <p className="text-sm font-medium text-red-700">
-                      Technician needs to be assigned to this job
-                    </p>
-                  </div>
-                )}
-                <div></div>
-              </CardContent>
-            </Card>
-          ))
         )}
       </div>
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="w-full max-w-md sm:max-w-lg md:max-w-xl mx-4 max-h-[90vh] overflow-hidden">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              Assign Parts to Job
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-600">
-              Add parts required for this repair job. Enter each part name and
-              click the + button to add it to the list.
-            </DialogDescription>
-          </DialogHeader>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all">All Jobs</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected Jobs</TabsTrigger>
+          <TabsTrigger value="completed">Completed Jobs</TabsTrigger>
+        </TabsList>
 
-          <div className="space-y-6 py-4">
-            {/* Add Part Input */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="part-input"
-                className="text-sm font-medium text-gray-700"
+        <div className="flex justify-end">
+          <Dialog
+            open={isCreateJobDialogOpen}
+            onOpenChange={setIsCreateJobDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Job Card
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Job Card</DialogTitle>
+                <DialogDescription>
+                  Create a new job card. All fields marked with * are required.
+                </DialogDescription>
+              </DialogHeader>
+
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createJob();
+                }}
               >
-                Part Name
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="part-input"
-                  placeholder="Enter part name (e.g., Brake Pads, Oil Filter)"
-                  value={partName}
-                  onChange={(e) => setPartName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter" && partName.trim()) {
-                      setParts((prev) => [...prev, partName.trim()]);
-                      setPartName("");
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="registration_number">
+                      Registration Number *
+                    </Label>
+                    <Input
+                      id="registration_number"
+                      placeholder="DD80MKGP"
+                      value={createJobForm.registration_number}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase();
+                        setCreateJobForm({
+                          ...createJobForm,
+                          registration_number: value,
+                        });
+                        checkVehicleExists(value);
+                      }}
+                      className={
+                        vehicleExists === false
+                          ? "border-red-500"
+                          : vehicleExists === true
+                            ? "border-green-500"
+                            : ""
+                      }
+                    />
+                    {vehicleExists === false && (
+                      <p className="text-sm text-red-500 mt-1">
+                        Vehicle not found in database
+                      </p>
+                    )}
+                    {vehicleExists === true && (
+                      <p className="text-sm text-green-500 mt-1">
+                        Vehicle found ✓
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="job_type">Type of Work *</Label>
+                    <Select
+                      value={createJobForm.job_type}
+                      onValueChange={(value) =>
+                        setCreateJobForm({ ...createJobForm, job_type: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type of work" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                        <SelectItem value="repair">Repair</SelectItem>
+                        <SelectItem value="inspection">Inspection</SelectItem>
+                        <SelectItem value="breakdown">Breakdown</SelectItem>
+                        <SelectItem value="accident">Accident Repair</SelectItem>
+                        <SelectItem value="service">Service</SelectItem>
+                        <SelectItem value="mechanical">Mechanical</SelectItem>
+                        <SelectItem value="electrical">Electrical</SelectItem>
+                        <SelectItem value="panel-beating">
+                          Panel Beating
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Problem Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe the problem..."
+                    value={createJobForm.description}
+                    onChange={(e) =>
+                      setCreateJobForm({
+                        ...createJobForm,
+                        description: e.target.value,
+                      })
                     }
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    if (partName.trim()) {
-                      setParts((prev) => [...prev, partName.trim()]);
-                      setPartName("");
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="client_name">Driver Name</Label>
+                    <Input
+                      id="client_name"
+                      placeholder="Driver name"
+                      value={createJobForm.client_name}
+                      onChange={(e) =>
+                        setCreateJobForm({
+                          ...createJobForm,
+                          client_name: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="client_phone">Driver Phone</Label>
+                    <Input
+                      id="client_phone"
+                      placeholder="Phone number"
+                      value={createJobForm.client_phone}
+                      onChange={(e) =>
+                        setCreateJobForm({
+                          ...createJobForm,
+                          client_phone: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="location">Job Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="Enter job location"
+                    value={createJobForm.location}
+                    onChange={(e) =>
+                      setCreateJobForm({
+                        ...createJobForm,
+                        location: e.target.value,
+                      })
                     }
-                  }}
-                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="due_date">Due Date</Label>
+                  <Input
+                    type="date"
+                    id="due_date"
+                    value={createJobForm.due_date}
+                    onChange={(e) =>
+                      setCreateJobForm({
+                        ...createJobForm,
+                        due_date: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select
+                    // id="priority"
+                    value={createJobForm.priority}
+                    onValueChange={(value) =>
+                      setCreateJobForm({
+                        ...createJobForm,
+                        priority: value as
+                          | "low"
+                          | "medium"
+                          | "high"
+                          | "emergency",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Job Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="emergency">Emergency</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="notes">Job Notes</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Additional notes..."
+                    value={createJobForm.notes}
+                    onChange={(e) =>
+                      setCreateJobForm({
+                        ...createJobForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateJobDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      isSubmitting ||
+                      !createJobForm.registration_number ||
+                      !createJobForm.job_type ||
+                      !createJobForm.description
+                    }
+                  >
+                    {isSubmitting ? "Creating..." : "Create Job Card"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <TabsContent value="all" className="space-y-4">
+          <div className="space-y-4">
+            {filteredJobs.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No job cards found
+                  </h3>
+                  <p className="text-gray-500">
+                    Create your first job card to get started
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredJobs.map((job) => (
+                <Card key={job.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <CardTitle className="text-lg">
+                          {job.jobId_workshop}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(job.status)}>
+                            {formatStatusDisplay(job.status)}
+                            {job.status?.toLowerCase() === "awaiting approval" && (
+                              <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                            )}
+                            {job.status?.toLowerCase() === "completed" && (
+                              <>
+                                <span className="sr-only">Job Completed</span>
+                                <CheckCircle className="h-4 w-4 text-green-500 animate-ping" />
+                              </>
+                            )}
+                            {/* {job.status?.toLowerCase() === "part ordered" && (
+                          <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                        )} */}
+                          </Badge>
+                          <Badge className={getPriorityColor(job.priority)}>
+                            {job.priority}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedJobForPrint(job);
+                            setIsPrintOpen(true);
+                          }}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Print
+                        </Button>
+                        <TooltipProvider>
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedJobId(job.id);
+                                  setIsEditOpen(true);
+                                }}
+                                className="flex-1 sm:flex-none"
+                              >
+                                once-off parts
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Allow to add once-off parts for this job if for
+                                external work to be closed!
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Vehicle</p>
+                        <p className="font-medium">{job.registration_no}</p>
+                        <p className="text-sm text-gray-600 mt-2">Work Type</p>
+                        <p className="font-medium">{job.job_type}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Driver</p>
+                        <p className="font-medium">{job.client_name || "N/A"}</p>
+                        <p className="text-sm text-gray-600 mt-2">Location</p>
+                        <p className="font-medium">{job.location || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Cost</p>
+                        <p className="font-medium">
+                          R
+                          {(
+                            (job.total_labor_cost ?? 0) +
+                            (job.total_parts_cost ?? 0)
+                          ).toLocaleString() || "0"}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-2">Created</p>
+                        <p className="font-medium">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </p>
+                        <p>
+                          <span className="text-sm text-gray-600">Due Date: </span>
+                          <span className="font-medium">
+                            {job.due_date
+                              ? new Date(job.due_date).toLocaleDateString()
+                              : "NOT SET"}
+                          </span>
+                        </p>
+
+                        {job.completed_at ? (
+                          <div>
+                            <p className="text-sm text-gray-600 mt-2">
+                              Job Completed
+                            </p>
+
+                            <p className="font-medium">
+                              {new Date(job.completed_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-600">Description</p>
+                      <p className="text-sm">{job.description}</p>
+                    </div>
+
+                    {!job.technician && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                        <p className="text-sm font-medium text-red-700">
+                          Technician needs to be assigned to this job
+                        </p>
+                      </div>
+                    )}
+                    <div></div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent className="w-full max-w-md sm:max-w-lg md:max-w-xl mx-4 max-h-[90vh] overflow-hidden">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Assign Parts to Job
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                Add parts required for this repair job. Enter each part name and
+                click the + button to add it to the list.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Add Part Input */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="part-input"
+                  className="text-sm font-medium text-gray-700"
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                  Part Name
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="part-input"
+                    placeholder="Enter part name (e.g., Brake Pads, Oil Filter)"
+                    value={partName}
+                    onChange={(e) => setPartName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && partName.trim()) {
+                        setParts((prev) => [...prev, partName.trim()]);
+                        setPartName("");
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (partName.trim()) {
+                        setParts((prev) => [...prev, partName.trim()]);
+                        setPartName("");
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Parts List */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">
+                  Added Parts ({parts.length})
+                </Label>
+                {parts.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-3">
+                    <div className="space-y-2">
+                      {parts.map((part, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-white px-3 py-2 rounded-md border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <span className="text-sm font-medium text-gray-800 flex-1">
+                            {part}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setParts((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              )
+                            }
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <div className="text-sm">No parts added yet</div>
+                    <div className="text-xs mt-1">
+                      Add parts using the input field above
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Parts List */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
-                Added Parts ({parts.length})
-              </Label>
-              {parts.length > 0 ? (
-                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-3">
-                  <div className="space-y-2">
-                    {parts.map((part, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-white px-3 py-2 rounded-md border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <span className="text-sm font-medium text-gray-800 flex-1">
-                          {part}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setParts((prev) =>
-                              prev.filter((_, i) => i !== index)
-                            )
-                          }
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <div className="text-sm">No parts added yet</div>
-                  <div className="text-xs mt-1">
-                    Add parts using the input field above
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
-            <DialogClose asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                Cancel
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
+              <DialogClose asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                onClick={addParts}
+                disabled={parts.length === 0}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Add {parts.length} Part{parts.length !== 1 ? "s" : ""} to Job
               </Button>
-            </DialogClose>
-            <Button
-              onClick={addParts}
-              disabled={parts.length === 0}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Add {parts.length} Part{parts.length !== 1 ? "s" : ""} to Job
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <TabsContent value="rejected" className="space-y-4">
+          <RejectedJobs />
+        </TabsContent>
+
+        <TabsContent value="completed" className="space-y-4">
+          <CompletedJobsReport />
+        </TabsContent>
+      </Tabs>
+
+      {/* Print Dialog */}
+      {selectedJobForPrint && (
+        <JobCardPrinter
+          isOpenCard={isPrintOpen}
+          onCloseCard={() => {
+            setIsPrintOpen(false);
+            setSelectedJobForPrint(null);
+          }}
+          jobId={selectedJobForPrint.id}
+          jobCard={selectedJobForPrint}
+        />
+      )}
     </div>
   );
 }

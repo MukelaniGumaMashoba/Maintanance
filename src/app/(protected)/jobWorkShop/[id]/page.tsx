@@ -71,6 +71,7 @@ interface WorkshopJob {
   total_labor_cost?: number;
   grand_total?: number;
   total_parts_cost?: number;
+  total_sublet_cost?: number;
 }
 
 interface Vehicle {
@@ -254,11 +255,11 @@ export default function WorkshopJobDetailPage() {
         setJob((prev) =>
           prev
             ? {
-                ...prev,
-                labour_hours: labourHours,
-                labor_cost: labourRate,
-                total_labor_cost: updatedTotal,
-              }
+              ...prev,
+              labour_hours: labourHours,
+              labor_cost: labourRate,
+              total_labor_cost: updatedTotal,
+            }
             : prev
         );
         toast.success("Labour saved");
@@ -379,7 +380,7 @@ export default function WorkshopJobDetailPage() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm text-gray-600">Client Name</p>
+                  <p className="text-sm text-gray-600">Driver Name</p>
                   <p className="font-semibold">
                     {job.client_name || "Not specified"}
                   </p>
@@ -460,7 +461,7 @@ export default function WorkshopJobDetailPage() {
                   <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-600">No technician assigned</p>
                   <p className="text-sm text-gray-500">
-                    Technician will be assigned after approval
+                    Technician will be assigned after parts are assigned
                   </p>
                 </div>
               )}
@@ -490,21 +491,21 @@ export default function WorkshopJobDetailPage() {
                   <p className="text-xl font-bold text-blue-800">
                     {job.total_parts_cost
                       ? `R ${job.total_parts_cost.toFixed(2)}`
-                      : "Pending"}
+                      : "0.00"}
                   </p>
                 </div>
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">Total Cost</p>
-                  <p className="text-xl font-bold text-blue-800">
-                    {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) >
-                    0
-                      ? `R ${(
-                          (job.total_labor_cost ?? 0) +
-                          (job.total_parts_cost ?? 0)
-                        ).toFixed(2)}`
-                      : "Pending"}
+
+                {/* Sublet Cost Section */}
+                <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                  <p className="text-sm text-yellow-500">Total Sublet Cost</p>
+                  <p className="text-xl font-bold text-yellow-800">
+                    {job.total_sublet_cost
+                      ? `R ${job.total_sublet_cost.toFixed(2)}`
+                      : "0.00"}
                   </p>
                 </div>
+
+
 
                 {/* Labour Section */}
                 <div className="border-t pt-4">
@@ -527,7 +528,20 @@ export default function WorkshopJobDetailPage() {
                       ).toFixed(2)}`}</p>
                     </div>
                   </div>
-                  <div className="mt-3">
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                    <p className="text-sm text-blue-700">Total Cost (Labour & Sublet & Parts)</p>
+                    <p className="text-xl font-bold text-blue-800">
+                      {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) + (job.total_sublet_cost ?? 0) >
+                        0
+                        ? `R ${(
+                          (job.total_labor_cost ?? 0) +
+                          (job.total_parts_cost ?? 0) +
+                          (job.total_sublet_cost ?? 0)
+                        ).toFixed(2)}`
+                        : "Pending"}
+                    </p>
+                  </div>
+                  {/* <div className="mt-3">
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
@@ -535,13 +549,13 @@ export default function WorkshopJobDetailPage() {
                     >
                       Edit Labour
                     </Button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                {job.status === "Awaiting Approval" && (
+                {job.status?.toLowerCase() !== "completed" && (
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     onClick={() => updateWorkshopJobStatus(job.id, "Approved")}
@@ -561,7 +575,7 @@ export default function WorkshopJobDetailPage() {
                   {updating ? "Processing..." : "Reject Job"}
                 </Button>
 
-                <TooltipProvider>
+                {/* <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -592,7 +606,7 @@ export default function WorkshopJobDetailPage() {
                       <p>This for completed job to be closed!</p>
                     </TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
+                </TooltipProvider> */}
               </div>
             </CardContent>
           </Card>

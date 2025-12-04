@@ -18,7 +18,7 @@ export default function InvoiceReportComponent({ costCenter, clientLegalName, ve
       tagline: "VEHICLE BUREAU SERVICE"
     },
     client: {
-      name: clientLegalName || "Client Name",
+      name: clientLegalName || "Driver Name",
       accountNumber: costCenter?.accountNumber || "N/A",
       costCenter: costCenter?.accountName || "N/A"
     },

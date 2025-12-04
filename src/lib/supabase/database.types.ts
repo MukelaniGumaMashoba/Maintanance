@@ -1457,6 +1457,44 @@ export type Database = {
           },
         ]
       }
+      job_card_workflow_history: {
+        Row: {
+          action_at: string | null
+          action_by: string | null
+          from_status: string | null
+          id: number
+          job_card_id: number | null
+          notes: string | null
+          to_status: string
+        }
+        Insert: {
+          action_at?: string | null
+          action_by?: string | null
+          from_status?: string | null
+          id?: number
+          job_card_id?: number | null
+          notes?: string | null
+          to_status: string
+        }
+        Update: {
+          action_at?: string | null
+          action_by?: string | null
+          from_status?: string | null
+          id?: number
+          job_card_id?: number | null
+          notes?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_card_workflow_history_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_cards: {
         Row: {
           access_requirements: string | null
@@ -1757,11 +1795,65 @@ export type Database = {
           },
         ]
       }
-      parts: {
+      once_off_parts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: number
+          is_external_workshop: boolean | null
+          job_card_id: number | null
+          part_name: string
+          part_number: string | null
+          quantity: number
+          supplier: string | null
+          total_cost: number | null
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          is_external_workshop?: boolean | null
+          job_card_id?: number | null
+          part_name: string
+          part_number?: string | null
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number | null
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          is_external_workshop?: boolean | null
+          job_card_id?: number | null
+          part_name?: string
+          part_number?: string | null
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number | null
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "once_off_parts_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      once_offparts: {
         Row: {
           category_id: number | null
           description: string | null
           id: number
+          is_external_workshop: boolean | null
           item_code: string | null
           location: string | null
           price: number | null
@@ -1774,6 +1866,7 @@ export type Database = {
           category_id?: number | null
           description?: string | null
           id?: number
+          is_external_workshop?: boolean | null
           item_code?: string | null
           location?: string | null
           price?: number | null
@@ -1786,10 +1879,74 @@ export type Database = {
           category_id?: number | null
           description?: string | null
           id?: number
+          is_external_workshop?: boolean | null
           item_code?: string | null
           location?: string | null
           price?: number | null
           quantity?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "once_offparts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "once_offparts_vehicle_brand_id_fkey"
+            columns: ["vehicle_brand_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parts: {
+        Row: {
+          category_id: number | null
+          description: string | null
+          id: number
+          is_stock_item: boolean | null
+          item_code: string | null
+          location: string | null
+          once: boolean | null
+          price: number | null
+          quantity: number | null
+          stock_threshold: number | null
+          supplier: string | null
+          total: number | null
+          vehicle_brand_id: number | null
+        }
+        Insert: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          is_stock_item?: boolean | null
+          item_code?: string | null
+          location?: string | null
+          once?: boolean | null
+          price?: number | null
+          quantity?: number | null
+          stock_threshold?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Update: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          is_stock_item?: boolean | null
+          item_code?: string | null
+          location?: string | null
+          once?: boolean | null
+          price?: number | null
+          quantity?: number | null
+          stock_threshold?: number | null
           supplier?: string | null
           total?: number | null
           vehicle_brand_id?: number | null
@@ -1885,6 +2042,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          can_approve_jobs: boolean | null
+          can_close_jobs: boolean | null
+          can_reject_jobs: boolean | null
           company: number | null
           company_name: string | null
           created_at: string | null
@@ -1898,6 +2058,9 @@ export type Database = {
           workshop_id: string | null
         }
         Insert: {
+          can_approve_jobs?: boolean | null
+          can_close_jobs?: boolean | null
+          can_reject_jobs?: boolean | null
           company?: number | null
           company_name?: string | null
           created_at?: string | null
@@ -1911,6 +2074,9 @@ export type Database = {
           workshop_id?: string | null
         }
         Update: {
+          can_approve_jobs?: boolean | null
+          can_close_jobs?: boolean | null
+          can_reject_jobs?: boolean | null
           company?: number | null
           company_name?: string | null
           created_at?: string | null
@@ -2275,6 +2441,53 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "customer_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rejected_jobs: {
+        Row: {
+          can_reopen: boolean | null
+          id: string
+          job_data: Json
+          new_job_card_id: number | null
+          original_job_card_id: number
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+        }
+        Insert: {
+          can_reopen?: boolean | null
+          id?: string
+          job_data: Json
+          new_job_card_id?: number | null
+          original_job_card_id: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+        }
+        Update: {
+          can_reopen?: boolean | null
+          id?: string
+          job_data?: Json
+          new_job_card_id?: number | null
+          original_job_card_id?: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejected_jobs_new_job_card_id_fkey"
+            columns: ["new_job_card_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
             referencedColumns: ["id"]
           },
         ]
@@ -3505,6 +3718,7 @@ export type Database = {
           customer_signature_obtained: boolean | null
           description: string | null
           documents: Json | null
+          driver_id: number | null
           due_date: string | null
           end_time: string | null
           equipment_used: Json | null
@@ -3538,6 +3752,7 @@ export type Database = {
           type_of_work: string | null
           updated_at: string | null
           work_notes: string | null
+          workflow_status: string | null
         }
         Insert: {
           accepted?: boolean | null
@@ -3559,6 +3774,7 @@ export type Database = {
           customer_signature_obtained?: boolean | null
           description?: string | null
           documents?: Json | null
+          driver_id?: number | null
           due_date?: string | null
           end_time?: string | null
           equipment_used?: Json | null
@@ -3592,6 +3808,7 @@ export type Database = {
           type_of_work?: string | null
           updated_at?: string | null
           work_notes?: string | null
+          workflow_status?: string | null
         }
         Update: {
           accepted?: boolean | null
@@ -3613,6 +3830,7 @@ export type Database = {
           customer_signature_obtained?: boolean | null
           description?: string | null
           documents?: Json | null
+          driver_id?: number | null
           due_date?: string | null
           end_time?: string | null
           equipment_used?: Json | null
@@ -3646,6 +3864,7 @@ export type Database = {
           type_of_work?: string | null
           updated_at?: string | null
           work_notes?: string | null
+          workflow_status?: string | null
         }
         Relationships: []
       }

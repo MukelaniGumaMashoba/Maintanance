@@ -143,7 +143,7 @@ export default function FuelReportDetailPage() {
                 <th className="text-left p-3">Department</th>
                 <th className="text-left p-3">Region/District</th>
                 <th className="text-left p-3">Unit</th>
-                <th className="text-left p-3">Client Name</th>
+                <th className="text-left p-3">Driver Name</th>
                 <th className="text-left p-3">Division</th>
                 <th className="text-left p-3">Cost Centre</th>
                 <th className="text-left p-3">Vehicle Reg</th>

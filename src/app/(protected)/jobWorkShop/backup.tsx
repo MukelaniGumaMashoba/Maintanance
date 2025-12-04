@@ -803,11 +803,11 @@ export default function FleetJobsPage() {
                           </div>
                           <div>
                             <p>
-                              <strong>Client Name:</strong>{" "}
+                              <strong>Driver Name:</strong>{" "}
                               {job.client_name || "N/A"}
                             </p>
                             <p>
-                              <strong>Client Phone:</strong>{" "}
+                              <strong>Driver Phone:</strong>{" "}
                               {job.client_phone || "N/A"}
                             </p>
                             <p className="truncate">

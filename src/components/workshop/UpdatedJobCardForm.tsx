@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, CheckCircle, XCircle } from "lucide-react"
+import { CheckCircle, XCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 
@@ -22,8 +21,6 @@ interface CreateJobForm {
   job_type: string
   description: string
   type_of_work: string
-  client_name: string
-  client_phone: string
   location: string
   notes: string
   estimated_cost: number
@@ -31,17 +28,31 @@ interface CreateJobForm {
   due_date: string
   estimated_duration_hours: number
   work_notes: string
-  selected_workshop_id: string
+  selected_technician_id: string
+  selected_external_sublet: string
+  driver_id: string
 }
 
-export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
+interface Driver {
+  id: number
+  first_name: string
+  surname: string
+  cell_number: string
+}
+
+interface Technician {
+  id: number
+  name: string
+  phone: string
+  specialties: string[]
+}
+
+export default function UpdatedJobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
   const [formData, setFormData] = useState<CreateJobForm>({
     registration_no: "",
     job_type: "",
     description: "",
     type_of_work: "",
-    client_name: "",
-    client_phone: "",
     location: "",
     notes: "",
     estimated_cost: 0,
@@ -49,26 +60,55 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
     due_date: "",
     estimated_duration_hours: 0,
     work_notes: "",
-    selected_workshop_id: ""
+    selected_technician_id: "",
+    selected_external_sublet: "",
+    driver_id: ""
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [vehicleExists, setVehicleExists] = useState<boolean | null>(null)
-  const [workshops, setWorkshops] = useState<any[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [technicians, setTechnicians] = useState<Technician[]>([])
+  const [externalSublets, setExternalSublets] = useState<any[]>([])
   const supabase = createClient()
 
   useEffect(() => {
-    fetchWorkshops()
+    fetchDrivers()
+    fetchTechnicians()
+    fetchExternalSublets()
   }, [])
 
-  const fetchWorkshops = async () => {
+  const fetchDrivers = async () => {
     const { data, error } = await supabase
-      .from('workshop')
-      .select('*')
-      .order('work_name')
+      .from('drivers')
+      .select('id, first_name, surname, cell_number')
+      .order('first_name')
     
     if (!error && data) {
-      setWorkshops(data)
+      setDrivers(data)
+    }
+  }
+
+  const fetchTechnicians = async () => {
+    const { data, error } = await supabase
+      .from('technicians')
+      .select('id, name, phone, specialties')
+      .eq('isActive', true)
+      .order('name')
+    
+    if (!error && data) {
+      setTechnicians(data)
+    }
+  }
+
+  const fetchExternalSublets = async () => {
+    const { data, error } = await supabase
+      .from('company')
+      .select('id, company_name, company_contact, company_phone')
+      .order('company_name')
+    
+    if (!error && data) {
+      setExternalSublets(data)
     }
   }
 
@@ -96,7 +136,18 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
   const generateJobId = () => {
     const year = new Date().getFullYear()
     const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0")
-    return `WS-${year}-${randomNum}`
+    return `JC-${year}-${randomNum}`
+  }
+
+  const logWorkflowHistory = async (jobCardId: string, toStatus: string, notes?: string) => {
+    await supabase
+      .from('job_card_workflow_history')
+      .insert({
+        job_card_id: jobCardId,
+        from_status: 'draft',
+        to_status: toStatus,
+        notes: notes
+      })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,8 +158,8 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
       return
     }
 
-    if (!formData.selected_workshop_id) {
-      toast.error("Please select a workshop")
+    if (!formData.selected_technician_id && !formData.selected_external_sublet) {
+      toast.error("Please assign either a technician or external sublet")
       return
     }
 
@@ -123,28 +174,27 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
         return
       }
 
-      const jobId = generateJobId()
+      const jobNumber = generateJobId()
       
       const { data: newJob, error: jobError } = await supabase
-        .from('workshop_job')
+        .from('job_cards')
         .insert({
-          registration_no: formData.registration_no.toUpperCase(),
-          job_type: formData.job_type,
-          description: formData.description,
-          type_of_work: formData.type_of_work,
+          job_number: jobNumber,
+          vehicle_registration: formData.registration_no.toUpperCase(),
           vehicle_id: vehicleData.id,
-          client_name: formData.client_name,
-          client_phone: formData.client_phone,
-          location: formData.location,
+          job_type: formData.job_type,
+          job_description: formData.description,
+          job_location: formData.location,
+          work_notes: formData.work_notes,
           notes: formData.notes,
-          jobId_workshop: jobId,
-          status: 'Awaiting Approval',
           estimated_cost: formData.estimated_cost || 0,
           priority: formData.priority,
           due_date: formData.due_date || null,
           estimated_duration_hours: formData.estimated_duration_hours || null,
-          work_notes: formData.work_notes,
-          approval_status: 'draft'
+          assigned_technician_id: formData.selected_technician_id || null,
+          workflow_status: 'pending_approval',
+          driver_id: formData.driver_id ? parseInt(formData.driver_id) : null,
+          status: 'pending'
         })
         .select()
         .single()
@@ -155,22 +205,23 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
         return
       }
 
-      // Assign to workshop
-      const { error: assignError } = await supabase
-        .from('workshop_assign')
-        .insert({
-          job_id: newJob.id,
-          workshop_id: formData.selected_workshop_id
-        })
+      // Log workflow history
+      await logWorkflowHistory(newJob.id, 'pending_approval', 'Job card created and submitted for approval')
 
-      if (assignError) {
-        console.error('Workshop assignment failed:', assignError)
-        toast.error("Job created but failed to assign to workshop")
-        return
+      // If external sublet is selected, create assignment
+      if (formData.selected_external_sublet) {
+        await supabase
+          .from('job_assignments')
+          .insert({
+            description: formData.description,
+            subcontractor_id: parseInt(formData.selected_external_sublet),
+            vehicle_id: vehicleData.id,
+            driver_id: formData.driver_id ? parseInt(formData.driver_id) : null,
+            status: 'assigned_external'
+          })
       }
 
-      const selectedWorkshop = workshops.find(w => w.id === formData.selected_workshop_id)
-      toast.success(`Job card ${jobId} created and assigned to ${selectedWorkshop?.work_name || 'workshop'}`)
+      toast.success(`Job card ${jobNumber} created successfully and sent for manager approval`)
       
       onSuccess?.()
       
@@ -180,8 +231,6 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
         job_type: "",
         description: "",
         type_of_work: "",
-        client_name: "",
-        client_phone: "",
         location: "",
         notes: "",
         estimated_cost: 0,
@@ -189,7 +238,9 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
         due_date: "",
         estimated_duration_hours: 0,
         work_notes: "",
-        selected_workshop_id: ""
+        selected_technician_id: "",
+        selected_external_sublet: "",
+        driver_id: ""
       })
       setVehicleExists(null)
 
@@ -238,6 +289,26 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
             </div>
 
             <div>
+              <Label htmlFor="driver_id">Driver (Optional)</Label>
+              <Select value={formData.driver_id} onValueChange={(value) => setFormData({ ...formData, driver_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No driver assigned</SelectItem>
+                  {drivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id.toString()}>
+                      {driver.first_name} {driver.surname} - {driver.cell_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Job Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label htmlFor="job_type">Job Type *</Label>
               <Select value={formData.job_type} onValueChange={(value) => setFormData({ ...formData, job_type: value })}>
                 <SelectTrigger>
@@ -250,28 +321,6 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
                   <SelectItem value="breakdown">Breakdown</SelectItem>
                   <SelectItem value="accident">Accident Repair</SelectItem>
                   <SelectItem value="service">Service</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Work Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="type_of_work">Type of Work *</Label>
-              <Select value={formData.type_of_work} onValueChange={(value) => setFormData({ ...formData, type_of_work: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select work type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mechanical">Mechanical</SelectItem>
-                  <SelectItem value="electrical">Electrical</SelectItem>
-                  <SelectItem value="bodywork">Body Work</SelectItem>
-                  <SelectItem value="towing">Towing</SelectItem>
-                  <SelectItem value="panel-beating">Panel Beating</SelectItem>
-                  <SelectItem value="fitment">Fitment Centre</SelectItem>
-                  <SelectItem value="carwash">Car Wash</SelectItem>
-                  <SelectItem value="driveline">Drive Line Repairs</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -304,41 +353,74 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
             />
           </div>
 
-          {/* Driver Information */}
+          {/* Assignment Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="client_name">Driver Name</Label>
-              <Input
-                id="client_name"
-                placeholder="Driver name"
-                value={formData.client_name}
-                onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-              />
+              <Label htmlFor="technician">Assign Technician</Label>
+              <Select 
+                value={formData.selected_technician_id} 
+                onValueChange={(value) => {
+                  setFormData({ ...formData, selected_technician_id: value, selected_external_sublet: "" })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No technician</SelectItem>
+                  {technicians.map((tech) => (
+                    <SelectItem key={tech.id} value={tech.id.toString()}>
+                      <div className="flex flex-col">
+                        <span>{tech.name}</span>
+                        <span className="text-sm text-gray-500">
+                          {tech.phone} • {tech.specialties?.join(', ')}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div>
-              <Label htmlFor="client_phone">Driver Phone</Label>
-              <Input
-                id="client_phone"
-                placeholder="Driver phone number"
-                value={formData.client_phone}
-                onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
-              />
+              <Label htmlFor="external_sublet">OR Assign External Sublet</Label>
+              <Select 
+                value={formData.selected_external_sublet} 
+                onValueChange={(value) => {
+                  setFormData({ ...formData, selected_external_sublet: value, selected_technician_id: "" })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select external sublet" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No external sublet</SelectItem>
+                  {externalSublets.map((sublet) => (
+                    <SelectItem key={sublet.id} value={sublet.id.toString()}>
+                      <div className="flex flex-col">
+                        <span>{sublet.company_name}</span>
+                        <span className="text-sm text-gray-500">
+                          {sublet.company_contact} • {sublet.company_phone}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Location */}
-          <div>
-            <Label htmlFor="location">Job Location</Label>
-            <Input
-              id="location"
-              placeholder="Enter job location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-            />
-          </div>
-
-          {/* Cost and Duration */}
+          {/* Location and Cost */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="location">Job Location</Label>
+              <Input
+                id="location"
+                placeholder="Enter job location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
+            </div>
             <div>
               <Label htmlFor="estimated_cost">Estimated Cost (R)</Label>
               <Input
@@ -347,16 +429,6 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
                 placeholder="0.00"
                 value={formData.estimated_cost || ""}
                 onChange={(e) => setFormData({ ...formData, estimated_cost: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="estimated_duration_hours">Estimated Duration (Hours)</Label>
-              <Input
-                id="estimated_duration_hours"
-                type="number"
-                placeholder="0"
-                value={formData.estimated_duration_hours || ""}
-                onChange={(e) => setFormData({ ...formData, estimated_duration_hours: parseInt(e.target.value) || 0 })}
               />
             </div>
             <div>
@@ -394,28 +466,6 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
             </div>
           </div>
 
-          {/* Workshop Selection */}
-          <div>
-            <Label htmlFor="workshop">Assign to Workshop *</Label>
-            <Select value={formData.selected_workshop_id} onValueChange={(value) => setFormData({ ...formData, selected_workshop_id: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select workshop" />
-              </SelectTrigger>
-              <SelectContent>
-                {workshops.map((workshop) => (
-                  <SelectItem key={workshop.id} value={workshop.id}>
-                    <div className="flex flex-col">
-                      <span>{workshop.work_name}</span>
-                      <span className="text-sm text-gray-500">
-                        {workshop.city || workshop.town} • Rate: R{workshop.labour_rate || 0}/hr
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>
@@ -423,7 +473,7 @@ export default function JobCardForm({ onSuccess, onCancel }: JobCardFormProps) {
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !formData.registration_no || !formData.job_type || !formData.description || !formData.selected_workshop_id}
+              disabled={isSubmitting || !formData.registration_no || !formData.job_type || !formData.description}
             >
               {isSubmitting ? "Creating..." : "Create Job Card"}
             </Button>

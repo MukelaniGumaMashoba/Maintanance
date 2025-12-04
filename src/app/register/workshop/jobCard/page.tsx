@@ -145,13 +145,13 @@ export default function JobCardForm() {
                             />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Client</label>
+                            <label className="block text-gray-600 mb-1">Driver</label>
                             <Input
                                 value={client}
                                 onChange={(e) =>
                                     setSelectedJob({ ...selectedJob, client: e.target.value })
                                 }
-                                placeholder="Client Name"
+                                placeholder="Driver Name"
                                 className="bg-gray-100 text-gray-900"
                             />
                         </div>

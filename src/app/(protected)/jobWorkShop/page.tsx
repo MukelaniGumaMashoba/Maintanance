@@ -56,6 +56,9 @@ import { nullable } from "zod";
 import { toast } from "sonner";
 import JobCardWorkflow from "@/components/ui-personal/job-card-workflow";
 import RequestedParts from "@/components/RequestedParts";
+import RejectedJobs from "@/components/workshop/RejectedJobs";
+import CompletedJobsReport from "@/components/workshop/CompletedJobsReport";
+import JobCardPrinter from "@/components/ui-personal/job-card-printer";
 
 interface Job {
   id: number;
@@ -131,6 +134,7 @@ interface WorkshopJob {
   due_date?: string;
   total_labor_cost?: number;
   total_parts_cost?: number;
+  total_sublet_cost?: number;
 }
 
 export default function FleetJobsPage() {
@@ -318,6 +322,13 @@ export default function FleetJobsPage() {
     // Use workshopJob (fetched from workshop_job table) as the source
     let filtered = workshopJob || [];
 
+    // Filter out completed and rejected jobs from "all jobs" tab
+    filtered = filtered.filter(
+      (job) => 
+        (job.status || "").toLowerCase() !== "completed" &&
+        (job.status || "").toLowerCase() !== "rejected"
+    );
+
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter((job) => {
@@ -358,17 +369,14 @@ export default function FleetJobsPage() {
       );
     }
 
-    // Ensure completed jobs are shown at the end of the list
-    const isCompletedFlag = (j: any) =>
-      String(j.status || "").toLowerCase() === "completed";
-    const notCompletedFiltered = filtered.filter(
-      (j: any) => !isCompletedFlag(j)
+    // Sort by created date (newest first)
+    filtered.sort(
+      (a, b) =>
+        new Date((b as any).created_at).getTime() - new Date((a as any).created_at).getTime()
     );
-    const completedFiltered = filtered.filter((j: any) => isCompletedFlag(j));
-    const finalSorted = [...notCompletedFiltered, ...completedFiltered];
 
     // cast to the component's expected filteredJobs shape
-    setFilteredJobs(finalSorted as unknown as WorkshopJob[]);
+    setFilteredJobs(filtered as unknown as WorkshopJob[]);
   }, [workshopJob, searchTerm, statusFilter, priorityFilter]);
 
   const getStatusColor = (status: string) => {
@@ -612,9 +620,9 @@ export default function FleetJobsPage() {
   const handleView = (job: WorkshopJob) => {
     alert(
       `Viewing details for job:\n\n` +
-        `Job Type: ${job.job_type}\n` +
-        `Vehicle Reg: ${job.registration_no}\n` +
-        `Description: ${job.description}`
+      `Job Type: ${job.job_type}\n` +
+      `Vehicle Reg: ${job.registration_no}\n` +
+      `Description: ${job.description}`
     );
   };
 
@@ -664,6 +672,8 @@ export default function FleetJobsPage() {
   const [lastAssigned, setLastAssigned] = useState<{ [key: string]: number }>(
     {}
   );
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [selectedJobForPrint, setSelectedJobForPrint] = useState<WorkshopJob | null>(null);
   const normalizedSearch = searchWorkshop?.toLowerCase() || "";
 
   const availableWorkshops = useMemo(() => {
@@ -756,8 +766,8 @@ export default function FleetJobsPage() {
       </div>
 
       <Tabs defaultValue="workshopJobs" className="space-y-6">
-        <TabsList className="bg-white shadow rounded-lg border flex">
-          {["workshopJobs", "kanban", "analytics"].map((tab) => (
+        <TabsList className="bg-white shadow rounded-lg border flex flex-wrap">
+          {["workshopJobs", "kanban", "analytics", "rejected", "completed"].map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
@@ -766,8 +776,12 @@ export default function FleetJobsPage() {
               {tab === "workshopJobs"
                 ? "Workshop Jobs"
                 : tab === "kanban"
-                ? "Kanban Board"
-                : "Analytics"}
+                  ? "Kanban Board"
+                  : tab === "analytics"
+                    ? "Analytics"
+                    : tab === "rejected"
+                      ? "Rejected Jobs"
+                      : "Completed Jobs"}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -806,8 +820,8 @@ export default function FleetJobsPage() {
                             {formatStatusDisplay(job.status)}
                             {job.status?.toLowerCase() ===
                               "awaiting approval" && (
-                              <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
-                            )}
+                                <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
+                              )}
                             {job.status?.toLowerCase() === "completed" && (
                               <>
                                 <span className="sr-only">Job Completed</span>
@@ -839,21 +853,21 @@ export default function FleetJobsPage() {
                             <strong>Cost:</strong>{" "}
                             {(job.total_labor_cost ?? 0) +
                               (job.total_parts_cost ?? 0) >
-                            0
+                              0
                               ? `R ${(
-                                  (job.total_labor_cost ?? 0) +
-                                  (job.total_parts_cost ?? 0)
-                                ).toFixed(2)}`
+                                (job.total_labor_cost ?? 0) +
+                                (job.total_parts_cost ?? 0)
+                              ).toFixed(2)}`
                               : "Pending"}
                           </p>
                         </div>
                         <div>
                           <p>
-                            <strong>Client Name:</strong>{" "}
+                            <strong>Driver Name:</strong>{" "}
                             {job.client_name || "N/A"}
                           </p>
                           <p>
-                            <strong>Client Phone:</strong>{" "}
+                            <strong>Driver Phone:</strong>{" "}
                             {job.client_phone || "N/A"}
                           </p>
                           <p className="truncate">
@@ -1122,6 +1136,14 @@ export default function FleetJobsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="rejected" className="space-y-4">
+          <RejectedJobs />
+        </TabsContent>
+
+        <TabsContent value="completed" className="space-y-4">
+          <CompletedJobsReport />
+        </TabsContent>
+
         <Dialog
           open={isWorkshopDialogOpen}
           onOpenChange={setIsWorkshopDialogOpen}
@@ -1228,6 +1250,19 @@ export default function FleetJobsPage() {
           getWorkshopJob();
         }}
       />
+
+      {/* Print Dialog */}
+      {selectedJobForPrint && (
+        <JobCardPrinter
+          isOpenCard={isPrintOpen}
+          onCloseCard={() => {
+            setIsPrintOpen(false);
+            setSelectedJobForPrint(null);
+          }}
+          jobId={selectedJobForPrint.id}
+          jobCard={selectedJobForPrint}
+        />
+      )}
     </div>
   );
 }

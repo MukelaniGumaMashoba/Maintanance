@@ -995,17 +995,17 @@ export default function AccountsContent({ activeSection }) {
 
                 {/* Client Information Form */}
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Driver Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="client-name" className="text-sm font-medium text-gray-700">
-                        Client Name *
+                        Driver Name *
                       </Label>
                       <Input
                         id="client-name"
                         value={invoiceFormData.clientName}
                         onChange={(e) => setInvoiceFormData(prev => ({ ...prev, clientName: e.target.value }))}
-                        placeholder="Enter client name"
+                        placeholder="Enter Driver Name"
                         className="mt-1"
                       />
                     </div>
@@ -1024,7 +1024,7 @@ export default function AccountsContent({ activeSection }) {
                     </div>
                     <div>
                       <Label htmlFor="client-phone" className="text-sm font-medium text-gray-700">
-                        Phone Number
+                        Driver Phone
                       </Label>
                       <Input
                         id="client-phone"

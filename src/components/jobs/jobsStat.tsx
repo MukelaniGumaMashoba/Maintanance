@@ -220,7 +220,7 @@ export default function JobAssignmentsDashboard() {
                                     <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Status</TableHead>
                                     <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Created At</TableHead>
                                     <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Priority</TableHead>
-                                    <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Client</TableHead>
+                                    <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Driver</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

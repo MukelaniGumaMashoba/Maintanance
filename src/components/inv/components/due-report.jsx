@@ -18,7 +18,7 @@ export default function DueReportComponent({ costCenter, clientLegalName, paymen
       tagline: "VEHICLE BUREAU SERVICE"
     },
     client: {
-      name: clientLegalName || "Client Name",
+      name: clientLegalName || "Driver Name",
       accountNumber: costCenter?.accountNumber || "N/A",
       costCenter: costCenter?.accountName || "N/A",
       vatNumber: "4290137910"
@@ -32,7 +32,7 @@ export default function DueReportComponent({ costCenter, clientLegalName, paymen
     transactions: [
       {
         date: paymentData?.created_at ? new Date(paymentData.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
-        client: clientLegalName || "Client Name",
+        client: clientLegalName || "Driver Name",
         invoiceNo: paymentData?.payment_reference || `INV-${costCenter?.accountNumber || 'N/A'}`,
         totalInvoiced: costCenter?.monthlyAmount || 0,
         paid: Math.max(0, (costCenter?.monthlyAmount || 0) - (paymentData?.amount_due || 0)),

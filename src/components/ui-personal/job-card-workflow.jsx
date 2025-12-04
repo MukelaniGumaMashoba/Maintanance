@@ -18,7 +18,37 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
   const handleApproval = async (status) => {
     setLoading(true);
     try {
-      const newStatus = status === 'approved' ? 'Approved - Ready for Parts Assignment' : 'Rejected';
+      // const newStatus = status === 'approved' ? 'Approved - Ready for Parts Assignment' : 'Rejected';
+      const newStatus = status === 'approved' ? 'Approved' : 'Rejected';
+
+
+      // Get current user for rejection tracking
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (status === 'rejected') {
+        // Store in rejected_jobs table if it exists, otherwise just update status
+        const { data: jobData } = await supabase
+          .from('workshop_job')
+          .select('*')
+          .eq('id', jobCard.id)
+          .single();
+
+        // Try to insert into rejected_jobs (table might not exist, so we'll handle gracefully)
+        try {
+          await supabase
+            .from('rejected_jobs')
+            .insert({
+              original_job_card_id: jobCard.id.toString(),
+              job_data: jobData,
+              rejection_reason: notes.trim() || 'No reason provided',
+              rejected_by: user?.id,
+              can_reopen: true
+            });
+        } catch (rejectError) {
+          // If rejected_jobs table doesn't exist, just log and continue
+          console.warn('Could not store in rejected_jobs table:', rejectError);
+        }
+      }
 
       const { error } = await supabase
         .from('workshop_job')
@@ -35,6 +65,7 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
       onClose();
       setNotes('');
     } catch (error) {
+      console.error('Approval error:', error);
       toast.error('Failed to update job status');
     } finally {
       setLoading(false);
@@ -134,16 +165,21 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
                 <Badge variant="default">Completed</Badge>
               </div>
 
-              {/* Step 2: Workshop Approval */}
-              <div className={`flex items-center gap-4 p-3 rounded-lg border ${canApprove() ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+              {/* Step 2: Technician Assignment */}
+              <div className="flex items-center gap-4 p-3 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-2 flex-1">
                   <User className="w-4 h-4 text-gray-500" />
                   <div>
-                    <div className="font-medium">Workshop Approval</div>
-                    <div className="text-sm text-gray-600">Review and approve/reject job card</div>
+                    <div className="font-medium">Technician Assignment</div>
+                    <div className="text-sm text-gray-600">Assign technician to complete work</div>
                   </div>
                 </div>
-                {getStatusBadge(jobCard?.status)}
+                {/* if the technician is true */}
+                {jobCard?.technician ? (
+                  <Badge variant="default">Assigned</Badge>
+                ) : (
+                  <Badge variant="outline">Pending</Badge>
+                )}
               </div>
 
               {/* Step 3: Parts Assignment */}
@@ -160,21 +196,18 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
                 </Badge>
               </div>
 
-              {/* Step 4: Technician Assignment */}
-              <div className="flex items-center gap-4 p-3 rounded-lg border border-gray-200">
+
+
+              {/* Step 4: Workshop Approval */}
+              <div className={`flex items-center gap-4 p-3 rounded-lg border ${canApprove() ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
                 <div className="flex items-center gap-2 flex-1">
                   <User className="w-4 h-4 text-gray-500" />
                   <div>
-                    <div className="font-medium">Technician Assignment</div>
-                    <div className="text-sm text-gray-600">Assign technician to complete work</div>
+                    <div className="font-medium">Workshop Approval</div>
+                    <div className="text-sm text-gray-600">Review and approve/reject job card</div>
                   </div>
                 </div>
-                {/* if the technician is true */}
-                {jobCard?.technician ? (
-                  <Badge variant="default">Assigned</Badge>
-                ) : (
-                  <Badge variant="outline">Pending</Badge>
-                )}
+                {getStatusBadge(jobCard?.status)}
               </div>
             </div>
           </div>
@@ -216,7 +249,8 @@ export default function JobCardWorkflow({ isOpen, onClose, jobCard, onStatusUpda
           {jobCard?.status?.includes('Approved') && (
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <p className="text-green-800 text-sm">
-                ✓ Job approved! You can now assign parts from inventory and assign a technician.
+                {/* ✓ Job approved! You can now assign parts from inventory and assign a technician. */}
+                Job approved! Once completed, will be under the completed jobs tabs.
               </p>
             </div>
           )}

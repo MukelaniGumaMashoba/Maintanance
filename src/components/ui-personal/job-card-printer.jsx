@@ -241,11 +241,9 @@ export default function JobCardPrinter({
           </div>
 
           <div class="section">
-            <h3 style="margin:6px 0 4px 0">Customer & Job</h3>
+            <h3 style="margin:6px 0 4px 0">Job Information</h3>
             <div class="small">
-              <div><strong>Client:</strong> ${escapeHtml(jobData.client_name || 'N/A')}</div>
-              <div><strong>Phone:</strong> ${escapeHtml(jobData.client_phone || 'N/A')}</div>
-              <div><strong>Location:</strong> ${escapeHtml(jobData.location || 'N/A')}</div>
+              <div><strong>Driver:</strong> ${escapeHtml(jobData.driver_name || jobData.driver?.first_name + ' ' + jobData.driver?.surname || 'N/A')}</div>
               <div><strong>Description:</strong> ${escapeHtml(jobData.description || 'N/A')}</div>
             </div>
           </div>
@@ -277,16 +275,70 @@ export default function JobCardPrinter({
           </div>
 
           <div class="section">
-            <h3 style="margin:6px 0 4px 0">Costs & Notes</h3>
+            <h3 style="margin:6px 0 4px 0">Costs</h3>
             <div class="small">
               <div><strong>Estimated Cost:</strong> ${jobData.estimated_cost ? 'R' + Number(jobData.estimated_cost).toFixed(2) : 'N/A'}</div>
               <div><strong>Total Cost:</strong> ${jobData.grand_total ? 'R' + Number(jobData.grand_total).toFixed(2) : 'N/A'}</div>
-              <div><strong>Work Notes:</strong> ${escapeHtml(jobData.work_notes || jobData.notes || '')}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 style="margin:6px 0 4px 0">Notes</h3>
+            <div style="border:1px solid #000; min-height:100px; margin:10px 0; padding:10px; background:#f9fafb;">
+              ${escapeHtml(jobData.work_notes || jobData.notes || '')}
+            </div>
+            <div>
+              <h2>Additional Notes</h2>
+            <div style="border:1px solid #000; height:60px; margin:10px 0; background:#fff;"></div>
+          </div>
+
+          <div class="section">
+            <h3 style="margin:6px 0 4px 0">Technician Signature</h3>
+            <div style="border:1px solid #000; height:60px; margin:10px 0; background:#fff;"></div>
+            <div class="small" style="margin-top:8px;">
+              <div><strong>Technician Name:</strong> ${escapeHtml(jobData.technician?.name || jobData.technician_name || '')}</div>
+              <div><strong>Date:</strong> _______________</div>
+              <div><strong>Time:</strong> _______________</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 style="margin:6px 0 4px 0">Manager Signature</h3>
+            <div style="border:1px solid #000; height:60px; margin:10px 0; background:#fff;"></div>
+            <div class="small" style="margin-top:8px;">
+              <div><strong>Manager Name:</strong> _______________</div>
+              <div><strong>Date:</strong> _______________</div>
+              <div><strong>Time:</strong> _______________</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 style="margin:6px 0 4px 0">Administrator Signature</h3>
+            <div style="border:1px solid #000; height:60px; margin:10px 0; background:#fff;"></div>
+            <div class="small" style="margin-top:8px;">
+              <div><strong>Administrator Name:</strong> _______________</div>
+              <div><strong>Date:</strong> _______________</div>
+              <div><strong>Time:</strong> _______________</div>
             </div>
           </div>
 
           <div style="margin-top:18px; font-size:12px; color:#666">
-            Generated: ${new Date().toLocaleString()}
+            Generated: ${new Date().toLocaleString()} by Skyfleet Workshop Management System
+            <br />
+            <p style="font-size:1px; color:#666">M.M Soltrack</p>
+          </div>
+                    <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              <strong>Contact Information:</strong><br>
+              Maintenance Workshop<br>
+              Name: Lwazi
+              Email: stores@klaverplant.co.za<br>
+              Phone: +27 11 123 4567
+            </p>
+          </div>
+
+          <div style="margin-top:18px; font-size:12px; color:#666">
+            <p style="font-size:1px; color:#666">M.M Soltrack</p>
           </div>
         </body>
       </html>
