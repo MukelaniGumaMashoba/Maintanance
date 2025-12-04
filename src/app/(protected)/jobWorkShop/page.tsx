@@ -936,7 +936,7 @@ export default function FleetJobsPage() {
                           setIsWorkflowOpen(true);
                         }}
                         title={
-                          job.status?.includes("Awaiting") &&
+                          job.status?.includes("Awaiting approval") &&
                           (!job.technician || !jobsWithParts.has(job.id))
                             ? !job.technician && !jobsWithParts.has(job.id)
                               ? "Technician and parts must be assigned before approval"
@@ -947,7 +947,7 @@ export default function FleetJobsPage() {
                         }
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {job.status?.includes("Awaiting")
+                        {job.status?.includes("Awaiting approval")
                           ? "Approve/Reject"
                           : "View Workflow"}
                       </Button>
