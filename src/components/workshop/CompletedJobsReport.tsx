@@ -71,7 +71,6 @@ interface ReportFilters {
 export default function CompletedJobsReport() {
   const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([])
   const [filteredJobs, setFilteredJobs] = useState<CompletedJob[]>([])
-  const [technicians, setTechnicians] = useState<Technician[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isPrintOpen, setIsPrintOpen] = useState(false)
   const [selectedJobForPrint, setSelectedJobForPrint] = useState<CompletedJob | null>(null)
@@ -86,7 +85,7 @@ export default function CompletedJobsReport() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchTechnicians()
+    // fetchTechnicians()
     fetchCompletedJobs()
   }, [])
 
@@ -95,16 +94,16 @@ export default function CompletedJobsReport() {
   }, [completedJobs, filters])
 
 
-  const fetchTechnicians = async () => {
-    const { data, error } = await supabase
-      .from('technicians_klaver')
-      .select('id, name')
-      .order('name')
+  // const fetchTechnicians = async () => {
+  //   const { data, error } = await supabase
+  //     .from('technicians_klaver')
+  //     .select('id, name')
+  //     .order('name')
 
-    if (!error && data) {
-      setTechnicians(data as unknown as Technician[])
-    }
-  }
+  //   if (!error && data) {
+  //     setTechnicians(data as unknown as Technician[])
+  //   }
+  // }
 
   const fetchCompletedJobs = async () => {
     setIsLoading(true)
@@ -116,25 +115,6 @@ export default function CompletedJobsReport() {
         .not('completion_date', 'is', null)
         .order('completion_date', { ascending: false })
 
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from('workshop_assignments')
-        .select('*')
-        .in('job_id', (allJobs || []).map((job: any) => job.id))
-      const assignments = (assignmentsData || []) as { job_id: number, tech_id: number }[]
-
-      const { data: techniciansData, error: techniciansError } = await supabase
-        .from('technicians_klaver')
-        .select('id, name')
-        .order('name')
-        .in(
-          'id',
-          assignments.map(assignment => assignment.tech_id)
-        )
-
-      if (!techniciansError && techniciansData) {
-        setTechnicians(techniciansData as unknown as Technician[])
-      }
-
       // Filter for completed jobs (case-insensitive)
       const data = (allJobs || []).filter((job: any) =>
         (job.status || '').toLowerCase() === 'completed'
@@ -143,7 +123,38 @@ export default function CompletedJobsReport() {
 
       if (error) throw error
 
-      // Fetch driver names if driver_id exists
+      // Fetch assignments for completed jobs
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('workshop_assignments')
+        .select('*')
+        .in('job_id', (data || []).map((job: any) => job.id))
+      
+      const assignments = (assignmentsData || []) as { job_id: number, tech_id: number }[]
+
+      // Create a map of job_id -> tech_id
+      const jobToTechMap = new Map<number, number>()
+      assignments.forEach(assignment => {
+        jobToTechMap.set(assignment.job_id, assignment.tech_id)
+      })
+
+      // Fetch all unique technician IDs
+      const uniqueTechIds = Array.from(new Set(assignments.map(a => a.tech_id)))
+      
+      const { data: techniciansData, error: techniciansError } = await supabase
+        .from('technicians_klaver')
+        .select('id, name')
+        .order('name')
+        .in('id', uniqueTechIds.length > 0 ? uniqueTechIds : [0])
+
+      // Create a map of tech_id -> technician name
+      const techIdToNameMap = new Map<number, string>()
+      if (!techniciansError && techniciansData) {
+        techniciansData.forEach((tech: any) => {
+          techIdToNameMap.set(tech.id, tech.name)
+        })
+      }
+
+      // Fetch driver names if driver_id exists and attach technician names
       const jobsWithDriverNames = await Promise.all(
         (data || []).map(async (job: any) => {
           let driverName = null
@@ -161,13 +172,20 @@ export default function CompletedJobsReport() {
               console.error('Error fetching driver:', err)
             }
           }
+          
+          // Get technician name for this job
+          const techId = jobToTechMap.get(job.id)
+          const technicianName = techId ? (techIdToNameMap.get(techId) || 'Unassigned') : 'Unassigned'
+          
           return {
             ...job,
             job_number: job.jobId_workshop,
             job_description: job.description,
             vehicle_registration: job.registration_no,
             labor_cost: job.total_labor_cost || 0,
-            driver_name: driverName
+            driver_name: driverName,
+            technician_name: technicianName,
+            technician_id: techId
           }
         })
       )
@@ -203,9 +221,12 @@ export default function CompletedJobsReport() {
       filtered = filtered.filter(job => job.job_type === filters.job_type)
     }
 
-    // Technician filter
+    // Technician filter (case-insensitive)
     if (filters.technician) {
-      filtered = filtered.filter(job => job.technician_name?.includes(filters.technician))
+      const techSearch = filters.technician.toLowerCase().trim()
+      filtered = filtered.filter(job =>
+        job.technician_name?.toLowerCase().includes(techSearch)
+      )
     }
 
     // Priority filter
@@ -479,7 +500,8 @@ export default function CompletedJobsReport() {
                     )
                     const totalCost = job.grand_total || (job.total_labor_cost || 0) + (job.total_parts_cost || 0) + (job.total_sublet_cost || 0)
                     const summary = `${job.job_number || job.jobId_workshop || 'N/A'} - ${job.vehicle_registration || job.registration_no || 'N/A'} 
-                    - ${job.job_type || 'N/A'} - ${job.job_description || job.description || 'No description'} - Tech: ${technicians.find(tech => tech.id === job.technician_id)?.name || 'Unassigned'}
+                    - ${job.job_type || 'N/A'} - ${job.job_description || job.description || 'No description'}
+                    - Tech: ${job.technician_name || 'Unassigned'}
                      - Cost: R${totalCost.toFixed(2)} - Completed: ${formatDate(job.completion_date)}`
 
                     return (

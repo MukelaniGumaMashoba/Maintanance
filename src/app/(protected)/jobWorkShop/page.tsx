@@ -928,16 +928,18 @@ export default function FleetJobsPage() {
                         variant="outline"
                         size="sm"
                         disabled={
-                          job.status?.includes("Awaiting") &&
-                          (!job.technician || !jobsWithParts.has(job.id))
+                          job.status?.includes("Awaiting Approval") &&
+                          // (!job.technician || !jobsWithParts.has(job.id))
+                          (!job.technician)
                         }
                         onClick={() => {
                           setSelectedJobForWorkflow(job);
                           setIsWorkflowOpen(true);
                         }}
                         title={
-                          job.status?.includes("Awaiting approval") &&
-                          (!job.technician || !jobsWithParts.has(job.id))
+                          job.status?.includes("Awaiting Approval") &&
+                          // (!job.technician || !jobsWithParts.has(job.id))
+                          (!job.technician)
                             ? !job.technician && !jobsWithParts.has(job.id)
                               ? "Technician and parts must be assigned before approval"
                               : !job.technician
@@ -947,7 +949,7 @@ export default function FleetJobsPage() {
                         }
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {job.status?.includes("Awaiting approval")
+                        {job.status?.includes("Awaiting Approval")
                           ? "Approve/Reject"
                           : "View Workflow"}
                       </Button>

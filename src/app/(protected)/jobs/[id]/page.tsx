@@ -876,7 +876,7 @@ export default function WorkshopJobDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
-                      disabled={job.status?.toLowerCase() === 'completed'}
+                      disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() !== "Approved"}
                     >
                       Edit Cost (Labour & Sublet)
                     </Button>
@@ -892,16 +892,14 @@ export default function WorkshopJobDetailPage() {
                     onClick={() => {
                       updateWorkshopJobStatus(job.id, "Awaiting Approval");
                     }}
-                    disabled={updating || job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval'}
+                    disabled={updating || job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() !== "Approved"}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {updating ? "Processing..." : "Submit Job for Approval"}
                   </Button>
                 )}
                 {job.status?.toLowerCase() === "approved"
-                  || job.status?.toLowerCase() === "approved - ready for parts assignment"
-                  || job.status?.toLowerCase() === "awaiting approval"
-                  || job.status?.toLowerCase() !== "completed" && (
+                  && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -924,7 +922,7 @@ export default function WorkshopJobDetailPage() {
                               );
                               setTimeout(() => router.push("/jobs"), 1500);
                             }}
-                            disabled={job.status?.toLowerCase() === 'completed'}
+                            disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval'}
                           >
                             Close/Complete
                           </Button>

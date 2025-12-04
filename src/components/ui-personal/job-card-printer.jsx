@@ -81,13 +81,25 @@ export default function JobCardPrinter({
       // parts
       const { data: partsRows } = await supabase
         .from('workshop_jobpart')
-        .select('id, job_parts, given_parts, created_at')
+        .select('*')
         .eq('job_id', jobRow.id);
 
       assembled.parts = (partsRows || []).flatMap((r) => {
         const jp = r.job_parts ?? r.given_parts;
         if (!jp) return [];
-        if (Array.isArray(jp)) return jp.map((p) => ({ ...p, _parent_row_id: r.id }));
+        if (Array.isArray(jp)) {
+          return jp
+            .filter((p) => p != null && String(p).trim() !== '')
+            .map((p) => {
+              if (typeof p === 'string' || typeof p === 'number') {
+                return { description: String(p), _parent_row_id: r.id };
+              }
+              if (typeof p === 'object') {
+                return { ...p, _parent_row_id: r.id };
+              }
+              return { description: String(p), _parent_row_id: r.id };
+            });
+        }
         if (typeof jp === 'object') return [{ ...jp, _parent_row_id: r.id }];
         if (typeof jp === 'string' && jp.trim()) return [{ description: jp, _parent_row_id: r.id }];
         return [];
@@ -183,7 +195,13 @@ export default function JobCardPrinter({
     }
 
     const partsHtml = (jobData.parts || []).map((p, i) => {
-      const name = p.part_name || p.description || p.part || p.item_code || 'Part';
+      const name =
+        p.part_name ||
+        p.description ||
+        p.part ||
+        p.item_code ||
+        p.name ||
+        'Part';
       const qty = p.quantity ?? p.qty ?? 1;
       const price = p.price ?? p.unit_price ?? p.total_cost ?? '';
       return `<tr>
@@ -408,7 +426,7 @@ export default function JobCardPrinter({
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <div className="font-medium">Client</div>
+                      <div className="font-medium">Driver</div>
                       <div>{jobData.client_name || 'N/A'}</div>
                       <div>{jobData.client_phone || 'N/A'}</div>
                     </div>
