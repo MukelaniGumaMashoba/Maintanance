@@ -35,16 +35,34 @@ export default function StockLevelsPage() {
   const [stockFilter, setStockFilter] = useState("all");
   const [vehicleBrands, setVehicleBrands] = useState<any[]>([]);
   const [isStockEntryOpen, setIsStockEntryOpen] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     fetchData();
+    fetchUserRole();
   }, []);
+
+  const fetchUserRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (profile) setUserRole(profile?.role || "");
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
 
     const [partsRes, categoriesRes, vehicleBrandsRes] = await Promise.all([
-      supabase.from("parts").select(`*, categories(name)`).order("description"),
+      supabase.from("parts").select(`
+        *,
+        categories(name),
+        vehicle_brands(name)
+      `).order("description"),
       supabase.from("categories").select("*").order("name"),
       supabase.from("vehicle_brands").select("*").order("name"),
     ]);
@@ -68,7 +86,7 @@ export default function StockLevelsPage() {
     const quantity = parseInt(part.quantity || "0");
     let matchesStock = true;
 
-    const threshold = part.stock_threshold || 10;
+    const threshold = part.stock_threshold || 10; // Default to 10 if column doesn't exist
     switch (stockFilter) {
       case "low":
         matchesStock = quantity <= threshold;
@@ -98,7 +116,7 @@ export default function StockLevelsPage() {
   );
 
   const lowStockCount = parts.filter(
-    (p) => parseInt(p.quantity || "0") <= (p.stock_threshold || 5)
+    (p) => parseInt(p.quantity || "0") <= (p.stock_threshold || 5) // Default to 5 if column doesn't exist
   ).length;
   const outOfStockCount = parts.filter(
     (p) => parseInt(p.quantity || "0") === 0
@@ -300,12 +318,15 @@ export default function StockLevelsPage() {
                   <th className="text-right p-3 font-medium">Unit Price</th>
                   <th className="text-right p-3 font-medium">Total Value</th>
                   <th className="text-center p-3 font-medium">Status</th>
+                  {userRole === "call centre" && (
+                    <th className="text-center p-3 font-medium">Actions</th>
+                  )}  
                 </tr>
               </thead>
               <tbody>
                 {filteredParts.map((part) => {
                   const quantity = parseInt(part.quantity || "0");
-                  const threshold = part.stock_threshold || 5;
+                  const threshold = part.stock_threshold || 5; // Default to 5 if column doesn't exist
                   const status = getStockStatus(quantity, threshold);
                   const totalValue = quantity * (part.price || 0);
 
@@ -338,6 +359,20 @@ export default function StockLevelsPage() {
                       <td className="p-3 text-center">
                         <Badge className={status.color}>{status.label}</Badge>
                       </td>
+                      {userRole === "call centre" && (
+                        <td className="p-3 text-center">
+                          <StockEntryModal
+                            onSuccess={fetchData}
+                            mode="stock"
+                            existingPart={part}
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                Edit
+                              </Button>
+                            }
+                          />
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
