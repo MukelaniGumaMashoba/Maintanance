@@ -201,6 +201,9 @@ export default function StockEntryModal({
           partData.vehicle_brand_id = parseInt(form.vehicle_brand_id);
         }
 
+        // Remove any id field to prevent conflicts
+        delete partData.id;
+
         if (existingPart?.id) {
           // Update existing part
           const { error } = await supabase
@@ -211,41 +214,11 @@ export default function StockEntryModal({
           if (error) throw error;
           toast.success("Part updated successfully");
         } else {
-          // Check if part with same item_code already exists
-          if (form.item_code) {
-            const { data: existingPartByCode, error: checkError } = await supabase
-              .from("parts")
-              .select("id")
-              .eq("item_code", form.item_code)
-              .maybeSingle();
+          // Insert new part
+          const { error } = await supabase.from("parts").insert([partData]);
 
-            if (checkError && checkError.code !== 'PGRST116') {
-              throw checkError;
-            }
-
-            if (existingPartByCode) {
-              // Update existing part by item_code
-              const { error } = await supabase
-                .from("parts")
-                .update(partData)
-                .eq("item_code", form.item_code);
-
-              if (error) throw error;
-              toast.success("Part updated successfully (found existing part with same item code)");
-            } else {
-              // Insert new part
-              const { error } = await supabase.from("parts").insert([partData]);
-
-              if (error) throw error;
-              toast.success("Part added to inventory successfully");
-            }
-          } else {
-            // Insert new part
-            const { error } = await supabase.from("parts").insert([partData]);
-
-            if (error) throw error;
-            toast.success("Part added to inventory successfully");
-          }
+          if (error) throw error;
+          toast.success("Part added to inventory successfully");
         }
             } else if (mode === "non-stock" || mode === "assign") {
                 // Add to once_off_parts table (for job-specific non-stock parts)
@@ -338,7 +311,7 @@ export default function StockEntryModal({
             setIsOpen(false);
             onSuccess?.();
         } catch (error: any) {
-            console.error("Error submitting stock entry:", error);
+            console.error("Error submitting stock entry:", error.message);
             toast.error(error.message || "Failed to save stock entry");
         } finally {
             setLoading(false);

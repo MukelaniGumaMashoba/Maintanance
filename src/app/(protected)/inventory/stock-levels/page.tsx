@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   Select,
   SelectTrigger,
@@ -51,6 +52,27 @@ export default function StockLevelsPage() {
         .eq('id', user.id)
         .single();
       if (profile) setUserRole(profile?.role || "");
+    }
+  };
+
+  const handleDeletePart = async (partId: number, description: string) => {
+    if (!confirm(`Are you sure you want to delete "${description}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('parts')
+        .delete()
+        .eq('id', partId);
+
+      if (error) throw error;
+      
+      await fetchData();
+      toast.success('Part deleted successfully');
+    } catch (error: any) {
+      alert(`Error deleting part: ${error.message}`);
+      toast.error(`Error deleting part: ${error.message}`);
     }
   };
 
@@ -361,16 +383,25 @@ export default function StockLevelsPage() {
                       </td>
                       {userRole === "call centre" && (
                         <td className="p-3 text-center">
-                          <StockEntryModal
-                            onSuccess={fetchData}
-                            mode="stock"
-                            existingPart={part}
-                            trigger={
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                            }
-                          />
+                          <div className="flex gap-2 justify-center">
+                            <StockEntryModal
+                              onSuccess={fetchData}
+                              mode="stock"
+                              existingPart={part}
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  Edit
+                                </Button>
+                              }
+                            />
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeletePart(part.id, part.description)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </td>
                       )}
                     </tr>
