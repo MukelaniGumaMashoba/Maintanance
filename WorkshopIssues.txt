@@ -20,7 +20,7 @@ They require a report showing all completed jobs, with a one-line summary/overvi
 
 
 
-
+ubuntu-s-1vcpu-1gb-fra1-01
 
 
 
