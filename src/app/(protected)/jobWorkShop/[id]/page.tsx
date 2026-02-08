@@ -92,6 +92,9 @@ interface Technician {
   email: string;
 }
 
+
+const notAllowedStatuses = ["completed", "approved", "rejected", "assigned", "part assigned", "part ordered"];
+
 export default function WorkshopJobDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -559,7 +562,7 @@ export default function WorkshopJobDetailPage() {
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     onClick={() => updateWorkshopJobStatus(job.id, "Approved")}
-                    disabled={updating || job.status?.toLowerCase() === 'completed' || technician?.id === null}
+                    disabled={updating || notAllowedStatuses.includes(job.status?.toLowerCase() || "") || technician?.id === null}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {updating ? "Processing..." : "Approve Job"}
@@ -569,7 +572,7 @@ export default function WorkshopJobDetailPage() {
                   variant="destructive"
                   className="w-full"
                   onClick={() => updateWorkshopJobStatus(job.id, "Rejected")}
-                  disabled={updating || job.status?.toLowerCase() === 'completed' || technician?.id === null}
+                  disabled={updating || notAllowedStatuses.includes(job.status?.toLowerCase() || "") || technician?.id === null}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   {updating ? "Processing..." : "Reject Job"}
