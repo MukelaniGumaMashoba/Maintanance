@@ -79,6 +79,8 @@ interface WorkshopJob {
   grand_total?: number;
   total_parts_cost?: number;
   technician?: boolean;
+  odo_reading: string | number;
+  hours: string | number;
 }
 
 interface Vehicle {
@@ -307,7 +309,7 @@ export default function WorkshopJobDetailPage() {
       return { success: false, error };
     } else {
       toast.success(
-        `Job ${status === "Approved" ? "approved" : "submitted for approval"} successfully`
+        `Job ${status === "Approved" ? "approved" : "submitted for approval"} successfully`,
       );
       setJob((prev) => (prev ? { ...prev, status } : null));
       setUpdating(false);
@@ -371,12 +373,12 @@ export default function WorkshopJobDetailPage() {
         setJob((prev) =>
           prev
             ? {
-              ...prev,
-              labour_hours: labourHours,
-              labor_cost: labourRate,
-              total_labor_cost: updatedTotal,
-            }
-            : prev
+                ...prev,
+                labour_hours: labourHours,
+                labor_cost: labourRate,
+                total_labor_cost: updatedTotal,
+              }
+            : prev,
         );
         toast.success("Costs saved");
         setIsLabourDialogOpen(false);
@@ -391,7 +393,7 @@ export default function WorkshopJobDetailPage() {
 
   const changeTechnician = async (
     technicianId: number,
-    technicianName: string
+    technicianName: string,
   ) => {
     if (!selectedJobForTech) return;
     try {
@@ -437,7 +439,7 @@ export default function WorkshopJobDetailPage() {
 
   const assignTechnicianToJob = async (
     technicianId: number,
-    technicianName: string
+    technicianName: string,
   ) => {
     if (!selectedJobForTech) return;
     try {
@@ -485,8 +487,12 @@ export default function WorkshopJobDetailPage() {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">
-    <Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>;
+  if (isLoading)
+    return (
+      <div className="p-8 text-center">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+      </div>
+    );
   if (!job) return <div className="p-8 text-center">Job not found</div>;
 
   return (
@@ -499,9 +505,7 @@ export default function WorkshopJobDetailPage() {
               <ArrowLeft className="h-4 w-4" /> Back to Jobs
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-black">
-            Job Card Details
-          </h1>
+          <h1 className="text-xl font-bold text-black">Job Card Details</h1>
         </div>
       </div>
 
@@ -571,6 +575,14 @@ export default function WorkshopJobDetailPage() {
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-sm text-gray-600">Colour</p>
                     <p className="font-semibold">{vehicle.colour}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-sm text-gray-600">ODO Reading</p>
+                    <p className="font-semibold">{job.odo_reading || "Not specified"}  KM</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-sm text-gray-600">Hours</p>
+                    <p className="font-semibold">{job.hours || "Not specified"}</p>
                   </div>
                 </div>
               ) : (
@@ -652,7 +664,8 @@ export default function WorkshopJobDetailPage() {
                     if (jp == null) return false;
                     if (typeof jp === "string") return jp.trim() !== "";
                     if (Array.isArray(jp)) return jp.length > 0;
-                    if (typeof jp === "object") return Object.keys(jp).length > 0;
+                    if (typeof jp === "object")
+                      return Object.keys(jp).length > 0;
                     return false;
                   });
 
@@ -691,8 +704,9 @@ export default function WorkshopJobDetailPage() {
                               <span className="text-sm text-gray-800">
                                 {displayText}
                               </span>
-                              <span className="text-xs text-gray-500 italic">{`Part #${index + 1
-                                }`}</span>
+                              <span className="text-xs text-gray-500 italic">{`Part #${
+                                index + 1
+                              }`}</span>
                             </li>
                           );
                         })}
@@ -701,7 +715,9 @@ export default function WorkshopJobDetailPage() {
                   );
                 })()
               ) : (
-                <p className="text-sm text-gray-500 italic mt-4">No part requested</p>
+                <p className="text-sm text-gray-500 italic mt-4">
+                  No part requested
+                </p>
               )}
             </CardContent>
           </Card>
@@ -745,16 +761,17 @@ export default function WorkshopJobDetailPage() {
                   <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-600">No technician assigned</p>
                   <p className="text-sm text-gray-500">
-                    Technician will be assigned by using the assign technician button below
+                    Technician will be assigned by using the assign technician
+                    button below
                   </p>
                 </div>
               )}
 
               {/* Technician Assignment Button */}
               <div className="mt-4 pt-4 border-t">
-                {isAssigned
-                  // && (job.status === "Approved" || job.status === "Approved - Ready for Parts Assignment") 
-                  ? (
+                {
+                  isAssigned ? (
+                    // && (job.status === "Approved" || job.status === "Approved - Ready for Parts Assignment")
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
@@ -771,16 +788,15 @@ export default function WorkshopJobDetailPage() {
                           setIsTechDialogOpen(true);
                           setSelectedJobForTech(job);
                         }}
-                        disabled={job.status?.toLowerCase() === 'completed'}
+                        disabled={job.status?.toLowerCase() === "completed"}
                       >
                         Change Technician
                       </Button>
                     </div>
-                  ) :
-                  // job.status?.toLowerCase() === "awaiting approval" || job.status?.toLowerCase() === "approved - ready for parts assignment" || job.status?.toLowerCase() === "approved"
-                  // ? 
-                  // &&
-                  (
+                  ) : (
+                    // job.status?.toLowerCase() === "awaiting approval" || job.status?.toLowerCase() === "approved - ready for parts assignment" || job.status?.toLowerCase() === "approved"
+                    // ?
+                    // &&
                     <Button
                       size="sm"
                       onClick={() => {
@@ -788,7 +804,7 @@ export default function WorkshopJobDetailPage() {
                         setSelectedJobForTech(job);
                       }}
                       className="w-full flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition rounded-md shadow-sm"
-                      disabled={job.status?.toLowerCase() === 'completed'}
+                      disabled={job.status?.toLowerCase() === "completed"}
                     >
                       <User2 className="h-4 w-4" />
                       Assign Technician
@@ -833,7 +849,6 @@ export default function WorkshopJobDetailPage() {
                   </p>
                 </div>
 
-
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
                   <p className="text-sm text-blue-700">Total Sublet Cost</p>
                   <p className="text-xl font-bold text-blue-800">
@@ -843,9 +858,14 @@ export default function WorkshopJobDetailPage() {
                   </p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">Total Cost (Labour & Sublet & Parts)</p>
+                  <p className="text-sm text-blue-700">
+                    Total Cost (Labour & Sublet & Parts)
+                  </p>
                   <p className="text-xl font-bold text-blue-800">
-                    {(Number(labourRate ?? 0) * Number(labourHours ?? 0) + Number(job.total_sublet_cost ?? 0) + Number(job.total_parts_cost ?? 0)) > 0
+                    {Number(labourRate ?? 0) * Number(labourHours ?? 0) +
+                      Number(job.total_sublet_cost ?? 0) +
+                      Number(job.total_parts_cost ?? 0) >
+                    0
                       ? `R ${(Number(labourRate ?? 0) * Number(labourHours ?? 0) + Number(job.total_sublet_cost ?? 0) + Number(job.total_parts_cost ?? 0)).toFixed(2)}`
                       : "Pending"}
                   </p>
@@ -853,7 +873,9 @@ export default function WorkshopJobDetailPage() {
 
                 {/* Labour & Parts Section */}
                 <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Labour & Sublet Cost</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Labour & Sublet Cost
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Hours</span>
@@ -876,7 +898,11 @@ export default function WorkshopJobDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
-                      disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() === 'approved'}
+                      disabled={
+                        job.status?.toLowerCase() === "completed" ||
+                        job.status?.toLowerCase() === "awaiting approval" ||
+                        job.status?.toLowerCase() === "approved"
+                      }
                     >
                       Edit Cost (Labour & Sublet)
                     </Button>
@@ -892,47 +918,54 @@ export default function WorkshopJobDetailPage() {
                     onClick={() => {
                       updateWorkshopJobStatus(job.id, "Awaiting Approval");
                     }}
-                    disabled={updating || job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() === 'approved'}
+                    disabled={
+                      updating ||
+                      job.status?.toLowerCase() === "completed" ||
+                      job.status?.toLowerCase() === "awaiting approval" ||
+                      job.status?.toLowerCase() === "approved"
+                    }
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {updating ? "Processing..." : "Submit Job for Approval"}
                   </Button>
                 )}
-                {job.status?.toLowerCase() === "approved"
-                  && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full border-gray-300"
-                            onClick={async () => {
-                              await supabase
-                                .from("workshop_job")
-                                .update({
-                                  status: "Completed",
-                                  updated_at: new Date().toISOString(),
-                                  completion_date: new Date().toISOString(),
-                                })
-                                .eq("id", job.id);
+                {job.status?.toLowerCase() === "approved" && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full border-gray-300"
+                          onClick={async () => {
+                            await supabase
+                              .from("workshop_job")
+                              .update({
+                                status: "Completed",
+                                updated_at: new Date().toISOString(),
+                                completion_date: new Date().toISOString(),
+                              })
+                              .eq("id", job.id);
 
-                              toast.success("Job closed successfully");
-                              setJob((prev) =>
-                                prev ? { ...prev, status: "Completed" } : null
-                              );
-                              setTimeout(() => router.push("/jobs"), 1500);
-                            }}
-                            disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval'}
-                          >
-                            Close/Complete
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>This for completed job to be closed!</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                            toast.success("Job closed successfully");
+                            setJob((prev) =>
+                              prev ? { ...prev, status: "Completed" } : null,
+                            );
+                            setTimeout(() => router.push("/jobs"), 1500);
+                          }}
+                          disabled={
+                            job.status?.toLowerCase() === "completed" ||
+                            job.status?.toLowerCase() === "awaiting approval"
+                          }
+                        >
+                          Close/Complete
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>This for completed job to be closed!</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -973,18 +1006,24 @@ export default function WorkshopJobDetailPage() {
                   type="number"
                   min={0}
                   value={job?.total_sublet_cost ?? 0}
-                  onChange={(e) => setJob((prev: any) =>
-                    prev
-                      ? { ...prev, total_sublet_cost: Number(e.target.value) || 0 }
-                      : prev as any
-                  ) as any}
+                  onChange={(e) =>
+                    setJob((prev: any) =>
+                      prev
+                        ? {
+                            ...prev,
+                            total_sublet_cost: Number(e.target.value) || 0,
+                          }
+                        : (prev as any),
+                    ) as any
+                  }
                 />
               </div>
               <div>
                 <Label>Total Cost</Label>
                 <p className="font-medium text-green-600">
                   {`R ${(
-                    Number(labourRate ?? 0) * Number(labourHours ?? 0) + Number(job?.total_sublet_cost ?? 0)
+                    Number(labourRate ?? 0) * Number(labourHours ?? 0) +
+                    Number(job?.total_sublet_cost ?? 0)
                   ).toFixed(2)}`}
                 </p>
               </div>
@@ -1018,8 +1057,8 @@ export default function WorkshopJobDetailPage() {
                 {selectedJobForTech?.jobId_workshop}
               </DialogTitle>
               <DialogDescription>
-                Search and select a technician based on Job Type, name, location,
-                or specialties.
+                Search and select a technician based on Job Type, name,
+                location, or specialties.
               </DialogDescription>
             </DialogHeader>
 
@@ -1085,7 +1124,9 @@ export default function WorkshopJobDetailPage() {
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => changeTechnician(tech.id, `${tech.name}`)}
+                        onClick={() =>
+                          changeTechnician(tech.id, `${tech.name}`)
+                        }
                       >
                         Change Technician
                       </Button>

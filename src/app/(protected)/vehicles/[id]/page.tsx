@@ -130,14 +130,13 @@ export default function VehicleDetailsPage() {
     setEditing(false);
     fetchVehicle();
   };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    if (!editData) return;
-    const { name, value } = e.target;
-    setEditData({ ...editData, [name]: value });
-  };
+  // const handleInputChange = (
+  //   e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ) => {
+  //   if (!editData) return;
+  //   const { name, value } = e.target;
+  //   setEditData({ ...editData, [name]: value });
+  // };
 
   const startEditing = () => {
     if (!vehicle) return;
@@ -192,6 +191,29 @@ export default function VehicleDetailsPage() {
     disabled?: boolean;
   }) {
     const displayValue = value === null || value === undefined || value === "" ? "—" : value;
+    const [localValue, setLocalValue] = useState(value?.toString() ?? "");
+
+    // Sync local value when editing starts or external changes
+    useEffect(() => {
+      if (editing) {
+        setLocalValue(editData?.[name]?.toString() ?? "");
+      }
+    }, [editing, editData?.[name], name]);
+
+    // Update parent editData only on blur (not every keystroke)
+    const handleBlur = () => {
+      if (editData && localValue !== editData[name]?.toString()) {
+        setEditData({ ...editData, [name]: localValue });
+      }
+    };
+
+    // For selects, update immediately (less disruptive)
+    const handleSelectChange = (val: string) => {
+      setLocalValue(val);
+      if (editData) {
+        setEditData({ ...editData, [name]: val });
+      }
+    };
 
     return (
       <div className="space-y-2">
@@ -199,11 +221,8 @@ export default function VehicleDetailsPage() {
         {editing ? (
           options ? (
             <Select
-              value={editData?.[name]?.toString() ?? ""}
-              onValueChange={(val) => {
-                if (!editData) return;
-                setEditData({ ...editData, [name]: val });
-              }}
+              value={localValue}
+              onValueChange={handleSelectChange}
               disabled={disabled}
             >
               <SelectTrigger className="h-10">
@@ -221,11 +240,14 @@ export default function VehicleDetailsPage() {
             <Input
               name={name as string}
               type={type}
-              value={editData?.[name]?.toString() ?? ""}
-              onChange={handleInputChange}
+              value={localValue}
+              onChange={(e) => setLocalValue(e.target.value)}
+              onBlur={handleBlur}
               disabled={disabled}
               placeholder={`Enter ${label.toLowerCase()}`}
               className="h-10"
+              // Stable key prevents remounting
+              key={`input-${name.toString()}`}
             />
           )
         ) : (
@@ -319,7 +341,7 @@ export default function VehicleDetailsPage() {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content - unchanged */}
         <div className="space-y-6">
           {/* Basic Information */}
           <Card className="border-0 shadow-sm">
@@ -394,7 +416,7 @@ export default function VehicleDetailsPage() {
                   label="Vehicle Type"
                   name="vehicle_type"
                   value={vehicle.vehicle_type}
-                  options={['vehicle', 'trailer', 'commercial', 'tanker', 'truck', 'specialized']}
+                  options={['vehicle', 'trailer', 'commercial', 'tanker', 'truck', 'specialized', 'machine']}
                 />
                 <EditableField
                   label="Fuel Type"

@@ -90,6 +90,8 @@ interface CreateJobForm {
   notes?: string;
   due_date?: string;
   priority: "low" | "medium" | "high" | "emergency";
+  odo_reading?: string | number;
+  hours?: string | number;
 }
 
 export default function JobsPage() {
@@ -98,7 +100,7 @@ export default function JobsPage() {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(
-    searchParams?.get("status")?.toLowerCase() || "all"
+    searchParams?.get("status")?.toLowerCase() || "all",
   );
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [isCreateJobDialogOpen, setIsCreateJobDialogOpen] = useState(false);
@@ -113,6 +115,8 @@ export default function JobsPage() {
     notes: "",
     due_date: "",
     priority: "medium",
+    odo_reading: "",
+    hours: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicleExists, setVehicleExists] = useState<boolean | null>(null);
@@ -121,7 +125,9 @@ export default function JobsPage() {
   const [parts, setParts] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
-  const [selectedJobForPrint, setSelectedJobForPrint] = useState<Job | null>(null);
+  const [selectedJobForPrint, setSelectedJobForPrint] = useState<Job | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState("all");
 
   const supabase = createClient();
@@ -154,9 +160,9 @@ export default function JobsPage() {
 
     // Filter out completed and rejected jobs from "all jobs" tab
     filtered = filtered.filter(
-      (job) => 
+      (job) =>
         (job.status || "").toLowerCase() !== "completed" &&
-        (job.status || "").toLowerCase() !== "rejected"
+        (job.status || "").toLowerCase() !== "rejected",
     );
 
     // Apply search filter
@@ -189,21 +195,22 @@ export default function JobsPage() {
       filtered = filtered.filter((job) => job.technician !== true);
     } else if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(
-        (job) => (job.status || "").toLowerCase() === statusFilter.toLowerCase()
+        (job) =>
+          (job.status || "").toLowerCase() === statusFilter.toLowerCase(),
       );
     }
 
     // Apply priority filter
     if (priorityFilter && priorityFilter !== "all") {
       filtered = filtered.filter(
-        (job) => job.priority?.toLowerCase() === priorityFilter.toLowerCase()
+        (job) => job.priority?.toLowerCase() === priorityFilter.toLowerCase(),
       );
     }
 
     // Sort by created date (newest first)
     filtered.sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
     setFilteredJobs(filtered);
@@ -247,12 +254,12 @@ export default function JobsPage() {
 
     try {
       const vehicleData = await checkVehicleExists(
-        createJobForm.registration_number
+        createJobForm.registration_number,
       );
 
       if (!vehicleData) {
         toast.error(
-          "Vehicle not found in database. Please enter a valid registration number."
+          "Vehicle not found in database. Please enter a valid registration number.",
         );
         return;
       }
@@ -281,6 +288,8 @@ export default function JobsPage() {
           estimated_cost: createJobForm.estimated_cost || 0,
           priority: createJobForm.priority || "medium",
           due_date: createJobForm.due_date || "",
+          odo_reading: createJobForm.odo_reading || "" || 0,
+          hours: createJobForm.hours || "" || 0,
         })
         .select()
         .single();
@@ -292,7 +301,7 @@ export default function JobsPage() {
       }
 
       toast.success(
-        `Job card ${job_id} created successfully for vehicle ${createJobForm.registration_number}`
+        `Job card ${job_id} created successfully for vehicle ${createJobForm.registration_number}`,
       );
       setIsCreateJobDialogOpen(false);
 
@@ -387,7 +396,7 @@ export default function JobsPage() {
       status
         ?.split(" ")
         .map(
-          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
         )
         .join(" ") || "Unknown"
     );
@@ -446,7 +455,11 @@ export default function JobsPage() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All Jobs</TabsTrigger>
           <TabsTrigger value="rejected">Rejected Jobs</TabsTrigger>
@@ -466,7 +479,7 @@ export default function JobsPage() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Job Card</DialogTitle>
+                <DialogTitle>Create New Job Card: Testing</DialogTitle>
                 <DialogDescription>
                   Create a new job card. All fields marked with * are required.
                 </DialogDescription>
@@ -516,6 +529,37 @@ export default function JobsPage() {
                     )}
                   </div>
 
+                  {/* km */}
+                  <div>
+                    <Label htmlFor="odo_reading">Kilometers Reading</Label>
+                    <Input
+                      id="odo_reading"
+                      placeholder="Enter odo reading"
+                      value={createJobForm.odo_reading}
+                      onChange={(e) =>
+                        setCreateJobForm({
+                          ...createJobForm,
+                          odo_reading: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Hours (hr)</Label>
+                    <Input
+                      id="hours"
+                      placeholder="Enter hours"
+                      value={createJobForm.hours}
+                      onChange={(e) =>
+                        setCreateJobForm({
+                          ...createJobForm,
+                          hours: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
                   <div>
                     <Label htmlFor="job_type">Type of Work *</Label>
                     <Select
@@ -532,7 +576,9 @@ export default function JobsPage() {
                         <SelectItem value="repair">Repair</SelectItem>
                         <SelectItem value="inspection">Inspection</SelectItem>
                         <SelectItem value="breakdown">Breakdown</SelectItem>
-                        <SelectItem value="accident">Accident Repair</SelectItem>
+                        <SelectItem value="accident">
+                          Accident Repair
+                        </SelectItem>
                         <SelectItem value="service">Service</SelectItem>
                         <SelectItem value="mechanical">Mechanical</SelectItem>
                         <SelectItem value="electrical">Electrical</SelectItem>
@@ -706,7 +752,10 @@ export default function JobsPage() {
               </Card>
             ) : (
               filteredJobs.map((job) => (
-                <Card key={job.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={job.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -716,7 +765,8 @@ export default function JobsPage() {
                         <div className="flex items-center gap-2">
                           <Badge className={getStatusColor(job.status)}>
                             {formatStatusDisplay(job.status)}
-                            {job.status?.toLowerCase() === "awaiting approval" && (
+                            {job.status?.toLowerCase() ===
+                              "awaiting approval" && (
                               <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
                             )}
                             {job.status?.toLowerCase() === "completed" && (
@@ -796,7 +846,9 @@ export default function JobsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Driver</p>
-                        <p className="font-medium">{job.client_name || "N/A"}</p>
+                        <p className="font-medium">
+                          {job.client_name || "N/A"}
+                        </p>
                         <p className="text-sm text-gray-600 mt-2">Location</p>
                         <p className="font-medium">{job.location || "N/A"}</p>
                       </div>
@@ -814,7 +866,9 @@ export default function JobsPage() {
                           {new Date(job.created_at).toLocaleDateString()}
                         </p>
                         <p>
-                          <span className="text-sm text-gray-600">Due Date: </span>
+                          <span className="text-sm text-gray-600">
+                            Due Date:{" "}
+                          </span>
                           <span className="font-medium">
                             {job.due_date
                               ? new Date(job.due_date).toLocaleDateString()
@@ -930,7 +984,7 @@ export default function JobsPage() {
                             size="sm"
                             onClick={() =>
                               setParts((prev) =>
-                                prev.filter((_, i) => i !== index)
+                                prev.filter((_, i) => i !== index),
                               )
                             }
                             className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"

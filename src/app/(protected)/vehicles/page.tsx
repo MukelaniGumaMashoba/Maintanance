@@ -69,8 +69,16 @@ const vehicleFormSchema = z.object({
   sub_model: z.string().optional(),
   manufactured_year: z.string().min(1, "Manufactured year is required"),
   vehicle_type: z.enum(
-    ["vehicle", "trailer", "commercial", "tanker", "truck", "specialized"],
-    { required_error: "Vehicle type is required" }
+    [
+      "vehicle",
+      "trailer",
+      "commercial",
+      "tanker",
+      "truck",
+      "specialized",
+      "machine",
+    ],
+    { required_error: "Vehicle type is required" },
   ),
   registration_date: z.string().optional(),
   license_expiry_date: z.string().optional(),
@@ -134,8 +142,9 @@ export default function Vehicles() {
   const supabase = createClient();
   const [search, setSearch] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
-    null
+    null,
   );
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
@@ -158,7 +167,7 @@ export default function Vehicles() {
     const filtered = drivers.filter((driver) =>
       `${driver.first_name} ${driver.surname}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
     );
     setFilteredDrivers(filtered);
   }, [searchTerm, drivers]);
@@ -205,8 +214,8 @@ export default function Vehicles() {
       }
       const { data: techniciansData, error: techError } = await supabase
         .from("technicians_klaver")
-        .select("*")
-        // .eq("type", "internal");
+        .select("*");
+      // .eq("type", "internal");
 
       setTechnicians(techniciansData as []);
 
@@ -221,7 +230,7 @@ export default function Vehicles() {
 
   useEffect(() => {
     const filtered = technicians.filter((tech) =>
-      tech.name.toLowerCase().includes(searchTerm.toLowerCase())
+      tech.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredTechs(filtered as []);
   }, [searchTerm, technicians]);
@@ -276,20 +285,20 @@ export default function Vehicles() {
   };
 
   // Filter vehicles based on search
-    const filteredVehicles = vehicles.filter((vehicle) => {
-      const searchLower = search.toLowerCase();
-      const make = String(vehicle?.make ?? "").toLowerCase();
-      const model = String(vehicle?.model ?? "").toLowerCase();
-      const reg = String(vehicle?.registration_number ?? "").toLowerCase();
-      const type = String(vehicle?.vehicle_type ?? "").toLowerCase();
-  
-      return (
-        make.includes(searchLower) ||
-        model.includes(searchLower) ||
-        reg.includes(searchLower) ||
-        type.includes(searchLower)
-      );
-    });
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    const searchLower = search.toLowerCase();
+    const make = String(vehicle?.make ?? "").toLowerCase();
+    const model = String(vehicle?.model ?? "").toLowerCase();
+    const reg = String(vehicle?.registration_number ?? "").toLowerCase();
+    const type = String(vehicle?.vehicle_type ?? "").toLowerCase();
+
+    return (
+      make.includes(searchLower) ||
+      model.includes(searchLower) ||
+      reg.includes(searchLower) ||
+      type.includes(searchLower)
+    );
+  });
 
   // Row background color by type
   const getRowBg = (type: string) => {
@@ -311,6 +320,36 @@ export default function Vehicles() {
     }
   };
 
+  // useEffect(() => {
+  //   const fetchVehicles = async () => {
+  //     // Filter for Klava company vehicles only
+  //     const { data: vehicles, error } = await supabase
+  //       .from("vehiclesc_workshop")
+  //       .select("*");
+
+  //     if (error) {
+  //       console.error("the error is", error.name, error.message);
+  //     } else {
+  //       // @ts-expect-error
+  //       setVehicles(vehicles || []);
+  //     }
+  //   };
+  //   const vehiclesc = supabase
+  //     .channel("schema-db-changes")
+  //     .on(
+  //       "postgres_changes",
+  //       { event: "*", schema: "public", table: "vehiclesc_workshop" },
+  //       (payload) => {
+  //         console.log("Change received!", payload);
+  //       }
+  //     )
+  //     .subscribe();
+  //   fetchVehicles();
+
+  //   return () => {
+  //     vehiclesc.unsubscribe;
+  //   };
+  // }, []);
   useEffect(() => {
     const fetchVehicles = async () => {
       // Filter for Klava company vehicles only
@@ -325,22 +364,31 @@ export default function Vehicles() {
         setVehicles(vehicles || []);
       }
     };
-    const vehiclesc = supabase
-      .channel("schema-db-changes")
+
+    // NEW: Proper realtime - filter INSERT events and OPTIMISTICALLY add
+    const channel = supabase
+      .channel("vehicles")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "vehiclesc_workshop" },
+        {
+          event: "INSERT", // Only new vehicles
+          schema: "public",
+          table: "vehiclesc_workshop",
+          // filter: `company_id=eq.${workshopId || 1}`, // Your company filter
+        },
         (payload) => {
-          console.log("Change received!", payload);
-        }
+          console.log("New vehicle:", payload.new);
+          // Optimistically add to state (no full refetch!)
+          setVehicles((prev) => [payload.new as VehicleFormValues, ...prev]);
+        },
       )
       .subscribe();
     fetchVehicles();
 
     return () => {
-      vehiclesc.unsubscribe;
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [workshopId]);
 
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(vehicleFormSchema) as any,
@@ -381,7 +429,9 @@ export default function Vehicles() {
   });
 
   const onSubmit = async (data: VehicleFormValues) => {
+    setIsLoading(true);
     await handleAddVehicle(data);
+    setIsLoading(false);
   };
 
   const handleAddVehicle = async (data: VehicleFormValues) => {
@@ -395,7 +445,8 @@ export default function Vehicles() {
 
     // remove undefined values to avoid inserting empty strings where DB expects null
     Object.keys(payload).forEach((k) => {
-      if (payload[k] === "" || typeof payload[k] === "undefined") delete payload[k];
+      if (payload[k] === "" || typeof payload[k] === "undefined")
+        delete payload[k];
     });
 
     const { data: vehicle, error } = await supabase
@@ -415,6 +466,7 @@ export default function Vehicles() {
         .select("*");
       setVehicles(vehicles as []);
     }
+    setIsLoading(false);
   };
 
   const getVehicleTypeIcon = (type: string) => {
@@ -482,6 +534,7 @@ export default function Vehicles() {
         <Button
           onClick={() => setIsAddingVehicle(true)}
           className="bg-blue-600 hover:bg-blue-700"
+          disabled={isLoading}
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Vehicle
@@ -664,6 +717,12 @@ export default function Vehicles() {
                               <div className="flex items-center gap-2">
                                 <Truck className="w-4 h-4" />
                                 Trailer
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="machine">
+                              <div className="flex items-center gap-2">
+                                <Truck className="w-4 h-4" />
+                                Machine
                               </div>
                             </SelectItem>
                           </SelectContent>
@@ -1052,19 +1111,20 @@ export default function Vehicles() {
 
                 <div className="flex gap-4">
                   <Button
-                    onClick={() => handleAddVehicle(form.getValues())}
+                    disabled={isLoading || !form.formState.isValid}
+                    // onClick={() => handleAddVehicle(form.getValues())}
                     type="submit"
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    Save Vehicle
+                    {isLoading ? "Saving..." : "Save Vehicle"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setIsAddingVehicle(false)}
                   >
-                    Cancel
+                    {isLoading ? "Cancelling..." : "Cancel"}
                   </Button>
                 </div>
               </form>
@@ -1158,7 +1218,7 @@ export default function Vehicles() {
                           onClick={async () => {
                             if (
                               confirm(
-                                "Are you sure you want to delete this vehicle?"
+                                "Are you sure you want to delete this vehicle?",
                               )
                             ) {
                               const { error } = await supabase

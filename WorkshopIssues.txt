@@ -25,12 +25,23 @@ ubuntu-s-1vcpu-1gb-fra1-01
 
 
 
+I need to add a boolen since i use the stuff on prod and on on dev to have testing data which will be boolen
 
 
 
+A new component which will continues read the company name this user is under and the will be visible accordigly -  company in every table
 
 
+Urgent fixes
+Web Interface Issues (Fleet Manager Profile > Vehicles Tab):
+Duplicate Entry Error: When adding a new vehicle, the system currently generates two identical entries for a single input. -> Fixed
+Input Field Persistence: The editing interface loses focus after every character entered. For example, to update a vehicle name to "Caterpillar," 
+the user must re-select the column 11 times. -> Fixed
+ 
 
+Feature Request (Lawazi):
+Job Card Enhancement: Please add a dedicated field on the Job Card for recording the Hours (hrs) / Kilometers (kms) of the machines and vehicles. => Fixed but not sure
+This is essential for tracking usage and maintenance intervals accurately.
 
 
 
