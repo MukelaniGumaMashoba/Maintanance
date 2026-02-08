@@ -876,7 +876,7 @@ export default function WorkshopJobDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
-                      disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() !== "Approved"}
+                      disabled={job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() === 'approved'}
                     >
                       Edit Cost (Labour & Sublet)
                     </Button>
@@ -892,7 +892,7 @@ export default function WorkshopJobDetailPage() {
                     onClick={() => {
                       updateWorkshopJobStatus(job.id, "Awaiting Approval");
                     }}
-                    disabled={updating || job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() !== "Approved"}
+                    disabled={updating || job.status?.toLowerCase() === 'completed' || job.status?.toLowerCase() === 'awaiting approval' || job.status?.toLowerCase() === 'approved'}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {updating ? "Processing..." : "Submit Job for Approval"}
