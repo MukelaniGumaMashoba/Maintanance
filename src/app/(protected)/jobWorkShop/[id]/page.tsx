@@ -28,6 +28,7 @@ import {
   Wrench,
   Clock,
   AlertTriangle,
+  Droplet,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -108,6 +109,7 @@ export default function WorkshopJobDetailPage() {
   const [labourTotal, setLabourTotal] = useState<number>(0);
   const [isLabourDialogOpen, setIsLabourDialogOpen] = useState(false);
   const [isSavingLabour, setIsSavingLabour] = useState(false);
+  const [consumables, setConsumables] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchJobAndVehicle = async () => {
@@ -166,6 +168,17 @@ export default function WorkshopJobDetailPage() {
           console.log("Technician Data:", technicianData);
         }
       }
+
+      // Fetch consumables
+      const { data: consumablesData, error: consumError } = await supabase
+        .from("workshop_jobpart")
+        .select("*")
+        .eq("job_id", jobData.id);
+      if (!consumError && consumablesData) {
+        const consumablesList = consumablesData?.flatMap((item) => item.consumables || []) || [];
+        setConsumables(consumablesList);
+      }
+
       setIsLoading(false);
     };
     if (params.id) fetchJobAndVehicle();
@@ -427,6 +440,48 @@ export default function WorkshopJobDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Consumables Section */}
+              {consumables && consumables.length > 0 && (
+                <div className="mt-6 pt-6 border-t">
+                  <h4 className="font-semibold text-gray-900 mb-2 text-base flex items-center gap-2">
+                    <Droplet className="h-4 w-4 text-purple-600" />
+                    Consumables Used
+                  </h4>
+                  <ul className="space-y-2 max-h-48 overflow-auto border border-purple-200 bg-purple-50 p-3 rounded-lg">
+                    {consumables.map((consumable, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center justify-between bg-white border border-purple-100 rounded-md px-3 py-2 shadow-sm hover:bg-purple-50 transition"
+                      >
+                        <div className="flex-1">
+                          <span className="text-sm text-gray-800 font-medium">
+                            {consumable.name || "Unnamed"}
+                          </span>
+                          {consumable.quantity && consumable.unit && (
+                            <p className="text-xs text-gray-500">
+                              Qty: {consumable.quantity} {consumable.unit}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-purple-600">
+                          R{parseFloat(consumable.price || 0).toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 pt-3 border-t border-purple-200">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">
+                        Consumables Total:
+                      </span>
+                      <span className="text-lg font-bold text-purple-600">
+                        R{consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -505,6 +560,15 @@ export default function WorkshopJobDetailPage() {
                   </p>
                 </div>
 
+                {consumables && consumables.length > 0 && (
+                  <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                    <p className="text-sm text-purple-700">Total Consumables Cost</p>
+                    <p className="text-xl font-bold text-purple-800">
+                      R{consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+
 
 
                 {/* Labour Section */}
@@ -529,14 +593,15 @@ export default function WorkshopJobDetailPage() {
                     </div>
                   </div>
                   <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                    <p className="text-sm text-blue-700">Total Cost (Labour & Sublet & Parts)</p>
+                    <p className="text-sm text-blue-700">Total Cost (Labour & Sublet & Parts & Consumables)</p>
                     <p className="text-xl font-bold text-blue-800">
-                      {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) + (job.total_sublet_cost ?? 0) >
+                      {(job.total_labor_cost ?? 0) + (job.total_parts_cost ?? 0) + (job.total_sublet_cost ?? 0) + (consumables ? consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0) : 0) >
                         0
                         ? `R ${(
                           (job.total_labor_cost ?? 0) +
                           (job.total_parts_cost ?? 0) +
-                          (job.total_sublet_cost ?? 0)
+                          (job.total_sublet_cost ?? 0) +
+                          (consumables ? consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0) : 0)
                         ).toFixed(2)}`
                         : "Pending"}
                     </p>

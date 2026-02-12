@@ -440,7 +440,7 @@ export default function InventoryPage() {
   });
 
   const jobCardsWithParts = jobCards.filter(job =>
-    job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (job.status === 'Part Assigned' || job.status === 'completed')
+    job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (job.status === 'Part Assigned' || job.status === 'completed') 
   );
 
   const completedJobs = jobCards.filter(job =>
@@ -815,6 +815,23 @@ export default function InventoryPage() {
                   </div>
                 </div>
 
+                <div className="text-sm">
+                  <p className="font-medium text-gray-700">Used Consumables:</p>
+                  <div className="space-y-1 mt-1">
+                    {job.consumables?.slice(0, 3).map((consumable, index) => (
+                      <div key={index} className="flex justify-between text-gray-600 text-xs">
+                        <span>• {consumable.name}</span>
+                        <span className="text-green-600">Qty: {consumable.quantity}</span>
+                        <X className="w-3 h-3 text-red-500 cursor-pointer" onClick={() => handleRemovePart(job, consumable)} />
+                      </div>
+                    ))}
+                    {job.consumables?.length > 3 && (
+                      <div className="text-gray-500 text-xs">
+                        +{job.consumables.length - 3} more consumables
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="text-sm">
                   <p className="font-medium text-gray-700">

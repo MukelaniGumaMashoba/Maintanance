@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Package, Plus, Minus } from 'lucide-react';
+import { Search, Package, Plus, Minus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
@@ -16,12 +16,15 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedParts, setSelectedParts] = useState([]);
+  const [consumables, setConsumables] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchParts();
       fetchCategories();
+      setConsumables([]);
+      setSelectedParts([]);
     }
   }, [isOpen]);
 
@@ -52,6 +55,20 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
       return;
     }
     setCategories(data || []);
+  };
+
+  const addConsumableRow = () => {
+    setConsumables([...consumables, { id: Date.now(), name: '', price: '', quantity: '', unit: 'L' }]);
+  };
+
+  const updateConsumable = (id, field, value) => {
+    setConsumables(consumables.map(c => 
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const removeConsumable = (id) => {
+    setConsumables(consumables.filter(c => c.id !== id));
   };
 
   const filteredParts = parts.filter(part => {
@@ -85,13 +102,22 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
   };
 
   const handleAssignParts = async () => {
-    if (selectedParts.length === 0) {
-      toast.error('Please select parts to assign');
+    if (selectedParts.length === 0 && consumables.length === 0) {
+      toast.error('Please select parts or add consumables');
+      return;
+    }
+
+    // Validate consumables
+    const validConsumables = consumables.filter(c => c.name && c.price);
+    if (consumables.length > 0 && validConsumables.length === 0) {
+      toast.error('Please fill in name and price for consumables');
       return;
     }
 
     setLoading(true);
     try {
+      let totalPartsCost = 0;
+
       // Update part quantities and create logs
       for (const assignment of selectedParts) {
         const { partId, quantity } = assignment;
@@ -106,13 +132,7 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
           })
           .eq('id', partId);
 
-        await supabase
-          .from('workshop_job')
-          .update({
-            total_parts_cost: (part.quantity - quantity) * (part.price || 0),
-            grand_total: (part.price * part.quantity) + (jobCard?.labour_total || 0)
-          })
-          .eq('id', jobCard.id);
+        totalPartsCost += (part.price || 0) * quantity;
 
         // Log the transaction
         await supabase
@@ -125,6 +145,13 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
           });
       }
 
+      // Calculate consumables cost
+      const consumablesCost = validConsumables.reduce((sum, c) => {
+        return sum + (parseFloat(c.price) || 0);
+      }, 0);
+
+      const totalCostWithConsumables = totalPartsCost + consumablesCost;
+
       // Update job card with assigned parts
       const assignedParts = selectedParts.map(sp => ({
         id: sp.partId,
@@ -135,21 +162,32 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
         total_cost: (sp.part.price || 0) * sp.quantity
       }));
 
+      // Prepare consumables data
+      const consumablesData = validConsumables.map(c => ({
+        name: c.name,
+        price: parseFloat(c.price) || 0,
+        quantity: c.quantity || null,
+        unit: c.unit || null
+      }));
+
       await supabase
         .from('workshop_jobpart')
         .upsert({
           job_id: jobCard.id,
-          given_parts: assignedParts
+          given_parts: assignedParts.length > 0 ? assignedParts : null,
+          consumables: consumablesData.length > 0 ? consumablesData : null
         });
-
 
       await supabase
         .from('workshop_job')
-        .update({ status: 'Part Assigned' })
+        .update({ 
+          status: 'Part Assigned',
+          total_parts_cost: totalCostWithConsumables,
+          grand_total: totalCostWithConsumables + (jobCard?.labour_total || 0)
+        })
         .eq('id', jobCard.id);
 
-
-      toast.success('Parts assigned successfully');
+      toast.success('Parts and consumables assigned successfully');
       onPartsAssigned();
       onClose();
     } catch (error) {
@@ -165,7 +203,9 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
     return selected ? selected.quantity : 0;
   };
 
-  const totalCost = selectedParts.reduce((sum, sp) => sum + ((sp.part.price || 0) * sp.quantity), 0);
+  const totalPartsCost = selectedParts.reduce((sum, sp) => sum + ((sp.part.price || 0) * sp.quantity), 0);
+  const totalConsumablesCost = consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0);
+  const totalCost = totalPartsCost + totalConsumablesCost;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -227,8 +267,106 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
                 ))}
               </div>
               <div className="border-t border-blue-200 mt-3 pt-3 flex justify-between items-center">
-                <span className="font-medium text-blue-900">Total Cost:</span>
-                <span className="text-lg font-bold text-blue-900">R{totalCost.toFixed(2)}</span>
+                <span className="font-medium text-blue-900">Parts Subtotal:</span>
+                <span className="text-lg font-bold text-blue-900">R{totalPartsCost.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Consumables Section */}
+          <div className="bg-purple-50 border border-purple-200 p-3 sm:p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-purple-900">Consumables (Q20, Gas, etc.)</h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={addConsumableRow}
+                className="text-purple-700 border-purple-300 hover:bg-purple-100"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Item
+              </Button>
+            </div>
+            
+            {consumables.length > 0 ? (
+              <div className="space-y-2">
+                {consumables.map((consumable) => (
+                  <div key={consumable.id} className="bg-white p-3 rounded border border-purple-200">
+                    <div className="flex gap-2 flex-wrap items-start">
+                      <div className="flex-1 min-w-[150px]">
+                        <label className="text-xs text-gray-600 mb-1 block">Item Name</label>
+                        <Input
+                          placeholder="e.g., Q20, Gas, R10"
+                          value={consumable.name}
+                          onChange={(e) => updateConsumable(consumable.id, 'name', e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="w-28">
+                        <label className="text-xs text-gray-600 mb-1 block">Price (R)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={consumable.price}
+                          onChange={(e) => updateConsumable(consumable.id, 'price', e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="w-20">
+                        <label className="text-xs text-gray-600 mb-1 block">Qty</label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="Optional"
+                          value={consumable.quantity}
+                          onChange={(e) => updateConsumable(consumable.id, 'quantity', e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="w-20">
+                        <label className="text-xs text-gray-600 mb-1 block">Unit</label>
+                        <select
+                          value={consumable.unit}
+                          onChange={(e) => updateConsumable(consumable.id, 'unit', e.target.value)}
+                          className="h-9 w-full px-2 border border-gray-300 rounded-md text-sm bg-white"
+                        >
+                          <option value="L">L</option>
+                          <option value="kg">kg</option>
+                          <option value="ml">ml</option>
+                          <option value="g">g</option>
+                          <option value="pcs">pcs</option>
+                        </select>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeConsumable(consumable.id)}
+                        className="mt-5 h-9 w-9 p-0 text-red-600 hover:bg-red-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t border-purple-200 pt-3 flex justify-between items-center">
+                  <span className="font-medium text-purple-900">Consumables Subtotal:</span>
+                  <span className="text-lg font-bold text-purple-900">R{totalConsumablesCost.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-sm text-gray-500">
+                Click "Add Item" to add consumables like Q20, gas, lubricants, etc.
+              </div>
+            )}
+          </div>
+
+          {/* Total Cost Summary */}
+          {(selectedParts.length > 0 || consumables.length > 0) && (
+            <div className="bg-green-50 border-2 border-green-300 p-4 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold text-green-900">Grand Total:</span>
+                <span className="text-2xl font-bold text-green-900">R{totalCost.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -324,11 +462,14 @@ export default function NewAssignPartsModal({ isOpen, onClose, jobCard, onPartsA
             </Button>
             <Button
               onClick={handleAssignParts}
-              disabled={selectedParts.length === 0 || loading}
+              disabled={(selectedParts.length === 0 && consumables.length === 0) || loading}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Package className="w-4 h-4 mr-2" />
-              {loading ? 'Assigning Parts...' : selectedParts.length > 0 ? `Assign ${selectedParts.length} Part${selectedParts.length !== 1 ? 's' : ''}` : 'Select Parts to Assign'}
+              {loading ? 'Assigning...' : 
+                selectedParts.length > 0 || consumables.length > 0 ? 
+                  `Assign ${selectedParts.length} Part${selectedParts.length !== 1 ? 's' : ''}${consumables.length > 0 ? ` + ${consumables.length} Consumable${consumables.length !== 1 ? 's' : ''}` : ''}` : 
+                  'Select Parts or Add Consumables'}
             </Button>
           </div>
         </div>
