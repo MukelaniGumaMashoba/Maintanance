@@ -200,7 +200,7 @@ export default function SubletsPage() {
   const filteredSublets = sublets.filter(
     (s) =>
       s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      s.description?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const getStatusColor = (status: string) => {
@@ -299,12 +299,19 @@ export default function SubletsPage() {
                       <SelectValue placeholder="Select job card" />
                     </SelectTrigger>
                     <SelectContent>
-                      {jobCards.map((j) => (
-                        <SelectItem key={j.id} value={String(j.id)}>
-                          {j.jobId_workshop} - {j.registration_no} -{" "}
-                          {j.client_name}
-                        </SelectItem>
-                      ))}
+                      {/* i want this to say no job card or show */}
+                      {jobCards.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          No job cards available
+                        </div>
+                      ) : (
+                        jobCards.map((j) => (
+                          <SelectItem key={j.id} value={String(j.id)}>
+                            {j.jobId_workshop} - {j.registration_no} -{" "}
+                            {j.client_name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -590,7 +597,7 @@ export default function SubletsPage() {
                       onClick={() =>
                         updateSubletStatus(
                           sublet.id,
-                          sublet.status === "active" ? "inactive" : "active"
+                          sublet.status === "active" ? "inactive" : "active",
                         )
                       }
                       className="flex-1"

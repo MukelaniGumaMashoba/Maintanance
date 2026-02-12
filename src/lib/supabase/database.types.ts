@@ -1968,6 +1968,54 @@ export type Database = {
           },
         ]
       }
+      parts_duplicate: {
+        Row: {
+          category_id: number | null
+          description: string | null
+          id: number
+          is_stock_item: boolean | null
+          item_code: string | null
+          location: string | null
+          once: boolean | null
+          price: number | null
+          quantity: number | null
+          stock_threshold: number | null
+          supplier: string | null
+          total: number | null
+          vehicle_brand_id: number | null
+        }
+        Insert: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          is_stock_item?: boolean | null
+          item_code?: string | null
+          location?: string | null
+          once?: boolean | null
+          price?: number | null
+          quantity?: number | null
+          stock_threshold?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Update: {
+          category_id?: number | null
+          description?: string | null
+          id?: number
+          is_stock_item?: boolean | null
+          item_code?: string | null
+          location?: string | null
+          once?: boolean | null
+          price?: number | null
+          quantity?: number | null
+          stock_threshold?: number | null
+          supplier?: string | null
+          total?: number | null
+          vehicle_brand_id?: number | null
+        }
+        Relationships: []
+      }
       parts_orders: {
         Row: {
           created_at: string
@@ -3725,6 +3773,7 @@ export type Database = {
           estimated_cost: number | null
           estimated_duration_hours: number | null
           grand_total: number | null
+          hours: string | null
           id: number
           job_status: string | null
           job_type: string | null
@@ -3733,6 +3782,7 @@ export type Database = {
           labour_hours: number | null
           location: string | null
           notes: string | null
+          odo_reading: string | null
           parts_required: Json | null
           priority: string | null
           products_required: Json | null
@@ -3746,6 +3796,7 @@ export type Database = {
           technician_id: string | null
           technician_name: string | null
           technician_phone: string | null
+          test: boolean | null
           total_labor_cost: number | null
           total_parts_cost: number | null
           total_sublet_cost: number | null
@@ -3781,6 +3832,7 @@ export type Database = {
           estimated_cost?: number | null
           estimated_duration_hours?: number | null
           grand_total?: number | null
+          hours?: string | null
           id?: number
           job_status?: string | null
           job_type?: string | null
@@ -3789,6 +3841,7 @@ export type Database = {
           labour_hours?: number | null
           location?: string | null
           notes?: string | null
+          odo_reading?: string | null
           parts_required?: Json | null
           priority?: string | null
           products_required?: Json | null
@@ -3802,6 +3855,7 @@ export type Database = {
           technician_id?: string | null
           technician_name?: string | null
           technician_phone?: string | null
+          test?: boolean | null
           total_labor_cost?: number | null
           total_parts_cost?: number | null
           total_sublet_cost?: number | null
@@ -3837,6 +3891,7 @@ export type Database = {
           estimated_cost?: number | null
           estimated_duration_hours?: number | null
           grand_total?: number | null
+          hours?: string | null
           id?: number
           job_status?: string | null
           job_type?: string | null
@@ -3845,6 +3900,7 @@ export type Database = {
           labour_hours?: number | null
           location?: string | null
           notes?: string | null
+          odo_reading?: string | null
           parts_required?: Json | null
           priority?: string | null
           products_required?: Json | null
@@ -3858,6 +3914,7 @@ export type Database = {
           technician_id?: string | null
           technician_name?: string | null
           technician_phone?: string | null
+          test?: boolean | null
           total_labor_cost?: number | null
           total_parts_cost?: number | null
           total_sublet_cost?: number | null
@@ -3870,6 +3927,7 @@ export type Database = {
       }
       workshop_jobpart: {
         Row: {
+          consumables: Json | null
           created_at: string
           given_parts: Json | null
           id: number
@@ -3877,6 +3935,7 @@ export type Database = {
           job_parts: Json | null
         }
         Insert: {
+          consumables?: Json | null
           created_at?: string
           given_parts?: Json | null
           id?: number
@@ -3884,6 +3943,7 @@ export type Database = {
           job_parts?: Json | null
         }
         Update: {
+          consumables?: Json | null
           created_at?: string
           given_parts?: Json | null
           id?: number

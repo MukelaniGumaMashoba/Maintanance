@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Printer, Car, User, Calendar, Package } from "lucide-react";
+import { X, Printer, Car, User, Calendar, Package, Droplet } from "lucide-react";
 import JobCardPrinter from "./job-card-printer";
 import { useState } from "react";
 
@@ -156,6 +156,50 @@ export default function JobCardViewModal({
               )}
             </CardContent>
           </Card>
+
+          {/* Consumables Section */}
+          {jobCard.consumables && jobCard.consumables.length > 0 && (
+            <Card className="print:shadow-none print:border bg-purple-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Droplet className="w-5 h-5 text-purple-600" />
+                  Consumables ({jobCard.consumables.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {jobCard.consumables.map((consumable, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200 print:bg-white print:border">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex-1">
+                            <p className="font-medium text-purple-900">{consumable.name}</p>
+                            {consumable.quantity && consumable.unit && (
+                              <p className="text-sm text-gray-600">Qty: {consumable.quantity} {consumable.unit}</p>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
+                            R{parseFloat(consumable.price || 0).toFixed(2)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="mt-4 pt-4 border-t border-purple-200">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-purple-900">Total Consumables Cost:</span>
+                      <span className="font-bold text-lg text-purple-900">
+                        R{(jobCard.consumables.reduce((sum, consumable) =>
+                          sum + (parseFloat(consumable.price) || 0), 0
+                        )).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Print Footer */}
           <div className="hidden print:block text-center text-sm text-gray-500 mt-8">
