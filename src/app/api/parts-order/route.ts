@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Parts Order Request</h2>
+        <h2 style="color: #333;"> Klaver Planthire : Parts Order Request</h2>
         <p>Dear ${supplier.contact_person || supplier.name},</p>
         <p>We would like to place an order for the following parts:</p>
         
@@ -80,9 +80,10 @@ export async function POST(request: NextRequest) {
         
         <div style="margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 5px;">
           <p><strong>Contact Information:</strong></p>
-          <p>Maintenance Workshop<br>
+          <p>Name: Lwazi Mhlongo</p>
+          <p>Kalver Planthire<br>
           Email: stores@klaverplant.co.za<br>
-          Phone: +27 11 123 4567</p>
+          Phone: +27 71 442 7811</p>
         </div>
         
         <p>Thank you for your service.</p>
@@ -94,8 +95,8 @@ export async function POST(request: NextRequest) {
       console.log('Sending email to:', supplier.email);
       await resend.emails.send({
         from: 'Maintenance Workshop <onboarding@resend.dev>',
-        to: [supplier.email],
-        subject: `Parts Order Request - Order #${order.id}`,
+        to: [supplier.email, 'stores@klaverplant.co.za', 'mukelanilastborn@gmail.com'],
+        subject: `Klaver Plant Hire : Parts Order Request - Order #${order.id}`,
         html: emailHtml,
       });
     }

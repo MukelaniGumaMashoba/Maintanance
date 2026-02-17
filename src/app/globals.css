@@ -120,3 +120,60 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print Styles */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Hide navigation and other UI elements */
+  nav,
+  aside,
+  .sidebar,
+  button:not(.no-print-hide) {
+    display: none !important;
+  }
+
+  /* Optimize table for print */
+  table {
+    width: 100%;
+    font-size: 10pt;
+  }
+
+  th,
+  td {
+    padding: 4px 8px !important;
+  }
+}

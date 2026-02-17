@@ -23,6 +23,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Loader2, Plus, Edit3, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SubletsAndSuppliersPage() {
   const supabase = createClient();
@@ -30,11 +31,13 @@ export default function SubletsAndSuppliersPage() {
   const [sublets, setSublets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [orders, setOrders] = useState<any[]>([]);
 
   // Dialog state
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [isSubletDialogOpen, setIsSubletDialogOpen] = useState(false);
-  const [isEditSupplierDialogOpen, setIsEditSupplierDialogOpen] = useState(false);
+  const [isEditSupplierDialogOpen, setIsEditSupplierDialogOpen] =
+    useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
 
   // Form states
@@ -89,7 +92,7 @@ export default function SubletsAndSuppliersPage() {
     fetchData();
   };
 
-  const handleEditSupplier = (supplier:any) => {
+  const handleEditSupplier = (supplier: any) => {
     setEditingSupplier(supplier);
     setSupplierForm({
       name: supplier.name || "",
@@ -106,7 +109,7 @@ export default function SubletsAndSuppliersPage() {
       .from("suppliers")
       .update(supplierForm)
       .eq("id", editingSupplier?.id);
-    
+
     if (error) {
       console.error("Error updating supplier:", error);
       return;
@@ -117,14 +120,14 @@ export default function SubletsAndSuppliersPage() {
     fetchData();
   };
 
-  const handleDeleteSupplier = async (supplierId:any) => {
+  const handleDeleteSupplier = async (supplierId: any) => {
     if (!confirm("Are you sure you want to delete this supplier?")) return;
-    
+
     const { error } = await supabase
       .from("suppliers")
       .delete()
       .eq("id", supplierId);
-    
+
     if (error) {
       console.error("Error deleting supplier:", error);
       return;
@@ -133,13 +136,61 @@ export default function SubletsAndSuppliersPage() {
     fetchData();
   };
 
-  //   const handleAddSublet = async () => {
-  //     const { error } = await supabase.from("sublets").insert([subletForm])
-  //     if (error) return console.error("Error adding sublet:", error)
-  //     setSubletForm({ supplier_id: "", job_card_id: "", description: "", cost: "", status: "pending" })
-  //     setIsSubletDialogOpen(false)
-  //     fetchData()
-  //   }
+  const fetchorder = async () => {
+    const { data, error } = await supabase
+      .from("parts_orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: supplierDetails, error: supplierError } = await supabase
+      .from("suppliers")
+      .select("id, name");
+
+    if (error) {
+      console.error("Error fetching orders:", error);
+      return;
+    }
+    setOrders(data || []);
+    setSuppliers(supplierDetails || []);
+  };
+
+  const supplierMap = suppliers.reduce<Record<number, string>>(
+    (acc, supplier) => {
+      acc[supplier.id] = supplier.name;
+      return acc;
+    },
+    {},
+  );
+
+  useEffect(() => {
+    fetchorder();
+  }, []);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleEmailShare = () => {
+    const ordersText = orders
+      .map((order) => {
+        const parts = Array.isArray(order.parts_data) ? order.parts_data : [];
+        const partsText = parts
+          .map(
+            (p: any) =>
+              `  - ${p.description} | Qty: ${p.quantity} | Price: R${Number(p.price || 0).toFixed(2)}`,
+          )
+          .join("\n");
+        return `Order #${order.id}\nSupplier: ${supplierMap[order.supplier_id] || "Unknown Supplier"}
+\nDate: ${new Date(order.created_at).toLocaleDateString()}\nStatus: ${order.status}\nParts:\n${partsText}\nNotes: ${order.notes || "N/A"}\n`;
+      })
+      .join("\n---\n\n");
+
+    const subject = encodeURIComponent("Parts Orders Report");
+    const body = encodeURIComponent(
+      `Parts Orders Summary\n\n${ordersText}\n\nGenerated on ${new Date().toLocaleDateString()}`,
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
 
   const handleAddSublet = async () => {
     const payload: any = { ...subletForm };
@@ -162,12 +213,23 @@ export default function SubletsAndSuppliersPage() {
   };
 
   const filteredSuppliers = suppliers.filter((s) =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const filteredSublets = sublets.filter((s) =>
-    s.description.toLowerCase().includes(searchTerm.toLowerCase())
+    s.description.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Calculate grand total safely
+  const grandTotal = orders.reduce((sum, order) => {
+    const parts = Array.isArray(order.parts_data) ? order.parts_data : [];
+    const orderTotal = parts.reduce(
+      (partSum: number, part: any) =>
+        partSum + (Number(part.price) || 0) * (Number(part.quantity) || 0),
+      0,
+    );
+    return sum + orderTotal;
+  }, 0);
 
   if (loading)
     return (
@@ -192,136 +254,287 @@ export default function SubletsAndSuppliersPage() {
       </div>
 
       {/* SUPPLIERS SECTION */}
-      <section className="space-y-6">
-        <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <span className="w-2 h-6 bg-[#F57C00] rounded-sm" />
-            Suppliers
-          </h2>
-          <Dialog
-            open={isSupplierDialogOpen}
-            onOpenChange={setIsSupplierDialogOpen}
+      <Tabs defaultValue="suppliers" className="w-full">
+        <TabsList className="border-b border-gray-200 mb-6">
+          <TabsTrigger
+            value="suppliers"
+            className="data-[state=active]:border-[#F57C00] data-[state=active]:border-b-2 text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium"
           >
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                className="bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg shadow-md"
+            Suppliers
+          </TabsTrigger>
+          <TabsTrigger
+            value="orders"
+            className="data-[state=active]:border-[#F57C00] data-[state=active]:border-b-2 text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+          >
+            Orders
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suppliers">
+          <section className="space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-200 pb-3">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <span className="w-2 h-6 bg-[#F57C00] rounded-sm" />
+                Suppliers
+              </h2>
+              <Dialog
+                open={isSupplierDialogOpen}
+                onOpenChange={setIsSupplierDialogOpen}
               >
-                <Plus className="mr-1 h-4 w-4" /> Add Supplier
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md rounded-xl">
-              <DialogHeader>
-                <DialogTitle className="text-lg font-bold text-gray-800">
-                  Add Supplier
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 mt-2">
-                {["name", "contact_person", "email", "phone", "address"].map(
-                  (field) => (
-                    <div key={field} className="space-y-1">
-                      <Label className="capitalize text-gray-700">
-                        {field.replace("_", " ")}
-                      </Label>
-                      <Input
-                        value={(supplierForm as any)[field]}
-                        onChange={(e) =>
-                          setSupplierForm({
-                            ...supplierForm,
-                            [field]: e.target.value,
-                          })
-                        }
-                        placeholder={`Enter ${field.replace("_", " ")}`}
-                        className="rounded-lg border-gray-300 focus:border-[#F57C00] focus:ring-[#F57C00]"
-                      />
-                    </div>
-                  )
-                )}
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg shadow-md"
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Add Supplier
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md rounded-xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-lg font-bold text-gray-800">
+                      Add Supplier
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 mt-2">
+                    {[
+                      "name",
+                      "contact_person",
+                      "email",
+                      "phone",
+                      "address",
+                    ].map((field) => (
+                      <div key={field} className="space-y-1">
+                        <Label className="capitalize text-gray-700">
+                          {field.replace("_", " ")}
+                        </Label>
+                        <Input
+                          value={(supplierForm as any)[field]}
+                          onChange={(e) =>
+                            setSupplierForm({
+                              ...supplierForm,
+                              [field]: e.target.value,
+                            })
+                          }
+                          placeholder={`Enter ${field.replace("_", " ")}`}
+                          className="rounded-lg border-gray-300 focus:border-[#F57C00] focus:ring-[#F57C00]"
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      className="w-full mt-2 bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg"
+                      onClick={handleAddSupplier}
+                    >
+                      Save Supplier
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {filteredSuppliers.length === 0 ? (
+              <p className="text-gray-500 text-center py-6">
+                No suppliers found.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredSuppliers.map((s) => (
+                  <Card
+                    key={s.id}
+                    className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow bg-white"
+                  >
+                    <CardHeader className="pb-2 border-b border-gray-100">
+                      <CardTitle className="text-lg font-semibold text-[#F57C00] truncate">
+                        {s.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-gray-700 space-y-3 pt-3">
+                      <div className="space-y-1">
+                        <p>
+                          <strong>Contact:</strong> {s.contact_person || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Email:</strong> {s.email || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Phone:</strong> {s.phone || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Address:</strong> {s.address || "N/A"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditSupplier(s)}
+                          className="flex-1"
+                        >
+                          <Edit3 className="mr-1 w-3 h-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteSupplier(s.id)}
+                          className="flex-1 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="mr-1 w-3 h-3" />
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+        </TabsContent>
+        <TabsContent value="orders">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Parts Orders
+              </h2>
+              <div className="flex gap-2">
                 <Button
-                  className="w-full mt-2 bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg"
-                  onClick={handleAddSupplier}
+                  onClick={handlePrint}
+                  variant="outline"
+                  size="sm"
+                  className="print:hidden"
                 >
-                  Save Supplier
+                  🖨️ Print
+                </Button>
+                <Button
+                  onClick={handleEmailShare}
+                  variant="outline"
+                  size="sm"
+                  className="print:hidden"
+                >
+                  📧 Email
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+            </div>
 
-        {filteredSuppliers.length === 0 ? (
-          <p className="text-gray-500 text-center py-6">No suppliers found.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredSuppliers.map((s) => (
-              <Card
-                key={s.id}
-                className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow bg-white"
-              >
-                <CardHeader className="pb-2 border-b border-gray-100">
-                  <CardTitle className="text-lg font-semibold text-[#F57C00] truncate">
-                    {s.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-gray-700 space-y-3 pt-3">
-                  <div className="space-y-1">
-                    <p>
-                      <strong>Contact:</strong> {s.contact_person || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Email:</strong> {s.email || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Phone:</strong> {s.phone || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Address:</strong> {s.address || "N/A"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditSupplier(s)}
-                      className="flex-1"
-                    >
-                      <Edit3 className="mr-1 w-3 h-3" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteSupplier(s.id)}
-                      className="flex-1 text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="mr-1 w-3 h-3" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {orders.length === 0 ? (
+              <p className="text-gray-500 text-center py-6">
+                No orders available
+              </p>
+            ) : (
+              <div className="overflow-x-auto bg-white rounded-lg shadow print:shadow-none">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Supplier
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Parts
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Notes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {orders.map((order) => {
+                      const parts = Array.isArray(order.parts_data)
+                        ? order.parts_data
+                        : [];
+                      const total = parts.reduce(
+                        (sum: number, part: any) =>
+                          sum +
+                          (Number(part.price) || 0) *
+                            (Number(part.quantity) || 0),
+                        0,
+                      );
+
+                      return (
+                        <tr key={order.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #{order.id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {supplierMap[order.supplier_id] ||
+                              "Unknown Supplier"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            <ul className="list-disc list-inside space-y-1">
+                              {parts.map((part: any, idx: number) => (
+                                <li key={idx} className="text-xs">
+                                  {part.description} - Qty: {part.quantity} @ R
+                                  {Number(part.price || 0)?.toFixed(2)}
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            R{total.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge
+                              className={`capitalize ${
+                                order.status === "completed"
+                                  ? "bg-green-600"
+                                  : order.status === "approved"
+                                    ? "bg-blue-500"
+                                    : "bg-yellow-500"
+                              } text-white`}
+                            >
+                              {order.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">
+                            {order.notes || "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-gray-50">
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-6 py-3 text-right text-sm font-medium text-gray-700"
+                      >
+                        Grand Total:
+                      </td>
+                      <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                        R{grandTotal.toFixed(2)}
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </section>
+        </TabsContent>
+      </Tabs>
 
       {/* SUBLETS SECTION */}
       <section className="space-y-6">
         <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-          {/* <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <span className="w-2 h-6 bg-[#F57C00] rounded-sm" />
-            Sublets
-          </h2> */}
           <Dialog
             open={isSubletDialogOpen}
             onOpenChange={setIsSubletDialogOpen}
           >
             <DialogTrigger asChild>
-              {/* <Button
-                size="sm"
-                className="bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg shadow-md"
-              >
-                <Plus className="mr-1 h-4 w-4" /> Add Sublet
-              </Button> */}
+              {/* Add Sublet button can be uncommented if needed */}
             </DialogTrigger>
             <DialogContent className="max-w-md rounded-xl">
               <DialogHeader>
@@ -408,52 +621,13 @@ export default function SubletsAndSuppliersPage() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* {filteredSublets.length === 0 ? (
-          <p className="text-gray-500 text-center py-6">No sublets found.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredSublets.map((s) => (
-              <Card
-                key={s.id}
-                className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow bg-white"
-              >
-                <CardHeader className="pb-2 border-b border-gray-100">
-                  <CardTitle className="text-lg font-semibold text-[#F57C00] truncate">
-                    {s.description}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-gray-700 space-y-2 pt-3">
-                  <p>
-                    <strong>Supplier:</strong> {s.suppliers?.name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Cost:</strong> R{s.cost?.toFixed(2) || "0.00"}
-                  </p>
-                  <p>
-                    <strong>Date:</strong>{" "}
-                    {new Date(s.created_at).toLocaleDateString()}
-                  </p>
-                  <Badge
-                    className={`capitalize ${
-                      s.status === "completed"
-                        ? "bg-green-600 text-white"
-                        : s.status === "approved"
-                        ? "bg-blue-500 text-white"
-                        : "bg-yellow-500 text-white"
-                    }`}
-                  >
-                    {s.status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )} */}
       </section>
 
       {/* Edit Supplier Dialog */}
-      <Dialog open={isEditSupplierDialogOpen} onOpenChange={setIsEditSupplierDialogOpen}>
+      <Dialog
+        open={isEditSupplierDialogOpen}
+        onOpenChange={setIsEditSupplierDialogOpen}
+      >
         <DialogContent className="max-w-md rounded-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-gray-800">
@@ -479,7 +653,7 @@ export default function SubletsAndSuppliersPage() {
                     className="rounded-lg border-gray-300 focus:border-[#F57C00] focus:ring-[#F57C00]"
                   />
                 </div>
-              )
+              ),
             )}
             <Button
               className="w-full mt-2 bg-[#F57C00] hover:bg-[#e36f00] text-white rounded-lg"
@@ -492,166 +666,4 @@ export default function SubletsAndSuppliersPage() {
       </Dialog>
     </div>
   );
-
-  // return (
-  //   <div className="space-y-10 p-6">
-  //     {/* Header */}
-  //     <div className="flex justify-between items-center">
-  //       <h1 className="text-3xl font-bold">Sublets & Suppliers</h1>
-  //       <Input
-  //         placeholder="Search suppliers or sublets..."
-  //         value={searchTerm}
-  //         onChange={(e) => setSearchTerm(e.target.value)}
-  //         className="w-1/3"
-  //       />
-  //     </div>
-
-  //     {/* SUPPLIERS SECTION */}
-  //     <section>
-  //       <div className="flex justify-between items-center mb-4">
-  //         <h2 className="text-xl font-semibold">Suppliers</h2>
-  //         <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
-  //           <DialogTrigger asChild>
-  //             <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add Supplier</Button>
-  //           </DialogTrigger>
-  //           <DialogContent>
-  //             <DialogHeader>
-  //               <DialogTitle>Add Supplier</DialogTitle>
-  //             </DialogHeader>
-  //             <div className="space-y-3 mt-2">
-  //               {["name", "contact_person", "email", "phone", "address"].map((field) => (
-  //                 <div key={field} className="space-y-1">
-  //                   <Label className="capitalize">{field.replace("_", " ")}</Label>
-  //                   <Input
-  //                     value={(supplierForm as any)[field]}
-  //                     onChange={(e) => setSupplierForm({ ...supplierForm, [field]: e.target.value })}
-  //                     placeholder={`Enter ${field.replace("_", " ")}`}
-  //                   />
-  //                 </div>
-  //               ))}
-  //               <Button className="w-full mt-2" onClick={handleAddSupplier}>Save</Button>
-  //             </div>
-  //           </DialogContent>
-  //         </Dialog>
-  //       </div>
-
-  //       {filteredSuppliers.length === 0 ? (
-  //         <p className="text-gray-500">No suppliers found.</p>
-  //       ) : (
-  //         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  //           {filteredSuppliers.map((s) => (
-  //             <Card key={s.id}>
-  //               <CardHeader>
-  //                 <CardTitle>{s.name}</CardTitle>
-  //               </CardHeader>
-  //               <CardContent className="text-sm text-gray-700 space-y-1">
-  //                 <p><strong>Contact:</strong> {s.contact_person || "N/A"}</p>
-  //                 <p><strong>Email:</strong> {s.email || "N/A"}</p>
-  //                 <p><strong>Phone:</strong> {s.phone || "N/A"}</p>
-  //                 <p><strong>Address:</strong> {s.address || "N/A"}</p>
-  //               </CardContent>
-  //             </Card>
-  //           ))}
-  //         </div>
-  //       )}
-  //     </section>
-
-  //     {/* SUBLETS SECTION */}
-  //     <section>
-  //       <div className="flex justify-between items-center mb-4">
-  //         <h2 className="text-xl font-semibold">Sublets</h2>
-  //         <Dialog open={isSubletDialogOpen} onOpenChange={setIsSubletDialogOpen}>
-  //           <DialogTrigger asChild>
-  //             <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add Sublet</Button>
-  //           </DialogTrigger>
-  //           <DialogContent>
-  //             <DialogHeader>
-  //               <DialogTitle>Add Sublet</DialogTitle>
-  //             </DialogHeader>
-  //             <div className="space-y-3 mt-2">
-  //               <div>
-  //                 <Label>Supplier</Label>
-  //                 <Select
-  //                   value={subletForm.supplier_id}
-  //                   onValueChange={(v) => setSubletForm({ ...subletForm, supplier_id: v })}
-  //                 >
-  //                   <SelectTrigger>
-  //                     <SelectValue placeholder="Select supplier" />
-  //                   </SelectTrigger>
-  //                   <SelectContent>
-  //                     {suppliers.map((s) => (
-  //                       <SelectItem key={s.id} value={String(s.id)}>
-  //                         {s.name}
-  //                       </SelectItem>
-  //                     ))}
-  //                   </SelectContent>
-  //                 </Select>
-  //               </div>
-
-  //               <div>
-  //                 <Label>Description</Label>
-  //                 <Textarea
-  //                   value={subletForm.description}
-  //                   onChange={(e) => setSubletForm({ ...subletForm, description: e.target.value })}
-  //                   placeholder="Enter description"
-  //                 />
-  //               </div>
-
-  //               <div>
-  //                 <Label>Cost</Label>
-  //                 <Input
-  //                   type="number"
-  //                   value={subletForm.cost}
-  //                   onChange={(e) => setSubletForm({ ...subletForm, cost: e.target.value })}
-  //                   placeholder="e.g. 2500.00"
-  //                 />
-  //               </div>
-
-  //               <div>
-  //                 <Label>Status</Label>
-  //                 <Select
-  //                   value={subletForm.status}
-  //                   onValueChange={(v) => setSubletForm({ ...subletForm, status: v })}
-  //                 >
-  //                   <SelectTrigger>
-  //                     <SelectValue placeholder="Select status" />
-  //                   </SelectTrigger>
-  //                   <SelectContent>
-  //                     <SelectItem value="pending">Pending</SelectItem>
-  //                     <SelectItem value="approved">Approved</SelectItem>
-  //                     <SelectItem value="completed">Completed</SelectItem>
-  //                   </SelectContent>
-  //                 </Select>
-  //               </div>
-
-  //               <Button className="w-full mt-2" onClick={handleAddSublet}>Save</Button>
-  //             </div>
-  //           </DialogContent>
-  //         </Dialog>
-  //       </div>
-
-  //       {filteredSublets.length === 0 ? (
-  //         <p className="text-gray-500">No sublets found.</p>
-  //       ) : (
-  //         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  //           {filteredSublets.map((s) => (
-  //             <Card key={s.id}>
-  //               <CardHeader>
-  //                 <CardTitle>{s.description}</CardTitle>
-  //               </CardHeader>
-  //               <CardContent className="text-sm text-gray-700 space-y-1">
-  //                 <p><strong>Supplier:</strong> {s.suppliers?.name || "N/A"}</p>
-  //                 <p><strong>Cost:</strong> R{s.cost?.toFixed(2) || "0.00"}</p>
-  //                 <p><strong>Date:</strong> {new Date(s.created_at).toLocaleDateString()}</p>
-  //                 <Badge variant={s.status === "completed" ? "default" : "secondary"}>
-  //                   {s.status}
-  //                 </Badge>
-  //               </CardContent>
-  //             </Card>
-  //           ))}
-  //         </div>
-  //       )}
-  //     </section>
-  //   </div>
-  // )
 }

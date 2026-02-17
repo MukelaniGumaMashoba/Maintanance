@@ -47,6 +47,10 @@ This is essential for tracking usage and maintenance intervals accurately.
 
 
 
+Oil => input (booking the oil say if enjine,gearbox, vecocity how thick is the oil	
+Add the updating
+Add tab for all suppiers oders, 
+
 
 
 
