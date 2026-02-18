@@ -22,8 +22,9 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Loader2, Plus, Edit3, Trash2 } from "lucide-react";
+import { Loader2, Plus, Edit3, Trash2, Printer, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 export default function SubletsAndSuppliersPage() {
   const supabase = createClient();
@@ -32,6 +33,7 @@ export default function SubletsAndSuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   // Dialog state
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
@@ -144,7 +146,7 @@ export default function SubletsAndSuppliersPage() {
 
     const { data: supplierDetails, error: supplierError } = await supabase
       .from("suppliers")
-      .select("id, name");
+      .select("*");
 
     if (error) {
       console.error("Error fetching orders:", error);
@@ -154,42 +156,243 @@ export default function SubletsAndSuppliersPage() {
     setSuppliers(supplierDetails || []);
   };
 
-  const supplierMap = suppliers.reduce<Record<number, string>>(
+  // add all information of supplier in the order information
+  const supplierMap = suppliers.reduce(
     (acc, supplier) => {
-      acc[supplier.id] = supplier.name;
+      acc[supplier.id] = {
+        name: supplier.name,
+        email: supplier.email,
+        phone: supplier.phone,
+        contact_person: supplier.contact_person,
+        address: supplier.address,
+      };
       return acc;
     },
-    {},
+    {} as Record<number, any>,
   );
 
   useEffect(() => {
     fetchorder();
   }, []);
 
-  const handlePrint = () => {
-    window.print();
+  // Helper function to escape HTML
+  const escapeHtml = (text: string) => {
+    const map: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m as keyof typeof map]);
   };
 
-  const handleEmailShare = () => {
-    const ordersText = orders
-      .map((order) => {
-        const parts = Array.isArray(order.parts_data) ? order.parts_data : [];
-        const partsText = parts
-          .map(
-            (p: any) =>
-              `  - ${p.description} | Qty: ${p.quantity} | Price: R${Number(p.price || 0).toFixed(2)}`,
-          )
-          .join("\n");
-        return `Order #${order.id}\nSupplier: ${supplierMap[order.supplier_id] || "Unknown Supplier"}
-\nDate: ${new Date(order.created_at).toLocaleDateString()}\nStatus: ${order.status}\nParts:\n${partsText}\nNotes: ${order.notes || "N/A"}\n`;
-      })
-      .join("\n---\n\n");
+  const handlePrint = async (order: any) => {
+    setSelectedOrder(order);
 
-    const subject = encodeURIComponent("Parts Orders Report");
-    const body = encodeURIComponent(
-      `Parts Orders Summary\n\n${ordersText}\n\nGenerated on ${new Date().toLocaleDateString()}`,
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to print the order");
+      return;
+    }
+
+    const parts = Array.isArray(order.parts_data) ? order.parts_data : [];
+    const partsHtml = parts
+      .map((p: any, i: number) => {
+        const name = p.description || p.part_name || p.part || "Part";
+        const qty = p.quantity ?? p.qty ?? 1;
+        const price = p.price ?? p.unit_price ?? "";
+        const total = Number(price) * qty;
+        return `<tr>
+          <td style="padding:8px;border:1px solid #ddd;text-align:center">${i + 1}</td>
+          <td style="padding:8px;border:1px solid #ddd">${escapeHtml(name)}</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:center">${qty}</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right">${price !== "" ? "R" + Number(price).toFixed(2) : "-"}</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:bold">R${total.toFixed(2)}</td>
+        </tr>`;
+      })
+      .join("");
+
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    const supplierInfo = supplier
+      ? `
+      <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:20px;">
+        <h3 style="margin:0 0 10px 0; color:#1e293b;">SUPPLIER ORDER</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+          <div>
+            <strong>Supplier:</strong><br>${escapeHtml(supplier.name)}<br>
+            <strong>Contact:</strong> ${escapeHtml(supplier.contact_person || "N/A")}<br>
+            <strong>Email:</strong> ${escapeHtml(supplier.email || "N/A")}
+          </div>
+          <div>
+            <strong>Phone:</strong> ${escapeHtml(supplier.phone || "N/A")}<br>
+            <strong>Address:</strong><br>${escapeHtml(supplier.address || "N/A")}
+          </div>
+        </div>
+      </div>
+    `
+      : "";
+
+    const total = parts.reduce(
+      (sum: number, part: any) =>
+        sum + Number(part.price || 0) * Number(part.quantity || 0),
+      0,
     );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8"/>
+          <title>Parts Order #${order.id} - ${supplier?.name || "Supplier"}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin:0; padding:30px; color:#1e293b; line-height:1.5; }
+            .header { text-align:center; margin-bottom:30px; padding-bottom:20px; border-bottom:3px solid #f59e0b; }
+            .header h1 { color:#1e293b; margin:0; font-size:28px; }
+            .header p { color:#64748b; margin:5px 0 0 0; font-size:14px; }
+            .section { margin-bottom:25px; }
+            .section h3 { color:#1e293b; margin:0 0 15px 0; font-size:18px; border-left:4px solid #f59e0b; padding-left:12px; }
+            table { width:100%; border-collapse: collapse; margin-top:10px; }
+            th, td { padding:12px 8px; border:1px solid #e2e8f0; text-align:left; }
+            th { background:#f8fafc; font-weight:600; color:#374151; }
+            .total-row { background:#fef3c7 !important; font-weight:bold; font-size:16px; }
+            .center { text-align:center }
+            .right { text-align:right }
+            .summary { background:#f1f5f9; padding:20px; border-radius:8px; margin-top:20px; }
+            .contact-box { background:#ecfdf5; padding:20px; border-radius:8px; border:2px solid gray; margin-top:20px; }
+            @media print { body { padding:20px; } }
+            @page { margin: 1in; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>PARTS ORDER</h1>
+            <p>Order #${order.id} | ${new Date(order.created_at).toLocaleDateString()} | ${order.status?.toUpperCase()}</p>
+          </div>
+
+          ${supplierInfo}
+
+          <div class="section">
+            <h3>Klaver Plant Hire:  Parts Required</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50px">#</th>
+                  <th>Description</th>
+                  <th class="center" style="width:80px">Qty</th>
+                  <th class="right" style="width:120px">Unit Price</th>
+                  <th class="right" style="width:120px">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${partsHtml || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#64748b">No parts listed</td></tr>'}
+                <tr class="total-row">
+                  <td colspan="4" class="right" style="padding:12px 8px">TOTAL:</td>
+                  <td class="right">R${total.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h3>Order Notes</h3>
+            <div style="background:#f8fafc; padding:20px; border-radius:8px; border-left:4px solid #f59e0b; min-height:80px;">
+              ${escapeHtml(order.notes || "No additional notes provided")}
+            </div>
+          </div>
+
+          <div class="contact-box">
+            <h3 style="margin:0 0 10px 0; color:#059669;">Workshop Contact</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; font-size:14px;">
+              <div>
+                <strong>Klaver Plant Hire: Skyfleet Workshop</strong>
+                Name: Lwazi<br>
+                Email: stores@klaverplant.co.za
+              </div>
+              <div style="text-align:right">
+                <strong>Phone:</strong> +27 71 442 7811<br>
+                <strong>Date Ordered:</strong> ${new Date(order.created_at).toLocaleDateString()}<br>
+                <strong>Status:</strong> ${order.status?.toUpperCase() || "PENDING"}
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:40px; font-size:12px; color:#94a3b8; text-align:center; border-top:1px solid #e2e8f0; padding-top:15px;">
+            Generated on ${new Date().toLocaleString()} by Skyfleet Workshop Management System
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const handleEmailSupplier = async (order: any) => {
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    console.log("Suppliers detail" + JSON.stringify(suppliers));
+
+    if (!supplier?.email) {
+      toast.error("Supplier email not available");
+      return;
+    }
+
+    const parts = Array.isArray(order.parts_data) ? order.parts_data : [];
+    const partsText = parts
+      .map(
+        (p: any) =>
+          `• ${p.description || p.part_name || "Part"} | Qty: ${p.quantity || 1} | Unit: R${Number(p.price || 0).toFixed(2)} | Total: R${(Number(p.price || 0) * Number(p.quantity || 1)).toFixed(2)}`,
+      )
+      .join("\n");
+
+    const total = parts.reduce(
+      (sum: number, part: any) =>
+        sum + Number(part.price || 0) * Number(part.quantity || 0),
+      0,
+    );
+
+    const subject = encodeURIComponent(
+      `Parts Order - ${supplierMap[order.supplier_id]?.name || "Supplier"}`,
+    );
+    const body = encodeURIComponent(
+      `
+URGENT PARTS ORDER
+
+Supplier: ${supplierMap[order.supplier_id]?.name || "Unknown Supplier"}
+Contact: ${supplierMap[order.supplier_id]?.contact_person || "N/A"}
+Date: ${new Date(order.created_at).toLocaleDateString()}
+Status: ${order.status?.toUpperCase() || "PENDING"}
+
+PARTS REQUIRED:
+${partsText}
+
+TOTAL: R${total.toFixed(2)}
+
+Notes: ${order.notes || "None"}
+
+Please confirm receipt and estimated delivery time.
+Required.
+
+Workshop Contact:
+Klaver Plant Hire - Lwazi Mhlongo
+Email: stores@klaverplant.co.za
+Phone: +27 71 442 7811
+
+---
+Generated by Skyfleet Workshop Management System
+    `.trim(),
+    );
+
+    const mailtoLink = `mailto:${supplier.email}?subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
+
+    toast.success(`Email opened for ${supplierMap[order.supplier_id]?.name || "Unknown Supplier"}`);
   };
 
   const handleAddSublet = async () => {
@@ -405,7 +608,7 @@ export default function SubletsAndSuppliersPage() {
                   🖨️ Print
                 </Button>
                 <Button
-                  onClick={handleEmailShare}
+                  onClick={handleEmailSupplier}
                   variant="outline"
                   size="sm"
                   className="print:hidden"
@@ -466,9 +669,28 @@ export default function SubletsAndSuppliersPage() {
                             #{order.id}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {supplierMap[order.supplier_id] ||
-                              "Unknown Supplier"}
+                            {(() => {
+                              const supplier = suppliers.find(
+                                (s) => s.id === order.supplier_id,
+                              );
+                              return supplier ? (
+                                <div className="space-y-1">
+                                  <div className="font-medium">
+                                    {supplier.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {supplier.email}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {supplier.phone}
+                                  </div>
+                                </div>
+                              ) : (
+                                "Unknown Supplier"
+                              );
+                            })()}
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                             {new Date(order.created_at).toLocaleDateString()}
                           </td>
@@ -500,6 +722,26 @@ export default function SubletsAndSuppliersPage() {
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">
                             {order.notes || "-"}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handlePrint(order)}
+                              className="h-8 w-8 p-0 bg-white hover:bg-gray-50 border-gray-200"
+                              title="Print Order"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEmailSupplier(order)}
+                              className="h-8 w-8 p-0 bg-white hover:bg-gray-50 border-gray-200"
+                              title="Email Supplier"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                           </td>
                         </tr>
                       );
