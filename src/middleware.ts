@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 const roles = [
   {
     name: 'call centre',
-    path: ['/dashboard', '/profile', '/login', '/signup', '/', 'ccenter', '/logout', 'jobs'],
+    path: ['/dashboard', '/profile', '/login', '/signup', '/', 'ccenter', '/logout', 'jobs', '/drivers', '/vehicles', '/technician'],
   },
   {
     name: 'fleet manager',

@@ -101,6 +101,8 @@ const roleNavigation: Record<string, NavItem[]> = {
     { name: "Dashboard", href: "/dashboard", Icon: ChartBar },
     { name: "Jobs", href: "/jobs", Icon: Briefcase },
     { name: "Workshop", href: "/callcenter", Icon: Store },
+    { name: "Drivers", href: "/drivers", Icon: Users },
+    { name: "Vehicles", href: "/vehicles", Icon: Car },
     {
       name: "Technicians Assignment",
       href: "/callcenter/technician",
@@ -183,7 +185,7 @@ export default function ProtectedLayout({
         "Layout - Navigation set for role:",
         role,
         "Items:",
-        updatedNav.length
+        updatedNav.length,
       );
     } else {
       console.log("Layout - No role found, redirecting to login");
@@ -237,7 +239,7 @@ export default function ProtectedLayout({
                     defaultOpen={
                       (pathname.startsWith("/reports") ||
                         item.subMenu?.some((subItem: any) =>
-                          pathname.startsWith(subItem.href)
+                          pathname.startsWith(subItem.href),
                         )) ??
                       false
                     }
@@ -263,7 +265,7 @@ export default function ProtectedLayout({
                               pathname.startsWith("/reports") &&
                               typeof window !== "undefined" &&
                               window.location.search.includes(
-                                subItem.href.split("?")[1]
+                                subItem.href.split("?")[1],
                               ));
                           return (
                             <SidebarMenuSubItem key={subItem.name}>
@@ -318,8 +320,8 @@ export default function ProtectedLayout({
                 ? userRole === "customer"
                   ? "External Workshop"
                   : userRole === "call centre"
-                  ? "Administrator"
-                  : userRole
+                    ? "Administrator"
+                    : userRole
                 : "No User"}
             </div>
             <Button
