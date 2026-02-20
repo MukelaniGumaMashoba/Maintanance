@@ -29,6 +29,8 @@ import {
   Wrench,
   Clock,
   AlertTriangle,
+  FileEdit,
+  History,
   Loader2,
   Droplet,
 } from "lucide-react";
@@ -50,6 +52,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import JobStatusHistory from "@/components/workshop/JobStatusHistory";
+import EditJobDialog from "@/components/workshop/EditJobDialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface WorkshopJob {
   id: number;
@@ -82,6 +87,11 @@ interface WorkshopJob {
   technician?: boolean;
   odo_reading: string | number;
   hours: string | number;
+  edited_after_approval?: boolean;
+  requires_reapproval?: boolean;
+  edit_count?: number;
+  last_edited_by_name?: string;
+  last_edited_date?: string;
 }
 
 interface Vehicle {
@@ -122,6 +132,9 @@ export default function WorkshopJobDetailPage() {
   const [labourTotal, setLabourTotal] = useState<number>(0);
   const [isLabourDialogOpen, setIsLabourDialogOpen] = useState(false);
   const [isSavingLabour, setIsSavingLabour] = useState(false);
+  const [isChangeRequestOpen, setIsChangeRequestOpen] = useState(false);
+  const [canEditApproved, setCanEditApproved] = useState(false);
+  const [changeReason, setChangeReason] = useState("");
 
   // Technician assignment state (from original jobs page)
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -136,6 +149,7 @@ export default function WorkshopJobDetailPage() {
   const [parts, setParts] = useState<any[]>([]);
   const [consumables, setConsumables] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const fetchParts = async () => {
     const { data, error } = await supabase
@@ -159,7 +173,8 @@ export default function WorkshopJobDetailPage() {
       console.error("Error fetching consumables:", error);
       return;
     }
-    const consumablesList = data?.flatMap((item) => item.consumables || []) || [];
+    const consumablesList =
+      data?.flatMap((item) => item.consumables || []) || [];
     setConsumables(consumablesList);
   };
 
@@ -178,6 +193,7 @@ export default function WorkshopJobDetailPage() {
       }
 
       setJob(jobData as any as WorkshopJob);
+      setIsEditOpen(false);
       setSelectedJobForTech(jobData as any);
 
       // populate labour state from job row if present
@@ -372,6 +388,7 @@ export default function WorkshopJobDetailPage() {
     setIsSavingLabour(true);
     try {
       const updatedTotal = Number((labourHours || 0) * (labourRate || 0));
+      const isApproved = job.status?.toLowerCase() === "approved";
       const { error } = await supabase
         .from("workshop_job")
         .update({
@@ -379,6 +396,11 @@ export default function WorkshopJobDetailPage() {
           labor_cost: labourRate,
           total_labor_cost: updatedTotal,
           total_sublet_cost: job?.total_sublet_cost ?? 0,
+          status: isApproved ? "Awaiting Approval" : job.status,
+          notes:
+            isApproved && changeReason
+              ? `${job.notes || ""}${job.notes ? "\n" : ""}Change request: ${changeReason}`
+              : job.notes,
           updated_at: new Date().toISOString(),
         })
         .eq("id", job.id);
@@ -397,8 +419,14 @@ export default function WorkshopJobDetailPage() {
               }
             : prev,
         );
-        toast.success("Costs saved");
+        toast.success(
+          isApproved ? "Costs updated and sent for approval" : "Costs saved",
+        );
         setIsLabourDialogOpen(false);
+        if (isApproved) {
+          setCanEditApproved(false);
+          setChangeReason("");
+        }
       }
     } catch (e) {
       console.error("Save labour failed:", e);
@@ -504,6 +532,20 @@ export default function WorkshopJobDetailPage() {
     }
   };
 
+  const requestUpdates = async (jobId: number) => {
+    const { error } = await supabase
+      .from("workshop_job")
+      .update({ requires_reapproval: true })
+      .eq("id", jobId);
+
+    if (error) {
+      console.error("Error requesting updates:", error);
+      toast.error("Failed to request updates for job.");
+    } else {
+      toast.success("Update request sent successfully.");
+    }
+  };
+
   if (isLoading)
     return (
       <div className="p-8 text-center">
@@ -522,7 +564,17 @@ export default function WorkshopJobDetailPage() {
               <ArrowLeft className="h-4 w-4" /> Back to Jobs
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-black">Job Card Details</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-black">Job Card Details</h1>
+            {/* <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <FileEdit className="h-4 w-4 mr-2" />
+              Edit Job
+            </Button> */}
+          </div>
         </div>
       </div>
 
@@ -541,6 +593,20 @@ export default function WorkshopJobDetailPage() {
                 <Badge className={`${getStatusColor(job.status)} px-3 py-1`}>
                   {job.status}
                 </Badge>
+                {job.requires_reapproval && (
+                  <div className="mt-2">
+                    <Badge className="bg-orange-100 text-orange-800">
+                      Needs Re-Approval
+                    </Badge>
+                  </div>
+                )}
+                {!job.requires_reapproval && job.edited_after_approval && (
+                  <div className="mt-2">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      Edited{job.edit_count ? ` (${job.edit_count})` : ""}
+                    </Badge>
+                  </div>
+                )}
                 <p className="text-orange-100 text-sm mt-1">
                   {new Date(job.created_at).toLocaleDateString()}
                 </p>
@@ -549,497 +615,594 @@ export default function WorkshopJobDetailPage() {
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Vehicle Section */}
-          <Card>
-            <CardHeader className="bg-gray-100 border-b">
-              <CardTitle className="flex items-center gap-2 text-black">
-                <Truck className="h-5 w-5 text-orange-500" />
-                Vehicle Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {vehicle ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Registration</p>
-                    <p className="font-semibold text-lg">
-                      {vehicle.registration_number}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Make & Model</p>
-                    <p className="font-semibold">
-                      {vehicle.make} {vehicle.model}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Year</p>
-                    <p className="font-semibold">{vehicle.manufactured_year}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Type</p>
-                    <p className="font-semibold capitalize">
-                      {vehicle.vehicle_type}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Fuel</p>
-                    <p className="font-semibold capitalize">
-                      {vehicle.fuel_type}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Colour</p>
-                    <p className="font-semibold">{vehicle.colour}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">ODO Reading</p>
-                    <p className="font-semibold">{job.odo_reading || "Not specified"}  KM</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Hours</p>
-                    <p className="font-semibold">{job.hours || "Not specified"}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Truck className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Vehicle not found</p>
-                  <p className="text-sm text-gray-500">
-                    Registration: {job.registration_no}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Client Section */}
-          <Card>
-            <CardHeader className="bg-gray-100 border-b">
-              <CardTitle className="flex items-center gap-2 text-black">
-                <User className="h-5 w-5 text-orange-500" />
-                Driver Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm text-gray-600">Driver Name</p>
-                  <p className="font-semibold">
-                    {job.client_name || "Not specified"}
-                  </p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm text-gray-600">Driver Phone</p>
-                  <p className="font-semibold">
-                    {job.client_phone || "Not provided"}
-                  </p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm text-gray-600">Location</p>
-                  <p className="font-semibold">
-                    {job.location || "Not specified"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          {/* Job Description Section */}
-          <Card>
-            <CardHeader className="bg-gray-100 border-b">
-              <CardTitle className="flex items-center gap-2 text-black">
-                <FileText className="h-5 w-5 text-orange-500" />
-                Job Description
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="bg-gray-50 p-4 rounded mb-4">
-                <p className="text-gray-800">
-                  {job.description || "No description provided"}
-                </p>
-              </div>
-              {job.notes && (
+        {job.requires_reapproval && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-black mb-2">
-                    Additional Notes:
-                  </h4>
-                  <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
-                    <p className="text-gray-700">{job.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Parts Section */}
-              {parts && parts.length > 0 ? (
-                (() => {
-                  const validParts = parts.filter((part) => {
-                    const jp = part.job_parts;
-                    if (jp == null) return false;
-                    if (typeof jp === "string") return jp.trim() !== "";
-                    if (Array.isArray(jp)) return jp.length > 0;
-                    if (typeof jp === "object")
-                      return Object.keys(jp).length > 0;
-                    return false;
-                  });
-
-                  if (validParts.length === 0) {
-                    return (
-                      <p className="text-sm text-gray-500 italic mt-4">
-                        No part requested
-                      </p>
-                    );
-                  }
-
-                  return (
-                    <div className="mt-4">
-                      <h4 className="font-semibold text-gray-900 mb-2 text-base">
-                        Parts Required
-                      </h4>
-                      <ul className="space-y-2 max-h-48 overflow-auto border border-gray-200 bg-gray-50 p-3 rounded-lg">
-                        {validParts.map((part, index) => {
-                          let displayText = "";
-                          const jobParts = part.job_parts;
-                          if (typeof jobParts === "string") {
-                            displayText = jobParts;
-                          } else if (Array.isArray(jobParts)) {
-                            displayText = jobParts.join(", ");
-                          } else if (typeof jobParts === "object") {
-                            displayText =
-                              jobParts.description ||
-                              jobParts.part_name ||
-                              JSON.stringify(jobParts);
-                          }
-                          return (
-                            <li
-                              key={index}
-                              className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
-                            >
-                              <span className="text-sm text-gray-800">
-                                {displayText}
-                              </span>
-                              <span className="text-xs text-gray-500 italic">{`Part #${
-                                index + 1
-                              }`}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })()
-              ) : (
-                <p className="text-sm text-gray-500 italic mt-4">
-                  No part requested
-                </p>
-              )}
-
-              {/* Consumables Section */}
-              {consumables && consumables.length > 0 && (
-                <div className="mt-6 pt-6 border-t">
-                  <h4 className="font-semibold text-gray-900 mb-2 text-base flex items-center gap-2">
-                    <Droplet className="h-4 w-4 text-purple-600" />
-                    Consumables Used
-                  </h4>
-                  <ul className="space-y-2 max-h-48 overflow-auto border border-purple-200 bg-purple-50 p-3 rounded-lg">
-                    {consumables.map((consumable, index) => (
-                      <li
-                        key={index}
-                        className="flex items-center justify-between bg-white border border-purple-100 rounded-md px-3 py-2 shadow-sm hover:bg-purple-50 transition"
-                      >
-                        <div className="flex-1">
-                          <span className="text-sm text-gray-800 font-medium">
-                            {consumable.name || "Unnamed"}
-                          </span>
-                          {consumable.quantity && consumable.unit && (
-                            <p className="text-xs text-gray-500">
-                              Qty: {consumable.quantity} {consumable.unit}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-sm font-semibold text-purple-600">
-                          R{parseFloat(consumable.price || 0).toFixed(2)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-3 pt-3 border-t border-purple-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-900">
-                        Consumables Total:
-                      </span>
-                      <span className="text-lg font-bold text-purple-600">
-                        R{consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Technician Section */}
-          <Card>
-            <CardHeader className="bg-gray-100 border-b">
-              <CardTitle className="flex items-center gap-2 text-black">
-                <User className="h-5 w-5 text-orange-500" />
-                Assigned Technician
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {technician?.id !== null && technician ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Name</p>
-                    <p className="font-semibold text-black">
-                      {technician?.name} {technician?.surname}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Phone</p>
-                    <p className="font-semibold">{technician?.phone}</p>
-                  </div>
-                  {technician?.email && (
-                    <div className="bg-gray-50 p-3 rounded">
-                      <p className="text-sm text-gray-600">Email</p>
-                      <p className="font-semibold">{technician?.email}</p>
-                    </div>
-                  )}
-                  {technician?.location && (
-                    <div className="bg-gray-50 p-3 rounded">
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-semibold">{technician?.location}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">No technician assigned</p>
-                  <p className="text-sm text-gray-500">
-                    Technician will be assigned by using the assign technician
-                    button below
+                  <p className="font-semibold text-orange-800">
+                    Re-approval required
+                  </p>
+                  <p className="text-sm text-orange-700">
+                    This job was edited after approval and needs fleet manager
+                    approval again.
+                    {job.last_edited_by_name && job.last_edited_date
+                      ? ` Last edited by ${job.last_edited_by_name} on ${new Date(job.last_edited_date).toLocaleDateString()}.`
+                      : ""}
                   </p>
                 </div>
-              )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-              {/* Technician Assignment Button */}
-              <div className="mt-4 pt-4 border-t">
-                {
-                  isAssigned ? (
-                    // && (job.status === "Approved" || job.status === "Approved - Ready for Parts Assignment")
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled
-                        className="flex items-center gap-2 text-gray-500 cursor-not-allowed"
-                      >
-                        <User2 className="h-4 w-4" />
-                        Assigned
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setIsTechDialogOpen(true);
-                          setSelectedJobForTech(job);
-                        }}
-                        disabled={job.status?.toLowerCase() === "completed"}
-                      >
-                        Change Technician
-                      </Button>
+        <Tabs defaultValue="details" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">
+              <FileText className="h-4 w-4 mr-2" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="h-4 w-4 mr-2" />
+              Status History
+              {job.edit_count ? (
+                <Badge className="ml-2" variant="secondary">
+                  {job.edit_count}
+                </Badge>
+              ) : null}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Vehicle Section */}
+              <Card>
+                <CardHeader className="bg-gray-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <Truck className="h-5 w-5 text-orange-500" />
+                    Vehicle Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {vehicle ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Registration</p>
+                        <p className="font-semibold text-lg">
+                          {vehicle.registration_number}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Make & Model</p>
+                        <p className="font-semibold">
+                          {vehicle.make} {vehicle.model}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Year</p>
+                        <p className="font-semibold">
+                          {vehicle.manufactured_year}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Type</p>
+                        <p className="font-semibold capitalize">
+                          {vehicle.vehicle_type}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Fuel</p>
+                        <p className="font-semibold capitalize">
+                          {vehicle.fuel_type}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Colour</p>
+                        <p className="font-semibold">{vehicle.colour}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">ODO Reading</p>
+                        <p className="font-semibold">
+                          {job.odo_reading || "Not specified"} KM
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Hours</p>
+                        <p className="font-semibold">
+                          {job.hours || "Not specified"}
+                        </p>
+                      </div>
                     </div>
                   ) : (
-                    // job.status?.toLowerCase() === "awaiting approval" || job.status?.toLowerCase() === "approved - ready for parts assignment" || job.status?.toLowerCase() === "approved"
-                    // ?
-                    // &&
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setIsTechDialogOpen(true);
-                        setSelectedJobForTech(job);
-                      }}
-                      className="w-full flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition rounded-md shadow-sm"
-                      disabled={job.status?.toLowerCase() === "completed"}
-                    >
-                      <User2 className="h-4 w-4" />
-                      Assign Technician
-                    </Button>
-                  )
-                  // : (
-                  //   <div>
-                  //     <p className="text-sm text-orange-600">
-                  //       Awaiting Approval or Ready for Parts Assignment Before Assign Technician
-                  //     </p>
-                  //   </div>
-                  // )
-                }
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Cost & Actions Section */}
-          <Card>
-            <CardHeader className="bg-gray-100 border-b">
-              <CardTitle className="flex items-center gap-2 text-black">
-                <DollarSign className="h-5 w-5 text-orange-500" />
-                Cost & Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4 mb-6">
-                <div className="bg-green-50 p-3 rounded border border-green-200">
-                  <p className="text-sm text-green-700">Labour Cost</p>
-                  <p className="text-xl font-bold text-green-800">
-                    {job.total_labor_cost
-                      ? `R ${job.total_labor_cost.toFixed(2)}`
-                      : "TBD"}
-                  </p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">Total Parts Cost</p>
-                  <p className="text-xl font-bold text-blue-800">
-                    {job.total_parts_cost
-                      ? `R ${job.total_parts_cost.toFixed(2)}`
-                      : "Pending"}
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">Total Sublet Cost</p>
-                  <p className="text-xl font-bold text-blue-800">
-                    {job.total_sublet_cost
-                      ? `R ${job.total_sublet_cost.toFixed(2)}`
-                      : "Pending"}
-                  </p>
-                </div>
-
-                {consumables && consumables.length > 0 && (
-                  <div className="bg-purple-50 p-3 rounded border border-purple-200">
-                    <p className="text-sm text-purple-700">Total Consumables Cost</p>
-                    <p className="text-xl font-bold text-purple-800">
-                      R{consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0).toFixed(2)}
-                    </p>
-                  </div>
-                )}
-
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm text-blue-700">
-                    Total Cost (Labour & Sublet & Parts & Consumables)
-                  </p>
-                  <p className="text-xl font-bold text-blue-800">
-                    {Number(labourRate ?? 0) * Number(labourHours ?? 0) +
-                      Number(job.total_sublet_cost ?? 0) +
-                      Number(job.total_parts_cost ?? 0) +
-                      (consumables ? consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0) : 0) >
-                    0
-                      ? `R ${(Number(labourRate ?? 0) * Number(labourHours ?? 0) + Number(job.total_sublet_cost ?? 0) + Number(job.total_parts_cost ?? 0) + (consumables ? consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0) : 0)).toFixed(2)}`
-                      : "Pending"}
-                  </p>
-                </div>
-
-                {/* Labour & Parts Section */}
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Labour & Sublet Cost
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Hours</span>
-                      <p className="font-medium">{labourHours ?? 0}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Rate (R/hr)</span>
-                      <p className="font-medium">
-                        {labourRate !== undefined ? `R ${labourRate}` : "N/A"}
+                    <div className="text-center py-8">
+                      <Truck className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">Vehicle not found</p>
+                      <p className="text-sm text-gray-500">
+                        Registration: {job.registration_no}
                       </p>
                     </div>
-                    <div>
-                      <span className="text-gray-600">Labour Total</span>
-                      <p className="font-medium text-green-600">{`R ${(
-                        labourTotal ?? labourHours * labourRate
-                      ).toFixed(2)}`}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Client Section */}
+              <Card>
+                <CardHeader className="bg-gray-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <User className="h-5 w-5 text-orange-500" />
+                    Driver Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 p-3 rounded">
+                      <p className="text-sm text-gray-600">Driver Name</p>
+                      <p className="font-semibold">
+                        {job.client_name || "Not specified"}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded">
+                      <p className="text-sm text-gray-600">Driver Phone</p>
+                      <p className="font-semibold">
+                        {job.client_phone || "Not provided"}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded">
+                      <p className="text-sm text-gray-600">Location</p>
+                      <p className="font-semibold">
+                        {job.location || "Not specified"}
+                      </p>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <Button
-                      size="sm"
-                      onClick={() => setIsLabourDialogOpen(true)}
-                      disabled={
-                        job.status?.toLowerCase() === "completed" ||
-                        job.status?.toLowerCase() === "awaiting approval" ||
-                        job.status?.toLowerCase() === "approved"
-                      }
-                    >
-                      Edit Cost (Labour & Sublet)
-                    </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              {/* Job Description Section */}
+              <Card>
+                <CardHeader className="bg-gray-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <FileText className="h-5 w-5 text-orange-500" />
+                    Job Description
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="bg-gray-50 p-4 rounded mb-4">
+                    <p className="text-gray-800">
+                      {job.description || "No description provided"}
+                    </p>
                   </div>
-                </div>
-              </div>
+                  {job.notes && (
+                    <div>
+                      <h4 className="font-semibold text-black mb-2">
+                        Additional Notes:
+                      </h4>
+                      <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
+                        <p className="text-gray-700">{job.notes}</p>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                {job.status?.toLowerCase() !== "completed" && (
-                  <Button
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                    onClick={() => {
-                      updateWorkshopJobStatus(job.id, "Awaiting Approval");
-                    }}
-                    disabled={
-                      updating ||
-                      job.status?.toLowerCase() === "completed" ||
-                      job.status?.toLowerCase() === "awaiting approval" ||
-                      job.status?.toLowerCase() === "approved"
-                    }
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {updating ? "Processing..." : "Submit Job for Approval"}
-                  </Button>
-                )}
-                {job.status?.toLowerCase() === "approved" && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                  {/* Parts Section */}
+                  {parts && parts.length > 0 ? (
+                    (() => {
+                      const validParts = parts.filter((part) => {
+                        const jp = part.job_parts;
+                        if (jp == null) return false;
+                        if (typeof jp === "string") return jp.trim() !== "";
+                        if (Array.isArray(jp)) return jp.length > 0;
+                        if (typeof jp === "object")
+                          return Object.keys(jp).length > 0;
+                        return false;
+                      });
+
+                      if (validParts.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 italic mt-4">
+                            No part requested
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div className="mt-4">
+                          <h4 className="font-semibold text-gray-900 mb-2 text-base">
+                            Parts Required
+                          </h4>
+                          <ul className="space-y-2 max-h-48 overflow-auto border border-gray-200 bg-gray-50 p-3 rounded-lg">
+                            {validParts.map((part, index) => {
+                              let displayText = "";
+                              const jobParts = part.job_parts;
+                              if (typeof jobParts === "string") {
+                                displayText = jobParts;
+                              } else if (Array.isArray(jobParts)) {
+                                displayText = jobParts.join(", ");
+                              } else if (typeof jobParts === "object") {
+                                displayText =
+                                  jobParts.description ||
+                                  jobParts.part_name ||
+                                  JSON.stringify(jobParts);
+                              }
+                              return (
+                                <li
+                                  key={index}
+                                  className="flex items-center justify-between bg-white border border-gray-100 rounded-md px-3 py-2 shadow-sm hover:bg-indigo-50 transition"
+                                >
+                                  <span className="text-sm text-gray-800">
+                                    {displayText}
+                                  </span>
+                                  <span className="text-xs text-gray-500 italic">{`Part #${
+                                    index + 1
+                                  }`}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <p className="text-sm text-gray-500 italic mt-4">
+                      No part requested
+                    </p>
+                  )}
+
+                  {/* Consumables Section */}
+                  {consumables && consumables.length > 0 && (
+                    <div className="mt-6 pt-6 border-t">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-base flex items-center gap-2">
+                        <Droplet className="h-4 w-4 text-purple-600" />
+                        Consumables Used
+                      </h4>
+                      <ul className="space-y-2 max-h-48 overflow-auto border border-purple-200 bg-purple-50 p-3 rounded-lg">
+                        {consumables.map((consumable, index) => (
+                          <li
+                            key={index}
+                            className="flex items-center justify-between bg-white border border-purple-100 rounded-md px-3 py-2 shadow-sm hover:bg-purple-50 transition"
+                          >
+                            <div className="flex-1">
+                              <span className="text-sm text-gray-800 font-medium">
+                                {consumable.name || "Unnamed"}
+                              </span>
+                              {consumable.quantity && consumable.unit && (
+                                <p className="text-xs text-gray-500">
+                                  Qty: {consumable.quantity} {consumable.unit}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-sm font-semibold text-purple-600">
+                              R{parseFloat(consumable.price || 0).toFixed(2)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-900">
+                            Consumables Total:
+                          </span>
+                          <span className="text-lg font-bold text-purple-600">
+                            R
+                            {consumables
+                              .reduce(
+                                (sum, c) => sum + (parseFloat(c.price) || 0),
+                                0,
+                              )
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Technician Section */}
+              <Card>
+                <CardHeader className="bg-gray-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <User className="h-5 w-5 text-orange-500" />
+                    Assigned Technician
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {technician?.id !== null && technician ? (
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Name</p>
+                        <p className="font-semibold text-black">
+                          {technician?.name} {technician?.surname}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <p className="text-sm text-gray-600">Phone</p>
+                        <p className="font-semibold">{technician?.phone}</p>
+                      </div>
+                      {technician?.email && (
+                        <div className="bg-gray-50 p-3 rounded">
+                          <p className="text-sm text-gray-600">Email</p>
+                          <p className="font-semibold">{technician?.email}</p>
+                        </div>
+                      )}
+                      {technician?.location && (
+                        <div className="bg-gray-50 p-3 rounded">
+                          <p className="text-sm text-gray-600">Location</p>
+                          <p className="font-semibold">
+                            {technician?.location}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">No technician assigned</p>
+                      <p className="text-sm text-gray-500">
+                        Technician will be assigned by using the assign
+                        technician button below
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Technician Assignment Button */}
+                  <div className="mt-4 pt-4 border-t">
+                    {
+                      isAssigned ? (
+                        // && (job.status === "Approved" || job.status === "Approved - Ready for Parts Assignment")
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled
+                            className="flex items-center gap-2 text-gray-500 cursor-not-allowed"
+                          >
+                            <User2 className="h-4 w-4" />
+                            Assigned
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setIsTechDialogOpen(true);
+                              setSelectedJobForTech(job);
+                            }}
+                            disabled={job.status?.toLowerCase() === "completed"}
+                          >
+                            Change Technician
+                          </Button>
+                        </div>
+                      ) : (
+                        // job.status?.toLowerCase() === "awaiting approval" || job.status?.toLowerCase() === "approved - ready for parts assignment" || job.status?.toLowerCase() === "approved"
+                        // ?
+                        // &&
                         <Button
-                          variant="outline"
-                          className="w-full border-gray-300"
-                          onClick={async () => {
-                            await supabase
-                              .from("workshop_job")
-                              .update({
-                                status: "Completed",
-                                updated_at: new Date().toISOString(),
-                                completion_date: new Date().toISOString(),
-                              })
-                              .eq("id", job.id);
-
-                            toast.success("Job closed successfully");
-                            setJob((prev) =>
-                              prev ? { ...prev, status: "Completed" } : null,
-                            );
-                            setTimeout(() => router.push("/jobs"), 1500);
+                          size="sm"
+                          onClick={() => {
+                            setIsTechDialogOpen(true);
+                            setSelectedJobForTech(job);
                           }}
-                          disabled={
-                            job.status?.toLowerCase() === "completed" ||
-                            job.status?.toLowerCase() === "awaiting approval"
-                          }
+                          className="w-full flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition rounded-md shadow-sm"
+                          disabled={job.status?.toLowerCase() === "completed"}
                         >
-                          Close/Complete
+                          <User2 className="h-4 w-4" />
+                          Assign Technician
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>This for completed job to be closed!</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                      )
+                      // : (
+                      //   <div>
+                      //     <p className="text-sm text-orange-600">
+                      //       Awaiting Approval or Ready for Parts Assignment Before Assign Technician
+                      //     </p>
+                      //   </div>
+                      // )
+                    }
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cost & Actions Section */}
+              <Card>
+                <CardHeader className="bg-gray-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <DollarSign className="h-5 w-5 text-orange-500" />
+                    Cost & Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4 mb-6">
+                    <div className="bg-green-50 p-3 rounded border border-green-200">
+                      <p className="text-sm text-green-700">Labour Cost</p>
+                      <p className="text-xl font-bold text-green-800">
+                        {job.total_labor_cost
+                          ? `R ${job.total_labor_cost.toFixed(2)}`
+                          : "TBD"}
+                      </p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-sm text-blue-700">Total Parts Cost</p>
+                      <p className="text-xl font-bold text-blue-800">
+                        {job.total_parts_cost
+                          ? `R ${job.total_parts_cost.toFixed(2)}`
+                          : "Pending"}
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-sm text-blue-700">Total Sublet Cost</p>
+                      <p className="text-xl font-bold text-blue-800">
+                        {job.total_sublet_cost
+                          ? `R ${job.total_sublet_cost.toFixed(2)}`
+                          : "Pending"}
+                      </p>
+                    </div>
+
+                    {consumables && consumables.length > 0 && (
+                      <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                        <p className="text-sm text-purple-700">
+                          Total Consumables Cost
+                        </p>
+                        <p className="text-xl font-bold text-purple-800">
+                          R
+                          {consumables
+                            .reduce(
+                              (sum, c) => sum + (parseFloat(c.price) || 0),
+                              0,
+                            )
+                            .toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        Total Cost (Labour & Sublet & Parts & Consumables)
+                      </p>
+                      <p className="text-xl font-bold text-blue-800">
+                        {Number(labourRate ?? 0) * Number(labourHours ?? 0) +
+                          Number(job.total_sublet_cost ?? 0) +
+                          Number(job.total_parts_cost ?? 0) +
+                          (consumables
+                            ? consumables.reduce(
+                                (sum, c) => sum + (parseFloat(c.price) || 0),
+                                0,
+                              )
+                            : 0) >
+                        0
+                          ? `R ${(Number(labourRate ?? 0) * Number(labourHours ?? 0) + Number(job.total_sublet_cost ?? 0) + Number(job.total_parts_cost ?? 0) + (consumables ? consumables.reduce((sum, c) => sum + (parseFloat(c.price) || 0), 0) : 0)).toFixed(2)}`
+                          : "Pending"}
+                      </p>
+                    </div>
+
+                    {/* Labour & Parts Section */}
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        Labour & Sublet Cost
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Hours</span>
+                          <p className="font-medium">{labourHours ?? 0}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Rate (R/hr)</span>
+                          <p className="font-medium">
+                            {labourRate !== undefined
+                              ? `R ${labourRate}`
+                              : "N/A"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Labour Total</span>
+                          <p className="font-medium text-green-600">{`R ${(
+                            labourTotal ?? labourHours * labourRate
+                          ).toFixed(2)}`}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <div className="mt-3">
+                      {job.status?.toLowerCase() === "approved" &&
+                        !canEditApproved && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsChangeRequestOpen(true)}
+                          >
+                            Request Change
+                          </Button>
+                        )}
+                      <Button
+                        size="sm"
+                        onClick={() => setIsLabourDialogOpen(true)}
+                        disabled={
+                          job.status?.toLowerCase() === "completed" 
+                          // ||
+                          // job.status?.toLowerCase() === "awaiting approval" ||
+                          // (job.status?.toLowerCase() === "approved" &&
+                          //   !canEditApproved)
+                        }
+                      >
+                        Edit Cost (Labour & Sublet)
+                      </Button>
+                    </div>
+                    {job.status?.toLowerCase() !== "completed" ? (
+                      <Button
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                        onClick={() => {
+                          updateWorkshopJobStatus(job.id, "Awaiting Approval");
+                        }}
+                        disabled={
+                          updating ||
+                          job.status?.toLowerCase() === "completed" ||
+                          job.status?.toLowerCase() === "awaiting approval"
+                        }
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {updating ? "Processing..." : "Submit Job for Approval"}
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full bg-green-500 hover:bg-green-600 text-white"
+                        disabled={true}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Job Completed
+                      </Button>
+                    )}
+                    {job.status?.toLowerCase() === "approved" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full border-gray-300"
+                              onClick={async () => {
+                                await supabase
+                                  .from("workshop_job")
+                                  .update({
+                                    status: "Completed",
+                                    updated_at: new Date().toISOString(),
+                                    completion_date: new Date().toISOString(),
+                                  })
+                                  .eq("id", job.id);
+
+                                toast.success("Job closed successfully");
+                                setJob((prev) =>
+                                  prev
+                                    ? { ...prev, status: "Completed" }
+                                    : null,
+                                );
+                                setTimeout(() => router.push("/jobs"), 1500);
+                              }}
+                              disabled={
+                                job.status?.toLowerCase() === "completed" ||
+                                job.status?.toLowerCase() ===
+                                  "awaiting approval"
+                              }
+                            >
+                              Close/Complete
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>This for completed job to be closed!</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="history">
+            <JobStatusHistory jobId={job.id} />
+          </TabsContent>
+        </Tabs>
 
         {/* Labour Edit Dialog */}
         <Dialog open={isLabourDialogOpen} onOpenChange={setIsLabourDialogOpen}>
@@ -1113,6 +1276,53 @@ export default function WorkshopJobDetailPage() {
                 disabled={isSavingLabour}
               >
                 {isSavingLabour ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Request Change Dialog */}
+        <Dialog
+          open={isChangeRequestOpen}
+          onOpenChange={setIsChangeRequestOpen}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Request Change</DialogTitle>
+              <DialogDescription>
+                Provide a reason to unlock updates for this approved job.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label htmlFor="changeReason">Reason</Label>
+              <Textarea
+                id="changeReason"
+                value={changeReason}
+                onChange={(e) => setChangeReason(e.target.value)}
+                rows={3}
+                placeholder="Explain why you need to update this approved job"
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsChangeRequestOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!changeReason.trim()) {
+                    toast.error("Please enter a reason for the change");
+                    return;
+                  }
+                  setCanEditApproved(true);
+                  setIsChangeRequestOpen(false);
+                }}
+              >
+                Unlock Updates
               </Button>
             </div>
           </DialogContent>
@@ -1207,6 +1417,25 @@ export default function WorkshopJobDetailPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {job && (
+        <EditJobDialog
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          jobId={job.id}
+          currentJob={job}
+          onSuccess={async () => {
+            const { data: refreshedJob } = await supabase
+              .from("workshop_job")
+              .select("*")
+              .eq("id", Number(params.id))
+              .single();
+            if (refreshedJob) {
+              setJob(refreshedJob as any as WorkshopJob);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

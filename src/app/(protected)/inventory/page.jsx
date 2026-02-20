@@ -150,7 +150,8 @@ export default function InventoryPage() {
       const { data: jobsData, error: jobsError } = await supabase
         .from('workshop_job')
         .select('*')
-        .neq('status', 'Awaiting Approval')
+        // .neq('status', 'Awaiting Approval')
+        .neq('status', 'rejected')
         .or('status.neq.Completed')
         .order('created_at', { ascending: false });
 
@@ -181,6 +182,7 @@ export default function InventoryPage() {
       //   partsByJob.get(jobId).push(...arr);
       // });
 
+      // the consumables field is used to determine if the job has parts assigned or not, so we need to check both job_parts and given_parts to populate it correctly
       const partsByJob = new Map();
       (partsData || []).forEach((p) => {
         const jobId = p.job_id;
@@ -202,6 +204,12 @@ export default function InventoryPage() {
         if (Array.isArray(p.given_parts)) {
           arr.push(
             ...p.given_parts.map((partObj) => ({ ...partObj, __parent_row_id: p.id, __parent_field: 'given_parts' }))
+          );
+        }
+
+        if (Array.isArray(p.consumables)) {
+          arr.push(
+            ...p.consumables.map((partObj) => ({ ...partObj, __parent_row_id: p.id, __parent_field: 'consumables' }))
           );
         }
 
@@ -435,12 +443,17 @@ export default function InventoryPage() {
       job.job_description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // const hasNoParts = !job.parts_required || !Array.isArray(job.parts_required) || job.parts_required.length === 0;
-    const hasNoParts = job.job_parts?.length > 0 || !job.given_parts || !Array.isArray(job.given_parts) || job.given_parts.length === 0 && job.status !== 'Part Assigned';
+    const hasNoParts = job.job_parts?.length > 0 || !job.given_parts || !Array.isArray(job.given_parts) || job.given_parts.length === 0 || !Array.isArray(job.consumables) || !job.consumables.length === 0 && job.status !== 'Part Assigned';
     return matchesSearch && hasNoParts;
   });
 
+  // const jobCardsWithParts = jobCards.filter(job =>
+  //   job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && job.consumables && Array.isArray(job.consumables) && job.consumables.length > 0 && (job.status === 'Part Assigned' || job.status === 'completed')
+  // );
+
   const jobCardsWithParts = jobCards.filter(job =>
-    job.parts_required && Array.isArray(job.parts_required) && job.parts_required.length > 0 && (job.status === 'Part Assigned' || job.status === 'completed') 
+    job.partsrequired?.length > 0 ||  // Covers job_parts, given_parts, AND consumables
+    (job.status === "Part Assigned" || job.status === "completed")
   );
 
   const completedJobs = jobCards.filter(job =>
@@ -1231,17 +1244,17 @@ export default function InventoryPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {(stockSource === 'parts' ? filteredParts : filteredStockLevels).map((partOrStock) => {
-                 // Normalize row for display
-                 const row = stockSource === 'parts'
-                   ? partOrStock
-                   : {
-                     id: partOrStock.id,
-                     description: partOrStock.description,
-                     item_code: partOrStock.code,
-                     quantity: Number(partOrStock.quantity || 0),
-                     price: Number(partOrStock.cost_excl_vat_zar || 0),
-                     categories: { name: partOrStock.stock_type || 'Stock' },
-                   };
+                // Normalize row for display
+                const row = stockSource === 'parts'
+                  ? partOrStock
+                  : {
+                    id: partOrStock.id,
+                    description: partOrStock.description,
+                    item_code: partOrStock.code,
+                    quantity: Number(partOrStock.quantity || 0),
+                    price: Number(partOrStock.cost_excl_vat_zar || 0),
+                    categories: { name: partOrStock.stock_type || 'Stock' },
+                  };
 
                 const isLowStock = Number(row.quantity) <= 5 && Number(row.quantity) > 0;
                 const isOutOfStock = Number(row.quantity) === 0;

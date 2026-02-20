@@ -418,3 +418,14 @@ New system for Toyota
 
 Aqua trans (Mobile application => routing system)
 Mobile
+
+
+TECHNICAL DEBT OR ERRORS
+Code improvement the new status to staart job card should be PENDING and then do others until Awaiting Approval
+
+Show what changed and the new reason for it to be changed
+
+
+NEED A WHOLE TESTING HERE
+
+MUST USE BOOL TO SEE IF PART ASSIGNED AND NOT CHANGE STATUS USE BOOL

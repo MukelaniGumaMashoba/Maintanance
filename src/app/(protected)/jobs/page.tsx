@@ -77,6 +77,11 @@ interface Job {
   completed_at?: string;
   total_labor_cost?: number;
   total_parts_cost?: number;
+  edited_after_approval?: boolean;
+  requires_reapproval?: boolean;
+  edit_count?: number;
+  last_edited_by_name?: string;
+  last_edited_date?: string;
 }
 
 interface CreateJobForm {
@@ -190,7 +195,11 @@ export default function JobsPage() {
     }
 
     // Apply status filter (special cases first)
-    if (statusFilter === "requires-technician") {
+    if (statusFilter === "requires-reapproval") {
+      filtered = filtered.filter(
+        (job) => job.requires_reapproval || job.edited_after_approval,
+      );
+    } else if (statusFilter === "requires-technician") {
       // treat any job where technician !== true as "needs technician"
       filtered = filtered.filter((job) => job.technician !== true);
     } else if (statusFilter && statusFilter !== "all") {
@@ -417,6 +426,18 @@ export default function JobsPage() {
     }
   };
 
+  const changeJobs = [...jobs]
+    .filter(
+      (job) =>
+        (job.requires_reapproval || job.edited_after_approval) &&
+        (job.status || "").toLowerCase() !== "completed" &&
+        (job.status || "").toLowerCase() !== "rejected",
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+
   return (
     <div className="flex-1 space-y-4 p-4 pt-6">
       <div className="flex items-center justify-between">
@@ -438,6 +459,9 @@ export default function JobsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="requires-reapproval">
+                  Needs Re-Approval
+                </SelectItem>
                 <SelectItem value="requires-technician">
                   Requires Technicians
                 </SelectItem>
@@ -460,8 +484,9 @@ export default function JobsPage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all">All Jobs</TabsTrigger>
+          <TabsTrigger value="changes">Changes</TabsTrigger>
           <TabsTrigger value="rejected">Rejected Jobs</TabsTrigger>
           <TabsTrigger value="completed">Completed Jobs</TabsTrigger>
         </TabsList>
@@ -775,6 +800,17 @@ export default function JobsPage() {
                                 <CheckCircle className="h-4 w-4 text-green-500 animate-ping" />
                               </>
                             )}
+                            {job.requires_reapproval && (
+                              <Badge className="bg-orange-100 text-orange-800">
+                                Needs Re-Approval
+                              </Badge>
+                            )}
+                            {!job.requires_reapproval && job.edited_after_approval && (
+                              <Badge className="bg-blue-100 text-blue-800">
+                                Edited
+                                {job.edit_count ? ` (${job.edit_count})` : ""}
+                              </Badge>
+                            )}
                             {/* {job.status?.toLowerCase() === "part ordered" && (
                           <AlertCircle className="h-4 w-4 text-red-500 animate-ping" />
                         )} */}
@@ -904,6 +940,90 @@ export default function JobsPage() {
                     )}
                     <div></div>
                   </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="changes" className="space-y-4">
+          <div className="space-y-4">
+            {changeJobs.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No changed job cards
+                  </h3>
+                  <p className="text-gray-500">
+                    Jobs edited after approval will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              changeJobs.map((job) => (
+                <Card key={job.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <CardTitle className="text-lg">
+                          {job.jobId_workshop}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(job.status)}>
+                            {formatStatusDisplay(job.status)}
+                          </Badge>
+                          {job.requires_reapproval && (
+                            <Badge className="bg-orange-100 text-orange-800">
+                              Needs Re-Approval
+                            </Badge>
+                          )}
+                          {!job.requires_reapproval && job.edited_after_approval && (
+                            <Badge className="bg-blue-100 text-blue-800">
+                              Edited
+                              {job.edit_count ? ` (${job.edit_count})` : ""}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {job.last_edited_date
+                          ? `Last edit: ${new Date(job.last_edited_date).toLocaleDateString()}`
+                          : ""}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                      <div>
+                        <p>
+                          <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Client:</strong> {job.client_name || "N/A"}
+                        </p>
+                        <p className="truncate">
+                          <strong>Description:</strong> {job.description || "No description"}
+                        </p>
+                      </div>
+                      <div>
+                        <p>
+                          <strong>Last Edited By:</strong> {job.last_edited_by_name || "Unknown"}
+                        </p>
+                        <p>
+                          <strong>Priority:</strong> {job.priority}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-2">
+                    <Link href={`/jobs/${job.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </Link>
+                  </CardFooter>
                 </Card>
               ))
             )}

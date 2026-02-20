@@ -135,6 +135,11 @@ interface WorkshopJob {
   total_labor_cost?: number;
   total_parts_cost?: number;
   total_sublet_cost?: number;
+  edited_after_approval?: boolean;
+  requires_reapproval?: boolean;
+  edit_count?: number;
+  last_edited_by_name?: string;
+  last_edited_date?: string;
 }
 
 export default function FleetJobsPage() {
@@ -376,7 +381,11 @@ export default function FleetJobsPage() {
     }
 
     // Apply status filter. Special-case "requires-technician" (not a status column)
-    if (statusFilter === "requires-technician") {
+    if (statusFilter === "requires-reapproval") {
+      filtered = filtered.filter(
+        (job) => (job as any).requires_reapproval || (job as any).edited_after_approval
+      );
+    } else if (statusFilter === "requires-technician") {
       // Any job where technician !== true needs a technician (covers false/null/undefined)
       filtered = filtered.filter((job) => (job as any).technician !== true);
     } else if (statusFilter && statusFilter !== "all") {
@@ -435,6 +444,19 @@ export default function FleetJobsPage() {
         return "bg-gray-500 text-white";
     }
   };
+
+  const changeJobs = (workshopJob || [])
+    .filter(
+      (job) =>
+        ((job as any).requires_reapproval || (job as any).edited_after_approval) &&
+        (job.status || "").toLowerCase() !== "completed" &&
+        (job.status || "").toLowerCase() !== "rejected"
+    )
+    .sort(
+      (a, b) =>
+        new Date((b as any).created_at).getTime() -
+        new Date((a as any).created_at).getTime()
+    );
 
   // Update job status
   const handleUpdateJobStatus = async (
@@ -747,6 +769,9 @@ export default function FleetJobsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="requires-reapproval">
+                Needs Re-Approval
+              </SelectItem>
               <SelectItem value="Awaiting Approval">Pending</SelectItem>
               <SelectItem value="Part Assigned">Part Assigned</SelectItem>
               <SelectItem value="Part Ordered">In Progress</SelectItem>
@@ -767,7 +792,7 @@ export default function FleetJobsPage() {
 
       <Tabs defaultValue="workshopJobs" className="space-y-6">
         <TabsList className="bg-white shadow rounded-lg border flex flex-wrap">
-          {["workshopJobs", "kanban", "analytics", "rejected", "completed"].map((tab) => (
+          {["workshopJobs", "changes", "kanban", "analytics", "rejected", "completed"].map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
@@ -775,6 +800,8 @@ export default function FleetJobsPage() {
             >
               {tab === "workshopJobs"
                 ? "Workshop Jobs"
+                : tab === "changes"
+                  ? "Changes"
                 : tab === "kanban"
                   ? "Kanban Board"
                   : tab === "analytics"
@@ -835,6 +862,16 @@ export default function FleetJobsPage() {
                           <Badge className={getPriorityColor(job.priority)}>
                             {job.priority}
                           </Badge>
+                          {(job as any).requires_reapproval && (
+                            <Badge className="bg-orange-100 text-orange-800">
+                              Needs Re-Approval
+                            </Badge>
+                          )}
+                          {!(job as any).requires_reapproval && (job as any).edited_after_approval && (
+                            <Badge className="bg-blue-100 text-blue-800">
+                              Edited{(job as any).edit_count ? ` (${(job as any).edit_count})` : ""}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
@@ -953,6 +990,78 @@ export default function FleetJobsPage() {
                           ? "Approve/Reject"
                           : "View Workflow"}
                       </Button>
+                      <Link href={`/jobWorkShop/${job.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="changes" className="space-y-6 p-6 bg-gray-50 min-h-screen">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-300 pb-3">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Changed Job Cards
+              </h2>
+              <FileText className="h-5 w-5 text-gray-500" />
+            </div>
+
+            {changeJobs.length === 0 ? (
+              <p className="text-center text-gray-500 mt-6">
+                No changed job cards found.
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                {changeJobs.map((job) => (
+                  <Card
+                    key={job.id || job.jobId_workshop}
+                    className="hover:shadow-md transition-shadow rounded-lg border border-gray-200 p-6 bg-white"
+                  >
+                    <CardHeader className="pb-3 flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <CardTitle className="text-lg">
+                          {job.jobId_workshop}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(job.status)}>
+                            {formatStatusDisplay(job.status)}
+                          </Badge>
+                          {(job as any).requires_reapproval && (
+                            <Badge className="bg-orange-100 text-orange-800">
+                              Needs Re-Approval
+                            </Badge>
+                          )}
+                          {!(job as any).requires_reapproval && (job as any).edited_after_approval && (
+                            <Badge className="bg-blue-100 text-blue-800">
+                              Edited{(job as any).edit_count ? ` (${(job as any).edit_count})` : ""}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {(job as any).last_edited_date
+                          ? `Last edit: ${new Date((job as any).last_edited_date).toLocaleDateString()}`
+                          : ""}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm text-gray-700">
+                      <p>
+                        <strong>Vehicle Reg:</strong> {job.registration_no || "N/A"}
+                      </p>
+                      <p className="truncate">
+                        <strong>Description:</strong> {job.description || "No description"}
+                      </p>
+                      <p>
+                        <strong>Last Edited By:</strong> {(job as any).last_edited_by_name || "Unknown"}
+                      </p>
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                       <Link href={`/jobWorkShop/${job.id}`}>
                         <Button variant="outline" size="sm">
                           <Eye className="h-4 w-4 mr-2" />

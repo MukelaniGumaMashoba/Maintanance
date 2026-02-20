@@ -28,6 +28,8 @@ import {
   Wrench,
   Clock,
   AlertTriangle,
+  FileEdit,
+  History,
   Droplet,
 } from "lucide-react";
 import Link from "next/link";
@@ -47,6 +49,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import JobStatusHistory from "@/components/workshop/JobStatusHistory";
+import EditJobDialog from "@/components/workshop/EditJobDialog";
 
 interface WorkshopJob {
   id: number;
@@ -73,6 +79,11 @@ interface WorkshopJob {
   grand_total?: number;
   total_parts_cost?: number;
   total_sublet_cost?: number;
+  edited_after_approval?: boolean;
+  requires_reapproval?: boolean;
+  edit_count?: number;
+  last_edited_by_name?: string;
+  last_edited_date?: string;
 }
 
 interface Vehicle {
@@ -113,6 +124,10 @@ export default function WorkshopJobDetailPage() {
   const [isLabourDialogOpen, setIsLabourDialogOpen] = useState(false);
   const [isSavingLabour, setIsSavingLabour] = useState(false);
   const [consumables, setConsumables] = useState<any[]>([]);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isChangeRequestOpen, setIsChangeRequestOpen] = useState(false);
+  const [canEditApproved, setCanEditApproved] = useState(false);
+  const [changeReason, setChangeReason] = useState("");
 
   useEffect(() => {
     const fetchJobAndVehicle = async () => {
@@ -129,6 +144,7 @@ export default function WorkshopJobDetailPage() {
       }
 
       setJob(jobData as any as WorkshopJob);
+      setIsEditOpen(false);
 
       // populate labour state from job row if present
       setLabourHours(jobData?.labour_hours ?? 0);
@@ -253,12 +269,17 @@ export default function WorkshopJobDetailPage() {
     setIsSavingLabour(true);
     try {
       const updatedTotal = Number((labourHours || 0) * (labourRate || 0));
+      const isApproved = job.status?.toLowerCase() === "approved";
       const { error } = await supabase
         .from("workshop_job")
         .update({
           labour_hours: labourHours,
           labor_cost: labourRate,
           total_labor_cost: updatedTotal,
+          status: isApproved ? "Awaiting Approval" : job.status,
+          notes: isApproved && changeReason
+            ? `${job.notes || ""}${job.notes ? "\n" : ""}Change request: ${changeReason}`
+            : job.notes,
           updated_at: new Date().toISOString(),
         })
         .eq("id", job.id);
@@ -275,11 +296,16 @@ export default function WorkshopJobDetailPage() {
               labour_hours: labourHours,
               labor_cost: labourRate,
               total_labor_cost: updatedTotal,
+              status: isApproved ? "Awaiting Approval" : prev.status,
             }
             : prev
         );
-        toast.success("Labour saved");
+        toast.success(isApproved ? "Labour updated and sent for approval" : "Labour saved");
         setIsLabourDialogOpen(false);
+        if (isApproved) {
+          setCanEditApproved(false);
+          setChangeReason("");
+        }
       }
     } catch (e) {
       console.error("Save labour failed:", e);
@@ -299,9 +325,19 @@ export default function WorkshopJobDetailPage() {
               <ArrowLeft className="h-4 w-4" /> Back to Jobs
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-black">
-            Klava Plant Hire - Job Details
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-black">
+              Klava Plant Hire - Job Details
+            </h1>
+            {/* <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <FileEdit className="h-4 w-4 mr-2" />
+              Edit Job
+            </Button> */}
+          </div>
         </div>
       </div>
 
@@ -320,6 +356,20 @@ export default function WorkshopJobDetailPage() {
                 <Badge className={`${getStatusColor(job.status)} px-3 py-1`}>
                   {job.status}
                 </Badge>
+                {job.requires_reapproval && (
+                  <div className="mt-2">
+                    <Badge className="bg-orange-100 text-orange-800">
+                      Needs Re-Approval
+                    </Badge>
+                  </div>
+                )}
+                {!job.requires_reapproval && job.edited_after_approval && (
+                  <div className="mt-2">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      Edited{job.edit_count ? ` (${job.edit_count})` : ""}
+                    </Badge>
+                  </div>
+                )}
                 <p className="text-orange-100 text-sm mt-1">
                   {new Date(job.created_at).toLocaleDateString()}
                 </p>
@@ -328,7 +378,46 @@ export default function WorkshopJobDetailPage() {
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {job.requires_reapproval && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-orange-800">
+                    Re-approval required
+                  </p>
+                  <p className="text-sm text-orange-700">
+                    This job was edited after approval and needs fleet manager approval again.
+                    {job.last_edited_by_name && job.last_edited_date
+                      ? ` Last edited by ${job.last_edited_by_name} on ${new Date(job.last_edited_date).toLocaleDateString()}.`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs defaultValue="details" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">
+              <FileText className="h-4 w-4 mr-2" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="h-4 w-4 mr-2" />
+              Status History
+              {job.edit_count ? (
+                <Badge className="ml-2" variant="secondary">
+                  {job.edit_count}
+                </Badge>
+              ) : null}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Vehicle Section */}
           <Card>
             <CardHeader className="bg-gray-100 border-b">
@@ -613,7 +702,11 @@ export default function WorkshopJobDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsLabourDialogOpen(true)}
-                      disabled={job.status?.toLowerCase() === 'completed'}
+                      disabled={
+                        job.status?.toLowerCase() === "completed" ||
+                        job.status?.toLowerCase() === "awaiting approval" ||
+                        (job.status?.toLowerCase() === "approved" && !canEditApproved)
+                      }
                     >
                       Edit Labour
                     </Button>
@@ -679,6 +772,13 @@ export default function WorkshopJobDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+          </TabsContent>
+
+          <TabsContent value="history">
+            <JobStatusHistory jobId={job.id} />
+          </TabsContent>
+        </Tabs>
 
         {/* Labour Edit Dialog */}
         <Dialog open={isLabourDialogOpen} onOpenChange={setIsLabourDialogOpen}>

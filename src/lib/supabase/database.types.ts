@@ -2025,6 +2025,7 @@ export type Database = {
           parts_data: Json | null
           status: string | null
           supplier_id: number | null
+          supplier_name: string | null
         }
         Insert: {
           created_at?: string
@@ -2034,6 +2035,7 @@ export type Database = {
           parts_data?: Json | null
           status?: string | null
           supplier_id?: number | null
+          supplier_name?: string | null
         }
         Update: {
           created_at?: string
@@ -2043,6 +2045,7 @@ export type Database = {
           parts_data?: Json | null
           status?: string | null
           supplier_id?: number | null
+          supplier_name?: string | null
         }
         Relationships: []
       }
@@ -3751,8 +3754,11 @@ export type Database = {
           actual_cost: number | null
           actual_duration_hours: number | null
           after_photos: Json | null
+          approval_history: Json | null
           approval_status: string | null
           approved: boolean | null
+          approved_by: string | null
+          approved_by_name: string | null
           assigned_technician_id: string | null
           before_photos: Json | null
           client_name: string | null
@@ -3768,6 +3774,8 @@ export type Database = {
           documents: Json | null
           driver_id: number | null
           due_date: string | null
+          edit_count: number | null
+          edited_after_approval: boolean | null
           end_time: string | null
           equipment_used: Json | null
           estimated_cost: number | null
@@ -3780,14 +3788,19 @@ export type Database = {
           jobId_workshop: string | null
           labor_cost: number | null
           labour_hours: number | null
+          last_edited_by: string | null
+          last_edited_by_name: string | null
+          last_edited_date: string | null
           location: string | null
           notes: string | null
           odo_reading: string | null
+          original_approval_date: string | null
           parts_required: Json | null
           priority: string | null
           products_required: Json | null
           quality_check_passed: boolean | null
           registration_no: string | null
+          requires_reapproval: boolean | null
           safety_checklist_completed: boolean | null
           start_time: string | null
           status: string | null
@@ -3810,8 +3823,11 @@ export type Database = {
           actual_cost?: number | null
           actual_duration_hours?: number | null
           after_photos?: Json | null
+          approval_history?: Json | null
           approval_status?: string | null
           approved?: boolean | null
+          approved_by?: string | null
+          approved_by_name?: string | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           client_name?: string | null
@@ -3827,6 +3843,8 @@ export type Database = {
           documents?: Json | null
           driver_id?: number | null
           due_date?: string | null
+          edit_count?: number | null
+          edited_after_approval?: boolean | null
           end_time?: string | null
           equipment_used?: Json | null
           estimated_cost?: number | null
@@ -3839,14 +3857,19 @@ export type Database = {
           jobId_workshop?: string | null
           labor_cost?: number | null
           labour_hours?: number | null
+          last_edited_by?: string | null
+          last_edited_by_name?: string | null
+          last_edited_date?: string | null
           location?: string | null
           notes?: string | null
           odo_reading?: string | null
+          original_approval_date?: string | null
           parts_required?: Json | null
           priority?: string | null
           products_required?: Json | null
           quality_check_passed?: boolean | null
           registration_no?: string | null
+          requires_reapproval?: boolean | null
           safety_checklist_completed?: boolean | null
           start_time?: string | null
           status?: string | null
@@ -3869,8 +3892,11 @@ export type Database = {
           actual_cost?: number | null
           actual_duration_hours?: number | null
           after_photos?: Json | null
+          approval_history?: Json | null
           approval_status?: string | null
           approved?: boolean | null
+          approved_by?: string | null
+          approved_by_name?: string | null
           assigned_technician_id?: string | null
           before_photos?: Json | null
           client_name?: string | null
@@ -3886,6 +3912,8 @@ export type Database = {
           documents?: Json | null
           driver_id?: number | null
           due_date?: string | null
+          edit_count?: number | null
+          edited_after_approval?: boolean | null
           end_time?: string | null
           equipment_used?: Json | null
           estimated_cost?: number | null
@@ -3898,14 +3926,19 @@ export type Database = {
           jobId_workshop?: string | null
           labor_cost?: number | null
           labour_hours?: number | null
+          last_edited_by?: string | null
+          last_edited_by_name?: string | null
+          last_edited_date?: string | null
           location?: string | null
           notes?: string | null
           odo_reading?: string | null
+          original_approval_date?: string | null
           parts_required?: Json | null
           priority?: string | null
           products_required?: Json | null
           quality_check_passed?: boolean | null
           registration_no?: string | null
+          requires_reapproval?: boolean | null
           safety_checklist_completed?: boolean | null
           start_time?: string | null
           status?: string | null
@@ -3924,6 +3957,63 @@ export type Database = {
           workflow_status?: string | null
         }
         Relationships: []
+      }
+      workshop_job_status_history: {
+        Row: {
+          change_reason: string | null
+          changed_by: string | null
+          changed_by_name: string | null
+          changed_by_role: string | null
+          created_at: string
+          from_status: string | null
+          id: number
+          job_id: number
+          metadata: Json | null
+          notes: string | null
+          to_status: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by?: string | null
+          changed_by_name?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: number
+          job_id: number
+          metadata?: Json | null
+          notes?: string | null
+          to_status: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string | null
+          changed_by_name?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: number
+          job_id?: number
+          metadata?: Json | null
+          notes?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_job_status_history_job"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_job_status_history_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_job"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workshop_jobpart: {
         Row: {
