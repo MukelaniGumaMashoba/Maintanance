@@ -95,11 +95,13 @@ export async function POST(request: NextRequest) {
       console.log('Sending email to:', supplier.email);
       await resend.emails.send({
         from: 'Maintenance Workshop <onboarding@resend.dev>',
-        to: [supplier.email, 'stores@klaverplant.co.za', 'mukelanilastborn@gmail.com'],
+        to: [supplier.email],
         subject: `Klaver Plant Hire : Parts Order Request - Order #${order.id}`,
         html: emailHtml,
       });
     }
+
+    console.log('Email sent successfully for order ID:', order.id, 'supplier email:', supplier.email);
 
     return NextResponse.json({
       message: 'Order sent successfully',

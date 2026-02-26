@@ -201,7 +201,7 @@ export default function RepairHistory({ vehicleId }: { vehicleId: string }) {
           </TableBody>
         </Table>
 
-        <CardTitle className="mt-8 mb-4">Repairs (Pending)</CardTitle>
+        <CardTitle className="mt-8 mb-4">Repairs</CardTitle>
         {pendingRepairs.length === 0 && (
           <CardContent className="p-6 text-center text-gray-500">
             No pending repairs found for this vehicle

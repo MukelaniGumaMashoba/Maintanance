@@ -255,9 +255,9 @@ export default function SubletsPage() {
             onOpenChange={setIsAllocateDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              {/* <Button className="bg-blue-600 hover:bg-blue-700">
                 <Send className="mr-2 h-4 w-4" /> Allocate Job
-              </Button>
+              </Button> */}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
