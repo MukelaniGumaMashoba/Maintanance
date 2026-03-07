@@ -22,7 +22,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }) {
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full"></div>
             </div>
-            <h1 className="text-xl font-bold text-white">SolTrack</h1>
+            <h1 className="text-xl font-bold text-white">Solflo</h1>
           </div>
         </div>
 

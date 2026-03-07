@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <Image src="/klaver.png" alt="Klaver" width={450} height={450} className="object-contain rounded-full" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Skyfleet </h1>
-            <p className="text-gray-600">Welcome back to your Maintenance System by Soltrack </p>
+            <p className="text-gray-600">Welcome back to your Maintenance System by Solflo </p>
           </div>
 
           {/* Auth form container */}
