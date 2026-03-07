@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Skyfleet  System",
-  description: "Skyfleet  System",
+  title: "Skyfleet  System || Solflo",
+  description: "Skyfleet  System || Solflo",
 };
 
 export default function RootLayout({

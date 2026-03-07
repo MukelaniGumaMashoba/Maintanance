@@ -429,3 +429,7 @@ Show what changed and the new reason for it to be changed
 NEED A WHOLE TESTING HERE
 
 MUST USE BOOL TO SEE IF PART ASSIGNED AND NOT CHANGE STATUS USE BOOL
+
+
+
+Need to make the item code to be unique
