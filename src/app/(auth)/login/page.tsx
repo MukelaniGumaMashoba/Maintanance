@@ -19,7 +19,7 @@ export default function LoginPage() {
       try {
         await login(formData);
       } catch (err: any) {
-        setError("Login failed. Please try again.");
+        setError("Login failed. Please try again." + (err.message || ""));
         console.error(err);
       }
     });

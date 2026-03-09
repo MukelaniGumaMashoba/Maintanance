@@ -138,8 +138,8 @@ export async function POST(request: NextRequest) {
 
     if (sublet.email) {
       await resend.emails.send({
-        from: 'Maintenance Workshop <onboarding@resend.dev>',
-        to: [sublet.email],
+        from: 'Maintenance Workshop <stores@klaverplant.co.za>',
+        to: [sublet.email, "mukelani@solflo.co.za", "stores@klaverplant.co.za"],
         subject: `New Job Allocation - ${jobCard.job_number}`,
         html: emailHtml,
       });
