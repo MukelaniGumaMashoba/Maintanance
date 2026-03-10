@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     if (supplier.email) {
       console.log('Sending email to:', supplier.email);
       await resend.emails.send({
-        from: 'Klaver Plant Hire Workshop <stores@klaverplant.co.za>',
+        from: 'Klaver Plant Hire Workshop <admin@skyfleet.online>',
         to: [supplier.email,"mukelani@solflo.co.za", "stores@klaverplant.co.za"],
         subject: `Klaver Plant Hire : Parts Order Request - Order #${order.id}`,
         html: emailHtml,

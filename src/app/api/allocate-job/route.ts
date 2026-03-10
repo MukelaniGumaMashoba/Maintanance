@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     if (sublet.email) {
       await resend.emails.send({
-        from: 'Maintenance Workshop <stores@klaverplant.co.za>',
+        from: 'Maintenance Workshop <admin@skyfleet.online>',
         to: [sublet.email, "mukelani@solflo.co.za", "stores@klaverplant.co.za"],
         subject: `New Job Allocation - ${jobCard.job_number}`,
         html: emailHtml,
